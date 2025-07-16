@@ -3,9 +3,9 @@
 ## ✨ Features
 
 - 🔁 Horizontally scrolling ticker layout
-- 🧩 Supports multiple entities
+- 🧩 Supports multiple entities and attributes
 - 🎨 Global and per-entity styling
-- 🖱️ Click to open `more-info` or trigger a service
+- 🖱️ Click to open `more-info` or trigger an action
 - ⏸️ Optional pause on hover
 - ⚙️ Rich customization: icons, colors, attributes, units, etc.
 
@@ -13,27 +13,20 @@
 
 ## 📦 Installation
 
-### 1. Place the file
+### Method 1 - Download From HACS
+Search for Strip Card and download
 
-Copy `strip-card.js` into your `www` folder inside your Home Assistant config.
-
-```plaintext
-/config/www/strip-card.js
-```
-
-### 2. Add as a Lovelace resource
-
-#### Via UI:
+### Method 2 - Manual
+- Copy `strip-card.js` into your `/www/community/strip-card/` folder inside your Home Assistant config.
 - Go to **Settings > Dashboards > Resources**
 - Click **Add Resource**
-- URL: `/local/strip-card.js`
-- Type: `JavaScript Module`
+- URL: `/local/community/strip-card/strip-card.js`
 
 #### Or via YAML:
 ```yaml
 lovelace:
   resources:
-    - url: /local/strip-card.js
+    - url: /local/community/strip-card/strip-card.js
       type: module
 ```
 
