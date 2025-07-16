@@ -103,6 +103,7 @@ entities:
 | `font_size`       | string   | `"14px"`                       | Font size |
 | `separator`       | string   | `"•"`                          | Symbol between items |
 | `pause_on_hover`  | boolean  | `false`                        | Pause animation on hover |
+| `icon`            | string   | `default icon of entity`       | Change default icon |
 | `show_icon`       | boolean  | `false`                        | Show icons by default |
 | `name_color`      | string   | `var(--primary-text-color)`    | Default name color |
 | `value_color`     | string   | `var(--primary-color)`         | Default value color |
