@@ -99,7 +99,7 @@ entities:
 | Option            | Type     | Default                        | Description |
 |-------------------|----------|--------------------------------|-------------|
 | `title`           | string   | `""`                           | Card header |
-| `duration`        | number   | `20`                           | Total scroll time in seconds |
+| `duration`        | number   | `20`                           | Total scroll time in seconds. Lower value = Higher Speed|
 | `font_size`       | string   | `"14px"`                       | Font size |
 | `separator`       | string   | `"•"`                          | Symbol between items |
 | `pause_on_hover`  | boolean  | `false`                        | Pause animation on hover |
