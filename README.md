@@ -1,38 +1,35 @@
 # 🔶 Strip Card for Home Assistant
 
-**Strip Card**, Home Assistant için geliştirilen, birden fazla entity bilgisini yatay olarak kayan bir şerit halinde gösteren şık ve özelleştirilebilir bir Lovelace kartıdır.
+## ✨ Features
+
+- 🔁 Horizontally scrolling ticker layout
+- 🧩 Supports multiple entities
+- 🎨 Global and per-entity styling
+- 🖱️ Click to open `more-info` or trigger a service
+- ⏸️ Optional pause on hover
+- ⚙️ Rich customization: icons, colors, attributes, units, etc.
 
 ---
 
-## ✨ Özellikler
+## 📦 Installation
 
-- 🔁 Kayarak geçen ticker görünüm
-- 🧩 Birden fazla entity desteği
-- 🎨 Renk, yazı tipi boyutu ve ikon gibi pek çok görsel özelleştirme
-- 🕒 Kayma süresi ayarlanabilir
-- 🖱️ Her bir öğeye tıklanabilir (`more-info` açılır)
-- ⏸️ Üzerine gelindiğinde durdurulabilir (opsiyonel)
-- ⚠️ Eksik entity durumunda hata mesajı gösterimi
+### 1. Place the file
 
----
+Copy `strip-card.js` into your `www` folder inside your Home Assistant config.
 
-## 📦 Kurulum
+```plaintext
+/config/www/strip-card.js
+```
 
-### 1. JavaScript dosyasını ekleyin
+### 2. Add as a Lovelace resource
 
-`strip-card.js` dosyasını Home Assistant yapılandırma klasörünüzün `www/` dizinine yerleştirin.
-
-Tam yol genellikle:  
-`/config/www/strip-card.js`
-
-### 2. Lovelace Kaynağını tanımlayın
-
-#### Arayüz üzerinden:
-- **Ayarlar > Paneller > Kaynaklar > Kaynak Ekle**
+#### Via UI:
+- Go to **Settings > Dashboards > Resources**
+- Click **Add Resource**
 - URL: `/local/strip-card.js`
-- Tür: `JavaScript Module`
+- Type: `JavaScript Module`
 
-#### YAML üzerinden:
+#### Or via YAML:
 ```yaml
 lovelace:
   resources:
@@ -42,73 +39,136 @@ lovelace:
 
 ---
 
-## 🧾 Örnek Kart Yapılandırması
+## 🧾 Example Configuration
 
 ```yaml
 type: custom:strip-card
-title: Home Status
-duration: 30
-font_size: 16px
+duration: 20
+show_icon: false
+entities:
+  - entity: sensor.temperature
+    name: Bedroom
+  - entity: switch.kitchen
+    name: Kitchen Switch
+    service: switch.toggle
+    data:
+      entity_id: switch.kitchen
+    show_icon: true
+    icon_color: orange
+    icon: mdi:lightbulb
+    name_color: gold
+    value_color: yellow
+    unit_color: silver
+  - entity: sun.sun
+    attribute: elevation
+    name: Sun Elevation
+    unit: °
+```
+
+```yaml
+type: custom:strip-card
+title: System Status
+duration: 25
+font_size: 15px
 separator: "•"
 pause_on_hover: true
-show_icon: true
-name_color: "#333"
-value_color: "#1976d2"
-unit_color: "#999"
-icon_color: "#888"
+show_icon: false
 entities:
-  - entity: sensor.temperature_living
-    name: Temp
+  - entity: sensor.cpu_temp
+    name: CPU
     unit: °C
-  - entity: sensor.humidity_living
-    name: Humidity
-  - entity: binary_sensor.front_door
+    value_color: "#e53935"
+  - entity: sensor.disk_free
+    name: Disk
+    unit: GB
+    value_color: "#43a047"
+    name_color: "#000"
+  - entity: binary_sensor.door
     name: Door
+    show_icon: true
+    icon_color: "#ffa000"
+  - entity: sensor.co2_level
+    name: CO₂
+    unit: ppm
+    show_icon: true
+    icon_color: "#2196f3"
+    name_color: "#222"
+    value_color: "#2196f3"
+    unit_color: "#666"
 ```
 
 ---
 
-## ⚙️ Kart Seçenekleri
+## ⚙️ Card Options
 
-| Ayar             | Tip      | Varsayılan                       | Açıklama |
-|------------------|----------|----------------------------------|----------|
-| `title`          | string   | `"Data Strip"`                   | Kart başlığı |
-| `duration`       | number   | `20`                             | Şeridin bir tam turda geçme süresi (saniye) |
-| `font_size`      | string   | `"14px"`                         | Yazı boyutu |
-| `separator`      | string   | `"•"`                            | Her öğe arasındaki ayraç |
-| `pause_on_hover` | boolean  | `false`                          | Mouse ile üzerine gelince kayma dursun mu |
-| `show_icon`      | boolean  | `false`                          | Icon gösterilsin mi |
-| `name_color`     | string   | `var(--primary-text-color)`      | İsim rengi |
-| `value_color`    | string   | `var(--primary-color)`           | Değer rengi |
-| `unit_color`     | string   | `var(--secondary-text-color)`    | Birim rengi |
-| `icon_color`     | string   | `var(--paper-item-icon-color)`   | Icon rengi |
-| `entities`       | array    | **Gerekli**                      | Gösterilecek entity listesi |
+| Option            | Type     | Default                        | Description |
+|-------------------|----------|--------------------------------|-------------|
+| `title`           | string   | `""`                           | Card header |
+| `duration`        | number   | `20`                           | Total scroll time in seconds |
+| `font_size`       | string   | `"14px"`                       | Font size |
+| `separator`       | string   | `"•"`                          | Symbol between items |
+| `pause_on_hover`  | boolean  | `false`                        | Pause animation on hover |
+| `show_icon`       | boolean  | `false`                        | Show icons by default |
+| `name_color`      | string   | `var(--primary-text-color)`    | Default name color |
+| `value_color`     | string   | `var(--primary-color)`         | Default value color |
+| `unit_color`      | string   | `var(--secondary-text-color)`  | Default unit color |
+| `icon_color`      | string   | `var(--paper-item-icon-color)` | Default icon color |
 
-### Entity nesnesi olarak kullanımı:
+---
+
+## 🧩 Entity-Level Customization
+
+You can define each entity as an object to override global styles:
+
 ```yaml
-- entity: sensor.my_sensor
-  name: Custom Name
+- entity: sensor.example
+  name: Example
+  unit: kWh
   attribute: temperature
-  unit: °C
+  show_icon: true
+  icon_color: "#ff9800"
+  name_color: "#333"
+  value_color: "#4caf50"
+  unit_color: "#999"
+```
+
+You can also just list the entity ID for default behavior:
+
+```yaml
+- sensor.simple
 ```
 
 ---
 
-## 🧪 Geliştirici Notları
+## ⚡ Tap Actions
 
-- Kart, `ha-card`, `ha-state-icon` ve Home Assistant’ın mevcut temalarıyla uyumludur.
-- Eksik bir entity tanımlandığında hata mesajı ticker içinde gösterilir.
-- Tıklanabilirlik özelliği sayesinde kullanıcı doğrudan `more-info` ekranına ulaşabilir.
+By default, clicking an item opens the `more-info` dialog. You can also trigger a service instead:
+
+```yaml
+- entity: sensor.reboot_button
+  name: Restart
+  service: homeassistant.restart
+  data:
+    some_key: some_value
+```
 
 ---
 
-## 📄 Lisans
+## 🧑‍🎨 Developer Notes
 
-MIT Lisansı ile lisanslanmıştır.  
-Geliştirici: [Senin adın veya GitHub kullanıcı adın]
+- This card uses `ha-card` and `ha-state-icon` for native look & feel.
+- Per-entity styling allows full customization.
+- Animation is CSS-based and smooth across all modern browsers.
 
 ---
 
-## ⭐ Destek Ol
+## 📄 License
 
-Projeyi faydalı bulduysan GitHub’da ⭐ vererek destek olabilirsin!
+MIT License  
+Created by [Your GitHub Username]
+
+---
+
+## ⭐ Support
+
+If you like this card, feel free to ⭐ star the project on GitHub and share it with the Home Assistant community!
