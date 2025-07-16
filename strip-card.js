@@ -5,7 +5,7 @@ const html = LitElement.prototype.html;
 const css = LitElement.prototype.css;
 
 console.info(
-  `%c STRIP-CARD %c Loaded - Version 3.0.0 (Per-Entity Styling) `,
+  `%c STRIP-CARD %c Loaded - Version 3.1.0 (Per-Entity Icon & Styling) `,
   "color: orange; font-weight: bold; background: black",
   "color: white; font-weight: bold; background: dimgray"
 );
@@ -45,7 +45,7 @@ class StripCard extends LitElement {
     if (entityConfig.service) {
       const [domain, service] = entityConfig.service.split(".");
       if (!domain || !service) {
-        console.error(`[Strip Card] Geçersiz servis formatı: ${entityConfig.service}. 'domain.service' formatında olmalıdır.`);
+        console.error(`[Strip Card] Invalid service format: ${entityConfig.service}. Must be in 'domain.service' format.`);
         return;
       }
       this.hass.callService(domain, service, entityConfig.data || {});
@@ -114,6 +114,7 @@ class StripCard extends LitElement {
     const nameColor = entityConfig.name_color || this._config.name_color;
     const valueColor = entityConfig.value_color || this._config.value_color;
     const unitColor = entityConfig.unit_color || this._config.unit_color;
+    const customIcon = entityConfig.icon;
 
     return html`
       <div 
@@ -121,7 +122,11 @@ class StripCard extends LitElement {
         @click=${() => this._handleTap(entityConfig)}
         title="${name}: ${value} ${unit}"
       >
-        ${showIcon ? html`<ha-state-icon class="icon" .stateObj=${stateObj} style="color: ${iconColor};"></ha-state-icon>` : ''}
+        ${showIcon
+          ? customIcon
+            ? html`<ha-icon class="icon" .icon=${customIcon} style="color: ${iconColor};"></ha-icon>`
+            : html`<ha-state-icon class="icon" .stateObj=${stateObj} style="color: ${iconColor};"></ha-state-icon>`
+          : ''}
         <span class="name" style="color: ${nameColor};">${name}:</span>
         <span class="value" style="color: ${valueColor};">${value}</span>
         <span class="unit" style="color: ${unitColor};">${unit}</span>
@@ -163,7 +168,6 @@ class StripCard extends LitElement {
         font-size: var(--strip-card-font-size, 14px);
         cursor: pointer; 
       }
-      /* Renkler artık inline style ile verildiği için buradan kaldırıldı */
       .icon {
         margin-right: 0.5em;
       }
@@ -172,7 +176,6 @@ class StripCard extends LitElement {
         margin-right: 0.5em;
       }
       .ticker-item .value {
-        /* Stil yok, inline olarak verilecek */
       }
       .ticker-item .unit {
         margin-left: 0.2em;
