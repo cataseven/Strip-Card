@@ -41,6 +41,8 @@ lovelace:
 
 ## 🧾 Example Configuration
 
+![image1](images/a.gif)
+
 ```yaml
 type: custom:strip-card
 duration: 20
