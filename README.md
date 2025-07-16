@@ -135,16 +135,16 @@ You can also just list the entity ID for default behavior:
 
 ---
 
-## ⚡ Tap Actions
+## ⚡ Tap to Call Action
 
-By default, clicking an item opens the `more-info` dialog. You can also trigger a service instead:
+By default, clicking an item opens the `more-info` dialog. You can also trigger a service/action instead:
 
 ```yaml
-- entity: sensor.reboot_button
-  name: Restart
-  service: homeassistant.restart
+- entity: switch.kitchen
+  name: Kitchen Switch
+  service: switch.toggle
   data:
-    some_key: some_value
+    entity_id: switch.kitchen
 ```
 
 ---
