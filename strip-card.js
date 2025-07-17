@@ -5,7 +5,7 @@ const html = LitElement.prototype.html;
 const css = LitElement.prototype.css;
 
 console.info(
-  `%c STRIP-CARD %c Loaded - Version 3.1.0 (Per-Entity Icon & Styling) `,
+  `%c STRIP-CARD %c Loaded - Version 3.1.0 (Dynamic Icon Color Fix) `,
   "color: orange; font-weight: bold; background: black",
   "color: white; font-weight: bold; background: dimgray"
 );
@@ -32,7 +32,6 @@ class StripCard extends LitElement {
       unit_color: "var(--secondary-text-color)",
       show_icon: false,
       pause_on_hover: false,
-      icon_color: "var(--paper-item-icon-color)",
       ...config,
     };
   }
@@ -55,7 +54,7 @@ class StripCard extends LitElement {
         bubbles: true,
         composed: true,
       });
-      event.detail = { entityId: entityId };
+      event.detail = { entityId };
       this.dispatchEvent(event);
     }
   }
@@ -76,9 +75,7 @@ class StripCard extends LitElement {
             class="ticker-move"
             style="animation-duration: ${this._config.duration}s;"
           >
-            ${this._config.entities.map((entityConfig) =>
-              this.renderEntity(entityConfig)
-            )}
+            ${this._config.entities.map((entityConfig) => this.renderEntity(entityConfig))}
           </div>
         </div>
       </ha-card>
@@ -101,7 +98,6 @@ class StripCard extends LitElement {
     if (entityConfig.attribute && stateObj.attributes[entityConfig.attribute] !== undefined) {
       value = stateObj.attributes[entityConfig.attribute];
     }
-    
     if (typeof value === 'string' && value.length > 0) {
       value = value.charAt(0).toUpperCase() + value.slice(1);
     }
@@ -110,22 +106,21 @@ class StripCard extends LitElement {
     const unit = entityConfig.unit !== undefined ? entityConfig.unit : (stateObj.attributes.unit_of_measurement || "");
 
     const showIcon = entityConfig.show_icon !== undefined ? entityConfig.show_icon : this._config.show_icon;
-    const iconColor = entityConfig.icon_color || this._config.icon_color;
     const nameColor = entityConfig.name_color || this._config.name_color;
     const valueColor = entityConfig.value_color || this._config.value_color;
     const unitColor = entityConfig.unit_color || this._config.unit_color;
     const customIcon = entityConfig.icon;
 
     return html`
-      <div 
+      <div
         class="ticker-item"
         @click=${() => this._handleTap(entityConfig)}
         title="${name}: ${value} ${unit}"
       >
         ${showIcon
           ? customIcon
-            ? html`<ha-icon class="icon" .icon=${customIcon} style="color: ${iconColor};"></ha-icon>`
-            : html`<ha-state-icon class="icon" .stateObj=${stateObj} style="color: ${iconColor};"></ha-state-icon>`
+            ? html`<ha-icon class="icon" .icon=${customIcon}></ha-icon>`
+            : html`<state-badge class="icon" .hass=${this.hass} .stateObj=${stateObj}></state-badge>`
           : ''}
         <span class="name" style="color: ${nameColor};">${name}:</span>
         <span class="value" style="color: ${valueColor};">${value}</span>
@@ -138,7 +133,7 @@ class StripCard extends LitElement {
   static get styles() {
     return css`
       ha-card {
-        overflow: hidden; 
+        overflow: hidden;
         padding-bottom: 8px;
       }
       .ticker-wrap {
@@ -152,9 +147,9 @@ class StripCard extends LitElement {
         animation-play-state: paused;
       }
       .ticker-move {
-        display: inline-block; 
-        white-space: nowrap; 
-        padding-left: 100%; 
+        display: inline-block;
+        white-space: nowrap;
+        padding-left: 100%;
         will-change: transform;
         transform: translateZ(0);
         animation-name: ticker;
@@ -162,11 +157,11 @@ class StripCard extends LitElement {
         animation-iteration-count: infinite;
       }
       .ticker-item {
-        display: inline-flex; 
-        align-items: center; 
+        display: inline-flex;
+        align-items: center;
         margin: 0 1rem;
         font-size: var(--strip-card-font-size, 14px);
-        cursor: pointer; 
+        cursor: pointer;
       }
       .icon {
         margin-right: 0.5em;
@@ -174,8 +169,6 @@ class StripCard extends LitElement {
       .ticker-item .name {
         font-weight: bold;
         margin-right: 0.5em;
-      }
-      .ticker-item .value {
       }
       .ticker-item .unit {
         margin-left: 0.2em;
@@ -189,12 +182,8 @@ class StripCard extends LitElement {
         font-weight: bold;
       }
       @keyframes ticker {
-        0% {
-          transform: translateX(0);
-        }
-        100% {
-          transform: translateX(-100%);
-        }
+        0% { transform: translateX(0); }
+        100% { transform: translateX(-100%); }
       }
     `;
   }
