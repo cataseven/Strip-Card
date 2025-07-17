@@ -91,6 +91,37 @@ entities:
     value_color: "#2196f3"
     unit_color: "#666"
 ```
+Color Template Example
+
+```yaml
+type: custom:strip-card
+duration: 20
+show_icon: true
+entities:
+  - entity: sensor.temperature
+    name: Bedroom
+    icon: mdi:thermometer
+    icon_color: orange
+    name_color: >
+      {{ states['sensor.temperature'].state < 21 ? 'blue' :
+      (states['sensor.temperature'].state <= 25 ? 'green' : 'red') }}
+    value_color: >
+      {{ states['sensor.temperature'].state < 21 ? 'blue' :
+      (states['sensor.temperature'].state <= 25 ? 'green' : 'red') }}
+    unit_color: >
+      {{ states['sensor.temperature'].state < 21 ? 'blue' :
+      (states['sensor.temperature'].state <= 25 ? 'green' : 'yellow') }}
+  - entity: person.man
+    name: Man
+    icon: mdi:account
+    value_color: >
+      {{ states['person.man'].state === 'home' ? 'blue' : 'gray' }}
+  - entity: person.woman
+    name: Woman
+    icon: mdi:account-outline
+    value_color: >
+      {{ states['person.woman'].state === 'home' ? 'green' : 'gray' }}
+```
 
 ---
 
