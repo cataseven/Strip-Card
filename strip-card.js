@@ -3,7 +3,7 @@ const html = LitElement.prototype.html;
 const css = LitElement.prototype.css;
 
 console.info(
-  `%c STRIP-CARD %c Loaded - Version 3.2.0 (Template Color Support) `,
+  `%c STRIP-CARD %c Loaded - Version 3.2.1 (Dynamic Unit Position) `,
   "color: orange; font-weight: bold; background: black",
   "color: white; font-weight: bold; background: dimgray"
 );
@@ -31,6 +31,7 @@ class StripCard extends LitElement {
       icon_color: "var(--primary-text-color)",
       show_icon: false,
       pause_on_hover: false,
+      unit_position: 'right',
       ...config,
     };
   }
@@ -104,6 +105,7 @@ class StripCard extends LitElement {
     const name = entityConfig.name || stateObj.attributes.friendly_name;
     const unit = entityConfig.unit !== undefined ? entityConfig.unit : (stateObj.attributes.unit_of_measurement || "");
     const showIcon = entityConfig.show_icon !== undefined ? entityConfig.show_icon : this._config.show_icon;
+    const unit_position = entityConfig.unit_position || this._config.unit_position;
 
     const nameColor = this.evaluateTemplate(entityConfig.name_color || this._config.name_color, this.hass);
     const valueColor = this.evaluateTemplate(entityConfig.value_color || this._config.value_color, this.hass);
@@ -112,11 +114,16 @@ class StripCard extends LitElement {
 
     const customIcon = entityConfig.icon;
 
+    const valuePart = html`<span class="value" style="color: ${valueColor};">${value}</span>`;
+    const unitPart = html`<span class="unit" style="color: ${unitColor};">${unit}</span>`;
+    
+    const titleText = unit_position === 'left' ? `${name}: ${unit}${value}` : `${name}: ${value} ${unit}`;
+
     return html`
       <div
         class="ticker-item"
         @click=${() => this._handleTap(entityConfig)}
-        title="${name}: ${value} ${unit}"
+        title="${titleText}"
       >
         ${showIcon
           ? customIcon
@@ -124,8 +131,9 @@ class StripCard extends LitElement {
             : html`<state-badge class="icon" .hass=${this.hass} .stateObj=${stateObj}></state-badge>`
           : ''}
         <span class="name" style="color: ${nameColor};">${name}:</span>
-        <span class="value" style="color: ${valueColor};">${value}</span>
-        <span class="unit" style="color: ${unitColor};">${unit}</span>
+        
+        ${unit_position === 'left' ? html`${unitPart}${valuePart}` : html`${valuePart}${unitPart}`}
+        
         <span class="separator">${this._config.separator}</span>
       </div>
     `;
@@ -171,7 +179,8 @@ class StripCard extends LitElement {
         font-weight: bold;
         margin-right: 0.5em;
       }
-      .ticker-item .unit {
+      .ticker-item .value + .unit,
+      .ticker-item .unit + .value {
         margin-left: 0.2em;
       }
       .ticker-item .separator {
