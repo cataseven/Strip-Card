@@ -161,7 +161,7 @@ By default, clicking an item opens the `more-info` dialog. You can also trigger 
 ## 📄 License
 
 MIT License  
-Created by [Your GitHub Username]
+Created by cataseven
 
 ---
 
