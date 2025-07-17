@@ -72,6 +72,7 @@ entities:
   - entity: sensor.cpu_temp
     name: CPU
     unit: °C
+    unit_position: left
     value_color: "#e53935"
   - entity: sensor.disk_free
     name: Disk
@@ -133,13 +134,15 @@ entities:
 | `duration`        | number   | `20`                           | Total scroll time in seconds. Lower value = Higher Speed|
 | `font_size`       | string   | `"14px"`                       | Font size |
 | `separator`       | string   | `"•"`                          | Symbol between items |
+| `unit`       | string   |                          | Unit of state value |
 | `pause_on_hover`  | boolean  | `false`                        | Pause animation on hover |
 | `icon`            | string   | `default icon of entity`       | Change default icon |
 | `show_icon`       | boolean  | `false`                        | Show icons by default |
-| `name_color`      | string   | `var(--primary-text-color)`    | Default name color |
-| `value_color`     | string   | `var(--primary-color)`         | Default value color |
-| `unit_color`      | string   | `var(--secondary-text-color)`  | Default unit color |
-| `icon_color`      | string   | `var(--paper-item-icon-color)` | Default icon color |
+| `name_color`      | string   | `var(--primary-text-color)`    | Name color |
+| `value_color`     | string   | `var(--primary-color)`         | Value color |
+| `unit_color`      | string   | `var(--secondary-text-color)`  | Unit color |
+| `icon_color`      | string   | `var(--paper-item-icon-color)` | İcon color |
+| `unit_position`      | string   | `left` | Unit position |
 
 ---
 
