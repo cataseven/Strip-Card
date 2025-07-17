@@ -1,11 +1,9 @@
-const LitElement = Object.getPrototypeOf(
-  customElements.get("ha-panel-lovelace")
-);
+const LitElement = Object.getPrototypeOf(customElements.get("ha-panel-lovelace"));
 const html = LitElement.prototype.html;
 const css = LitElement.prototype.css;
 
 console.info(
-  `%c STRIP-CARD %c Loaded - Version 3.1.0 (Dynamic Icon Color Fix) `,
+  `%c STRIP-CARD %c Loaded - Version 3.2.0 (Template Color Support) `,
   "color: orange; font-weight: bold; background: black",
   "color: white; font-weight: bold; background: dimgray"
 );
@@ -30,6 +28,7 @@ class StripCard extends LitElement {
       name_color: "var(--primary-text-color)",
       value_color: "var(--primary-color)",
       unit_color: "var(--secondary-text-color)",
+      icon_color: "var(--primary-text-color)",
       show_icon: false,
       pause_on_hover: false,
       ...config,
@@ -50,31 +49,35 @@ class StripCard extends LitElement {
       this.hass.callService(domain, service, entityConfig.data || {});
     } else {
       const entityId = typeof entityConfig === "string" ? entityConfig : entityConfig.entity;
-      const event = new Event("hass-more-info", {
-        bubbles: true,
-        composed: true,
-      });
+      const event = new Event("hass-more-info", { bubbles: true, composed: true });
       event.detail = { entityId };
       this.dispatchEvent(event);
     }
   }
 
-  render() {
-    if (!this._config || !this.hass) {
-      return html``;
-    }
+  evaluateTemplate(template, hass) {
+    if (!template || typeof template !== 'string') return template;
+    if (!template.includes("{{")) return template;
 
-    const cardStyles = `
-      --strip-card-font-size: ${this._config.font_size};
-    `;
+    try {
+      const expression = template.match(/{{(.*?)}}/s)[1];
+      const func = new Function("states", `"use strict"; return (${expression.trim()});`);
+      return func(hass.states);
+    } catch (e) {
+      console.warn("Template evaluation failed:", e, template);
+      return template;
+    }
+  }
+
+  render() {
+    if (!this._config || !this.hass) return html``;
+
+    const cardStyles = `--strip-card-font-size: ${this._config.font_size};`;
 
     return html`
       <ha-card .header="${this._config.title}" style="${cardStyles}">
         <div class="ticker-wrap ${this._config.pause_on_hover ? 'pausable' : ''}">
-          <div
-            class="ticker-move"
-            style="animation-duration: ${this._config.duration}s;"
-          >
+          <div class="ticker-move" style="animation-duration: ${this._config.duration}s;">
             ${this._config.entities.map((entityConfig) => this.renderEntity(entityConfig))}
           </div>
         </div>
@@ -87,11 +90,7 @@ class StripCard extends LitElement {
     const stateObj = this.hass.states[entityId];
 
     if (!stateObj) {
-      return html`
-        <div class="ticker-item error">
-          Unknown Entity: ${entityId}
-        </div>
-      `;
+      return html`<div class="ticker-item error">Unknown Entity: ${entityId}</div>`;
     }
 
     let value = stateObj.state;
@@ -104,11 +103,13 @@ class StripCard extends LitElement {
 
     const name = entityConfig.name || stateObj.attributes.friendly_name;
     const unit = entityConfig.unit !== undefined ? entityConfig.unit : (stateObj.attributes.unit_of_measurement || "");
-
     const showIcon = entityConfig.show_icon !== undefined ? entityConfig.show_icon : this._config.show_icon;
-    const nameColor = entityConfig.name_color || this._config.name_color;
-    const valueColor = entityConfig.value_color || this._config.value_color;
-    const unitColor = entityConfig.unit_color || this._config.unit_color;
+
+    const nameColor = this.evaluateTemplate(entityConfig.name_color || this._config.name_color, this.hass);
+    const valueColor = this.evaluateTemplate(entityConfig.value_color || this._config.value_color, this.hass);
+    const unitColor = this.evaluateTemplate(entityConfig.unit_color || this._config.unit_color, this.hass);
+    const iconColor = this.evaluateTemplate(entityConfig.icon_color || this._config.icon_color, this.hass);
+
     const customIcon = entityConfig.icon;
 
     return html`
@@ -119,7 +120,7 @@ class StripCard extends LitElement {
       >
         ${showIcon
           ? customIcon
-            ? html`<ha-icon class="icon" .icon=${customIcon}></ha-icon>`
+            ? html`<ha-icon class="icon" .icon=${customIcon} style="color: ${iconColor};"></ha-icon>`
             : html`<state-badge class="icon" .hass=${this.hass} .stateObj=${stateObj}></state-badge>`
           : ''}
         <span class="name" style="color: ${nameColor};">${name}:</span>
