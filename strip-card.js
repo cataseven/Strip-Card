@@ -72,13 +72,15 @@ class StripCard extends LitElement {
 
   render() {
     if (!this._config || !this.hass) return html``;
-
+    
+    const duration = this.evaluateTemplate(this._config.duration, this.hass);
+    
     const cardStyles = `--strip-card-font-size: ${this._config.font_size};`;
-
+    
     return html`
       <ha-card .header="${this._config.title}" style="${cardStyles}">
         <div class="ticker-wrap ${this._config.pause_on_hover ? 'pausable' : ''}">
-          <div class="ticker-move" style="animation-duration: ${this._config.duration}s;">
+        <div class="ticker-move" style="animation-duration: ${duration}s;">
             ${this._config.entities.map((entityConfig) => this.renderEntity(entityConfig))}
           </div>
         </div>
@@ -98,21 +100,24 @@ class StripCard extends LitElement {
     if (entityConfig.attribute && stateObj.attributes[entityConfig.attribute] !== undefined) {
       value = stateObj.attributes[entityConfig.attribute];
     }
+    if (entityConfig.value_template) {
+        value = this.evaluateTemplate(entityConfig.value_template, this.hass);
+    }
     if (typeof value === 'string' && value.length > 0) {
       value = value.charAt(0).toUpperCase() + value.slice(1);
     }
 
     const name = entityConfig.name || stateObj.attributes.friendly_name;
     const unit = entityConfig.unit !== undefined ? entityConfig.unit : (stateObj.attributes.unit_of_measurement || "");
-    const showIcon = entityConfig.show_icon !== undefined ? entityConfig.show_icon : this._config.show_icon;
+    let showIcon = entityConfig.show_icon !== undefined ? entityConfig.show_icon : this._config.show_icon;
+    showIcon = this.evaluateTemplate(showIcon, this.hass);
     const unit_position = entityConfig.unit_position || this._config.unit_position;
 
     const nameColor = this.evaluateTemplate(entityConfig.name_color || this._config.name_color, this.hass);
     const valueColor = this.evaluateTemplate(entityConfig.value_color || this._config.value_color, this.hass);
     const unitColor = this.evaluateTemplate(entityConfig.unit_color || this._config.unit_color, this.hass);
     const iconColor = this.evaluateTemplate(entityConfig.icon_color || this._config.icon_color, this.hass);
-
-    const customIcon = entityConfig.icon;
+    const customIcon = this.evaluateTemplate(entityConfig.icon, this.hass);
 
     const valuePart = html`<span class="value" style="color: ${valueColor};">${value}</span>`;
     const unitPart = html`<span class="unit" style="color: ${unitColor};">${unit}</span>`;
