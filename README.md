@@ -124,6 +124,32 @@ entities:
       {{ states['person.woman'].state === 'home' ? 'green' : 'gray' }}
 ```
 
+Another Template Example
+```yaml
+type: custom:strip-card
+duration: >
+  {{ states['sensor.temperature'].state < 21 ? '10' :
+  (states['sensor.temperature'].state <= 25 ? '20' : '10') }}
+entities:
+  - entity: sensor.temperature
+    name: Oda Sıcaklığı
+    show_icon: |
+      {{ states['sensor.temperature'].state > 28 }}
+    icon: >
+      {{ states['sensor.temperature'].state < 21 ? 'mdi:snowflake' :
+      (states['sensor.temperature'].state <= 25 ? 'mdi:thermometer' :
+      'mdi:fire') }}
+    unit_color: >
+      {{ states['sensor.temperature'].state < 21 ? 'blue' :
+      (states['sensor.temperature'].state <= 25 ? 'green' : 'red') }}
+    value_template: >
+      {{ states['sensor.temperature'].state < 21 ? 'Cold' : 
+      (states['sensor.temperature'].state <= 25 ? 'Fine' : 'Damn Hot') }}
+    value_color: >
+      {{ states['sensor.temperature'].state < 21 ? 'blue' :
+      (states['sensor.temperature'].state <= 25 ? 'green' : 'yellow') }}      
+```
+
 ---
 
 ## ⚙️ Card Options
