@@ -20,15 +20,38 @@ Search for Strip Card and download
 - Copy `strip-card.js` into your `/www/community/strip-card/` folder inside your Home Assistant config.
 - Go to **Settings > Dashboards > Resources**
 - Click **Add Resource**
-- URL: `/local/community/strip-card/strip-card.js`
+- URL: `/local/community/Strip-Card/strip-card.js`
 
 #### Or via YAML:
 ```yaml
 lovelace:
   resources:
-    - url: /local/community/strip-card/strip-card.js
+    - url: /local/community/Strip-Card/strip-card.js
       type: module
 ```
+
+---
+
+## ⚙️ Card Options
+
+| Option            | Type     | Default                        | Description |
+|-------------------|----------|--------------------------------|-------------|
+| `title`           | string   | `""`                           | Card header |
+| `duration`        | number   | `20`                           | Total scroll time in seconds. Lower value = Higher Speed|
+| `font_size`       | string   | `"14px"`                       | Font size |
+| `border_radius`       | string   | `"0px"`                       | Curve the edges |
+| `card_height`       | string   | `"50px"`                       | Card height |
+| `card_width`       | string   | ``                       | Card width |
+| `separator`       | string   | `"•"`                          | Symbol between items |
+| `unit`       | string   |                          | Unit of state value |
+| `pause_on_hover`  | boolean  | `false`                        | Pause animation on hover |
+| `icon`            | string   | `default icon of entity`       | Change default icon |
+| `show_icon`       | boolean  | `false`                        | Show icons by default |
+| `name_color`      | string   | `var(--primary-text-color)`    | Name color |
+| `value_color`     | string   | `var(--primary-color)`         | Value color |
+| `unit_color`      | string   | `var(--secondary-text-color)`  | Unit color |
+| `icon_color`      | string   | `var(--paper-item-icon-color)` | İcon color |
+| `unit_position`      | string   | `left` | Unit position |
 
 ---
 
@@ -40,6 +63,9 @@ lovelace:
 type: custom:strip-card
 duration: 20
 show_icon: false
+border_radius: 12px
+card_height: 50px
+card_width: 250px
 entities:
   - entity: sensor.temperature
     name: Bedroom
@@ -65,6 +91,9 @@ type: custom:strip-card
 title: System Status
 duration: 25
 font_size: 15px
+border_radius: 12px
+card_height: 50px
+card_width: 250px
 separator: "•"
 pause_on_hover: true
 show_icon: false
@@ -150,27 +179,6 @@ entities:
       (states['sensor.temperature'].state <= 25 ? 'green' : 'yellow') }}      
 ```
 
----
-
-## ⚙️ Card Options
-
-| Option            | Type     | Default                        | Description |
-|-------------------|----------|--------------------------------|-------------|
-| `title`           | string   | `""`                           | Card header |
-| `duration`        | number   | `20`                           | Total scroll time in seconds. Lower value = Higher Speed|
-| `font_size`       | string   | `"14px"`                       | Font size |
-| `separator`       | string   | `"•"`                          | Symbol between items |
-| `unit`       | string   |                          | Unit of state value |
-| `pause_on_hover`  | boolean  | `false`                        | Pause animation on hover |
-| `icon`            | string   | `default icon of entity`       | Change default icon |
-| `show_icon`       | boolean  | `false`                        | Show icons by default |
-| `name_color`      | string   | `var(--primary-text-color)`    | Name color |
-| `value_color`     | string   | `var(--primary-color)`         | Value color |
-| `unit_color`      | string   | `var(--secondary-text-color)`  | Unit color |
-| `icon_color`      | string   | `var(--paper-item-icon-color)` | İcon color |
-| `unit_position`      | string   | `left` | Unit position |
-
----
 
 ## 🧩 Entity-Level Customization
 
