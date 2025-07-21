@@ -32,6 +32,9 @@ class StripCard extends LitElement {
       show_icon: false,
       pause_on_hover: false,
       unit_position: 'right',
+      border_radius: "0px",
+      card_height: "50px",
+      card_width: undefined,
       ...config,
     };
   }
@@ -75,12 +78,19 @@ class StripCard extends LitElement {
     
     const duration = this.evaluateTemplate(this._config.duration, this.hass);
     
-    const cardStyles = `--strip-card-font-size: ${this._config.font_size};`;
+    const cardWidthStyle = this._config.card_width ? `--strip-card-width: ${this._config.card_width};` : '';
+
+    const cardStyles = `
+      --strip-card-font-size: ${this._config.font_size};
+      --strip-card-border-radius: ${this._config.border_radius};
+      --strip-card-height: ${this._config.card_height};
+      ${cardWidthStyle}
+    `;
     
     return html`
       <ha-card .header="${this._config.title}" style="${cardStyles}">
         <div class="ticker-wrap ${this._config.pause_on_hover ? 'pausable' : ''}">
-        <div class="ticker-move" style="animation-duration: ${duration}s;">
+          <div class="ticker-move" style="animation-duration: ${duration}s;">
             ${this._config.entities.map((entityConfig) => this.renderEntity(entityConfig))}
           </div>
         </div>
@@ -148,13 +158,23 @@ class StripCard extends LitElement {
     return css`
       ha-card {
         overflow: hidden;
-        padding-bottom: 8px;
+        
+        border-radius: var(--strip-card-border-radius, 0px);
+        height: var(--strip-card-height, 50px);
+        width: var(--strip-card-width);
+        
+        display: flex;
+        flex-direction: column;
+        justify-content: flex-start;
       }
       .ticker-wrap {
+        flex-grow: 1;
+        display: flex;
+        align-items: center;
         width: 100%;
         overflow: hidden;
         background-color: var(--card-background-color, white);
-        padding: 12px 0;
+        padding: 0;
         box-sizing: border-box;
       }
       .ticker-wrap.pausable:hover .ticker-move {
