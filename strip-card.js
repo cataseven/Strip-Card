@@ -8,11 +8,33 @@ console.info(
   "color: white; font-weight: bold; background: dimgray"
 );
 
+// Kartı kart seçicide kullanılabilir hale getir
+window.customCards = window.customCards || [];
+window.customCards.push({
+  type: "strip-card",
+  name: "Strip Card",
+  description: "Varlıkları kayan bir şerit üzerinde gösteren bir kart.",
+  preview: true, // Kart seçicide bir önizleme gösterir
+});
+
 class StripCard extends LitElement {
   static get properties() {
     return {
       hass: { type: Object },
       _config: { type: Object },
+    };
+  }
+
+
+  static getStubConfig() {
+    return {
+      type: "custom:strip-card",
+      entities: [
+        { entity: "sun.sun", name: "Sun" },
+        { entity: "zone.home", name: "People at Home" }, 
+      ],
+      duration: 20,
+      separator: "•"
     };
   }
 
