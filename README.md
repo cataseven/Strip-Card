@@ -32,26 +32,52 @@ lovelace:
 
 ---
 
-## ⚙️ Card Options
 
-| Option            | Type     | Default                        | Description |
-|-------------------|----------|--------------------------------|-------------|
-| `title`           | string   | `""`                           | Card header |
-| `duration`        | number   | `20`                           | Total scroll time in seconds. Lower value = Higher Speed|
-| `font_size`       | string   | `"14px"`                       | Font size |
-| `border_radius`       | string   | `"0px"`                       | Curve the edges |
-| `card_height`       | string   | `"50px"`                       | Card height |
-| `card_width`       | string   | ``                       | Card width |
-| `separator`       | string   | `"•"`                          | Symbol between items |
-| `unit`       | string   |                          | Unit of state value |
-| `pause_on_hover`  | boolean  | `false`                        | Pause animation on hover |
-| `icon`            | string   | `default icon of entity`       | Change default icon |
-| `show_icon`       | boolean  | `false`                        | Show icons by default |
-| `name_color`      | string   | `var(--primary-text-color)`    | Name color |
-| `value_color`     | string   | `var(--primary-color)`         | Value color |
-| `unit_color`      | string   | `var(--secondary-text-color)`  | Unit color |
-| `icon_color`      | string   | `var(--paper-item-icon-color)` | İcon color |
-| `unit_position`      | string   | `left` | Unit position |
+# 🧩 Custom Card Configuration Options
+
+## General Options
+
+| **Option**            | **Type**   | **Default**                 | **Description**                                                                 |
+|-----------------------|------------|-----------------------------|---------------------------------------------------------------------------------|
+| `title`               | `string`   | `""`                        | Sets the card title.                                                            |
+| `duration`            | `number`   | `20`                        | Duration (in seconds) for one full scroll cycle. Lower values = faster scroll. |
+| `font_size`           | `string`   | `"14px"`                    | Sets the font size for text.                                                    |
+| `border_radius`       | `string`   | `"0px"`                     | Controls card corner roundness (e.g., `"10px"`).                               |
+| `card_height`         | `string`   | `"50px"`                    | Fixed height of the card.                                                       |
+| `card_width`          | `string`   | `""`                        | Fixed width of the card. Leave blank for automatic width.                      |
+| `separator`           | `string`   | `"•"`                       | Symbol shown between each entity item.                                          |
+| `pause_on_hover`      | `boolean`  | `false`                     | 🖱️ Pauses animation when the mouse hovers over the card.                       |
+| `continuous_scroll`   | `boolean`  | `true`                      | If true, scrolling loops continuously. If false, scrolls once and stops.       |
+| `vertical_scroll`     | `boolean`  | `false`                     | Changes scroll direction from horizontal to vertical.                          |
+| `vertical_alignment`  | `string`   | `"stack"`                   | Used with vertical scroll: `"stack"` (top-to-bottom) or `"inline"` (side-by-side). |
+| `fading`              | `boolean`  | `false`                     | Adds fade effect at the card’s edges.                                           |
+| `show_icon`           | `boolean`  | `false`                     | Displays the entity icon if true.                                               |
+| `unit_position`       | `string`   | `"right"`                   | Position of unit label relative to value. Options: `"left"` or `"right"`.     |
+
+## Color Options
+
+| **Option**      | **Default**                       | **Description**                           |
+|------------------|-----------------------------------|-------------------------------------------|
+| `name_color`     | `var(--primary-text-color)`       | Color of the entity name.                 |
+| `value_color`    | `var(--primary-color)`            | Color of the entity value.                |
+| `unit_color`     | `var(--secondary-text-color)`     | Color of the unit text.                   |
+| `icon_color`     | `var(--paper-item-icon-color)`    | Color of the entity icon.                 |
+
+## Per-Entity Options (`entities`)
+
+| **Sub-Option**       | **Type**     | **Default**              | **Description**                                                                 |
+|----------------------|--------------|---------------------------|----------------------------------------------------------------------------------|
+| `entity`             | `string`     | **Required**              | The `entity_id` to display (e.g., `sensor.temp`).                                |
+| `name`               | `string`     | `friendly_name`           | Overrides the default entity name.                                               |
+| `icon`               | `string`     | Default entity icon       | Overrides the default icon (e.g., `"mdi:weather-sunny"`).                        |
+| `attribute`          | `string`     | `state`                   | Displays a specific attribute instead of the state.                              |
+| `value_template`     | `string`     | `state`                   | A Jinja2 template to customize the displayed value.                              |
+| `unit`               | `string`     | `unit_of_measurement`     | Overrides the default unit of measurement.                                       |
+| `unit_position`      | `string`     | Inherits from card        | Overrides the global unit position for this entity.                              |
+| `show_icon`          | `boolean`    | Inherits from card        | Overrides icon visibility for this specific entity.                              |
+| `service`            | `string`     | —                         | Home Assistant service to call on click (e.g., `"light.toggle"`).               |
+| `data`               | `object`     | —                         | Additional data to pass with the service call (e.g., `{"entity_id": "light.kitchen"}`). |
+
 
 ---
 
@@ -121,6 +147,36 @@ entities:
     value_color: "#2196f3"
     unit_color: "#666"
 ```
+
+Vertical Scroll Example
+```yaml
+  type: custom:strip-card
+  title: Comprehensive Vertical Scroll
+  entities:
+    - entity: sun.sun
+      name: "Sun Position"
+      show_icon: true
+    - entity: zone.home
+      name: "People at Home"
+      show_icon: true
+    - entity: sensor.rain_sensor
+      name: "Rain Sensor"
+      show_icon: true
+    - entity: sensor.weather_station_humidity
+      name: "Humidity"
+      show_icon: true
+  duration: 20
+  separator: "•"
+  font_size: "14px"
+  card_height: "300px" # A taller card works well for vertical scrolling.
+  card_width:  "100pxpx" 
+  fading: true
+  pause_on_hover: false
+  vertical_scroll: true
+  vertical_alignment: 'stack'
+  continuous_scroll: true
+```
+
 Color Template Example
 
 ```yaml
