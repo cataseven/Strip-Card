@@ -3,18 +3,17 @@ const html = LitElement.prototype.html;
 const css = LitElement.prototype.css;
 
 console.info(
-  `%c STRIP-CARD %c Loaded - Version 3.2.1 (Dynamic Unit Position) `,
+  `%c STRIP-CARD %c Loaded - Version 3.12.0 (Vertical Separator) `,
   "color: orange; font-weight: bold; background: black",
   "color: white; font-weight: bold; background: dimgray"
 );
 
-// Kartı kart seçicide kullanılabilir hale getir
 window.customCards = window.customCards || [];
 window.customCards.push({
   type: "strip-card",
   name: "Strip Card",
-  description: "Varlıkları kayan bir şerit üzerinde gösteren bir kart.",
-  preview: true, // Kart seçicide bir önizleme gösterir
+  description: "A card that shows entities on a scrolling strip.",
+  preview: true,
 });
 
 class StripCard extends LitElement {
@@ -25,13 +24,12 @@ class StripCard extends LitElement {
     };
   }
 
-
   static getStubConfig() {
     return {
       type: "custom:strip-card",
       entities: [
         { entity: "sun.sun", name: "Sun" },
-        { entity: "zone.home", name: "People at Home" }, 
+        { entity: "zone.home", name: "People at Home" },
       ],
       duration: 20,
       separator: "•"
@@ -57,6 +55,10 @@ class StripCard extends LitElement {
       border_radius: "0px",
       card_height: "50px",
       card_width: undefined,
+      fading: false,
+      vertical_scroll: false,
+      vertical_alignment: 'stack',
+      continuous_scroll: true,
       ...config,
     };
   }
@@ -97,23 +99,39 @@ class StripCard extends LitElement {
 
   render() {
     if (!this._config || !this.hass) return html``;
-    
-    const duration = this.evaluateTemplate(this._config.duration, this.hass);
-    
-    const cardWidthStyle = this._config.card_width ? `--strip-card-width: ${this._config.card_width};` : '';
 
+    const duration = this.evaluateTemplate(this._config.duration, this.hass);
+    const cardWidthStyle = this._config.card_width ? `--strip-card-width: ${this._config.card_width};` : '';
+    const fadingClass = this._config.fading ? 'has-fading' : '';
+    const verticalClass = this._config.vertical_scroll ? 'has-vertical-scroll' : '';
+    const verticalAlignmentClass = this._config.vertical_alignment === 'inline' ? 'has-inline-vertical-alignment' : '';
+    const animationIteration = this._config.continuous_scroll ? 'infinite' : '1';
+    
     const cardStyles = `
       --strip-card-font-size: ${this._config.font_size};
       --strip-card-border-radius: ${this._config.border_radius};
       --strip-card-height: ${this._config.card_height};
       ${cardWidthStyle}
     `;
+
+    const renderedEntities = this._config.entities.map((entityConfig) => this.renderEntity(entityConfig));
+    let content = renderedEntities;
+
+    if (this._config.continuous_scroll) {
+      const containerWidth = this.getBoundingClientRect().width;
+      const minCopies = Math.ceil(containerWidth / (renderedEntities.length * 100)) + 2;
+      const copies = minCopies > 2 ? minCopies : 2;
+      content = [];
+      for (let i = 0; i < copies; i++) {
+        content.push(...renderedEntities);
+      }
+    }
     
     return html`
       <ha-card .header="${this._config.title}" style="${cardStyles}">
-        <div class="ticker-wrap ${this._config.pause_on_hover ? 'pausable' : ''}">
-          <div class="ticker-move" style="animation-duration: ${duration}s;">
-            ${this._config.entities.map((entityConfig) => this.renderEntity(entityConfig))}
+        <div class="ticker-wrap ${this._config.pause_on_hover ? 'pausable' : ''} ${fadingClass} ${verticalClass}">
+          <div class="ticker-move ${verticalAlignmentClass}" style="animation-duration: ${duration}s; animation-iteration-count: ${animationIteration};">
+            ${content}
           </div>
         </div>
       </ha-card>
@@ -153,7 +171,7 @@ class StripCard extends LitElement {
 
     const valuePart = html`<span class="value" style="color: ${valueColor};">${value}</span>`;
     const unitPart = html`<span class="unit" style="color: ${unitColor};">${unit}</span>`;
-    
+
     const titleText = unit_position === 'left' ? `${name}: ${unit}${value}` : `${name}: ${value} ${unit}`;
 
     return html`
@@ -168,9 +186,7 @@ class StripCard extends LitElement {
             : html`<state-badge class="icon" .hass=${this.hass} .stateObj=${stateObj}></state-badge>`
           : ''}
         <span class="name" style="color: ${nameColor};">${name}:</span>
-        
         ${unit_position === 'left' ? html`${unitPart}${valuePart}` : html`${valuePart}${unitPart}`}
-        
         <span class="separator">${this._config.separator}</span>
       </div>
     `;
@@ -180,11 +196,9 @@ class StripCard extends LitElement {
     return css`
       ha-card {
         overflow: hidden;
-        
         border-radius: var(--strip-card-border-radius, 0px);
         height: var(--strip-card-height, 50px);
         width: var(--strip-card-width);
-        
         display: flex;
         flex-direction: column;
         justify-content: flex-start;
@@ -198,6 +212,40 @@ class StripCard extends LitElement {
         background-color: var(--card-background-color, white);
         padding: 0;
         box-sizing: border-box;
+        position: relative;
+      }
+      .ticker-wrap.has-vertical-scroll {
+        flex-direction: column;
+        height: var(--strip-card-height, 50px);
+        overflow: hidden;
+      }
+      .ticker-wrap.has-fading {
+        -webkit-mask-image: linear-gradient(to right,
+          rgba(0, 0, 0, 0) 0%,
+          rgba(0, 0, 0, 1) 15%,
+          rgba(0, 0, 0, 1) 85%,
+          rgba(0, 0, 0, 0) 100%
+        );
+        mask-image: linear-gradient(to right,
+          rgba(0, 0, 0, 0) 0%,
+          rgba(0, 0, 0, 1) 15%,
+          rgba(0, 0, 0, 1) 85%,
+          rgba(0, 0, 0, 0) 100%
+        );
+      }
+      .ticker-wrap.has-vertical-scroll.has-fading {
+        -webkit-mask-image: linear-gradient(to bottom,
+          rgba(0, 0, 0, 0) 0%,
+          rgba(0, 0, 0, 1) 15%,
+          rgba(0, 0, 0, 1) 85%,
+          rgba(0, 0, 0, 0) 100%
+        );
+        mask-image: linear-gradient(to bottom,
+          rgba(0, 0, 0, 0) 0%,
+          rgba(0, 0, 0, 1) 15%,
+          rgba(0, 0, 0, 1) 85%,
+          rgba(0, 0, 0, 0) 100%
+        );
       }
       .ticker-wrap.pausable:hover .ticker-move {
         animation-play-state: paused;
@@ -205,12 +253,24 @@ class StripCard extends LitElement {
       .ticker-move {
         display: inline-block;
         white-space: nowrap;
-        padding-left: 100%;
         will-change: transform;
         transform: translateZ(0);
         animation-name: ticker;
         animation-timing-function: linear;
         animation-iteration-count: infinite;
+      }
+      .ticker-move.has-inline-vertical-alignment {
+        display: block;
+        height: max-content;
+        animation-name: vertical-ticker-inline;
+      }
+      .ticker-wrap.has-vertical-scroll .ticker-move {
+        white-space: normal;
+        animation-name: vertical-ticker;
+        animation-direction: normal;
+        animation-fill-mode: forwards;
+        display: block;
+        height: max-content;
       }
       .ticker-item {
         display: inline-flex;
@@ -218,6 +278,25 @@ class StripCard extends LitElement {
         margin: 0 1rem;
         font-size: var(--strip-card-font-size, 14px);
         cursor: pointer;
+      }
+      .ticker-wrap.has-vertical-scroll .ticker-item {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-start;
+        padding: 0.5rem 1rem;
+        margin: 0;
+      }
+      .ticker-item .separator {
+        margin-left: 1rem;
+        color: var(--disabled-text-color);
+      }
+      .ticker-wrap.has-vertical-scroll .ticker-item .separator {
+        margin-left: 0;
+        margin-top: 0.5rem;
+      }
+      .ticker-move.has-inline-vertical-alignment .ticker-item {
+        display: inline-flex;
+        margin: 0.5rem 1rem;
       }
       .icon {
         margin-right: 0.5em;
@@ -230,17 +309,21 @@ class StripCard extends LitElement {
       .ticker-item .unit + .value {
         margin-left: 0.2em;
       }
-      .ticker-item .separator {
-        margin-left: 1rem;
-        color: var(--disabled-text-color);
-      }
       .error {
         color: var(--error-color);
         font-weight: bold;
       }
       @keyframes ticker {
         0% { transform: translateX(0); }
-        100% { transform: translateX(-100%); }
+        100% { transform: translateX(-50%); }
+      }
+      @keyframes vertical-ticker {
+        0% { transform: translateY(0); }
+        100% { transform: translateY(-50%); }
+      }
+      @keyframes vertical-ticker-inline {
+        0% { transform: translateY(0); }
+        100% { transform: translateY(-50%); }
       }
     `;
   }
