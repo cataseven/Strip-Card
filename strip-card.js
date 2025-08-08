@@ -17,8 +17,6 @@ window.customCards.push({
 });
 
 class StripCard extends LitElement {
-  // Internal state for managing the number of content copies for seamless scrolling.
-  // Not a reactive property to avoid render loops. Updates are handled manually.
   _numCopies = 2;
 
   static get properties() {
@@ -67,12 +65,7 @@ class StripCard extends LitElement {
     };
   }
 
-  /**
-   * Measures the container and content width to determine if duplication is needed
-   * to prevent gaps in the continuous scroll animation.
-   */
   _measureAndDuplicate() {
-    // This logic is only for continuous horizontal scrolling.
     if (!this._config.continuous_scroll || this._config.vertical_scroll) {
       return;
     }
@@ -82,43 +75,29 @@ class StripCard extends LitElement {
     if (!container || !content) return;
 
     const containerWidth = container.offsetWidth;
-    // The width of a single, original set of entities.
     const originalContentWidth = content.scrollWidth / this._numCopies;
 
     if (originalContentWidth > 0 && containerWidth > originalContentWidth) {
-      // If the original content is smaller than the container, calculate how many copies we need.
-      // We add one extra copy to ensure there's always content to scroll into view.
       const requiredCopies = Math.ceil(containerWidth / originalContentWidth) + 1;
-      // We need at least 2 copies for the CSS animation to work seamlessly.
       const newNumCopies = Math.max(2, requiredCopies);
 
       if (newNumCopies !== this._numCopies) {
         this._numCopies = newNumCopies;
-        this.requestUpdate(); // Request a re-render with the new number of copies.
+        this.requestUpdate();
       }
     } else if (originalContentWidth > 0 && containerWidth <= originalContentWidth && this._numCopies !== 2) {
-      // If the content is already wider than the container, we only need 2 copies for the animation.
       this._numCopies = 2;
       this.requestUpdate();
     }
   }
   
-  /**
-   * LitElement lifecycle method. Called once after the element's first update.
-   * Sets up a ResizeObserver to react to changes in the card's size.
-   */
   firstUpdated() {
     const observer = new ResizeObserver(() => this._measureAndDuplicate());
     observer.observe(this.shadowRoot.querySelector('.ticker-wrap'));
   }
 
-  /**
-   * LitElement lifecycle method. Called after each update.
-   * We use it to trigger the measurement logic.
-   */
   updated(changedProperties) {
     if (changedProperties.has('_config')) {
-      // Reset to default before measuring when the configuration changes.
       this._numCopies = 2;
     }
     this._measureAndDuplicate();
@@ -179,8 +158,6 @@ class StripCard extends LitElement {
     let content = renderedEntities;
 
     if (this._config.continuous_scroll) {
-      // Create as many copies as calculated by _measureAndDuplicate.
-      // The `|| 2` is a safeguard for the very first render.
       content = Array(this._numCopies || 2).fill(renderedEntities).flat();
     }
     
@@ -308,14 +285,10 @@ class StripCard extends LitElement {
         animation-play-state: paused;
       }
       .ticker-move {
-        /*
-         * Using 'inline-block' for horizontal layout. The width will be determined
-         * by the content, which is duplicated as needed in the component's logic.
-         */
         display: inline-block;
         white-space: nowrap;
         will-change: transform;
-        transform: translateZ(0); /* Promotes the layer to the GPU for smoother animation */
+        transform: translateZ(0);
         animation-name: ticker;
         animation-timing-function: linear;
         animation-iteration-count: infinite;
@@ -376,11 +349,6 @@ class StripCard extends LitElement {
       }
       @keyframes ticker {
         0% { transform: translateX(0); }
-        /*
-         * The animation moves the container by -50% of its own width.
-         * Since the JS ensures the container is made of at least two full copies
-         * of the content, this creates a seamless loop.
-         */
         100% { transform: translateX(-50%); }
       }
       @keyframes vertical-ticker {
