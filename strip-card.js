@@ -3,7 +3,7 @@ const html = LitElement.prototype.html;
 const css = LitElement.prototype.css;
 
 console.info(
-  `%c STRIP-CARD %c Loaded - Version 1.0.9 (Gap Fix) `,
+  `%c STRIP-CARD %c Loaded - Version 3.12.1 (Width Fix) `,
   "color: orange; font-weight: bold; background: black",
   "color: white; font-weight: bold; background: dimgray"
 );
@@ -17,8 +17,6 @@ window.customCards.push({
 });
 
 class StripCard extends LitElement {
-  _numCopies = 2;
-
   static get properties() {
     return {
       hass: { type: Object },
@@ -56,51 +54,16 @@ class StripCard extends LitElement {
       unit_position: 'right',
       border_radius: "0px",
       card_height: "50px",
-      card_width: undefined,
+      // --- DEĞİŞİKLİK BURADA ---
+      // card_width için varsayılan bir değer atandı.
+      card_width: "400px",
+      // --- DEĞİŞİKLİK SONU ---
       fading: false,
       vertical_scroll: false,
       vertical_alignment: 'stack',
       continuous_scroll: true,
-      ...config,
+      ...config, // Kullanıcı kendi değerini girerse bu varsayılanı ezer.
     };
-  }
-
-  _measureAndDuplicate() {
-    if (!this._config.continuous_scroll || this._config.vertical_scroll) {
-      return;
-    }
-
-    const container = this.shadowRoot.querySelector('.ticker-wrap');
-    const content = this.shadowRoot.querySelector('.ticker-move');
-    if (!container || !content) return;
-
-    const containerWidth = container.offsetWidth;
-    const originalContentWidth = content.scrollWidth / this._numCopies;
-
-    if (originalContentWidth > 0 && containerWidth > originalContentWidth) {
-      const requiredCopies = Math.ceil(containerWidth / originalContentWidth) + 1;
-      const newNumCopies = Math.max(2, requiredCopies);
-
-      if (newNumCopies !== this._numCopies) {
-        this._numCopies = newNumCopies;
-        this.requestUpdate();
-      }
-    } else if (originalContentWidth > 0 && containerWidth <= originalContentWidth && this._numCopies !== 2) {
-      this._numCopies = 2;
-      this.requestUpdate();
-    }
-  }
-  
-  firstUpdated() {
-    const observer = new ResizeObserver(() => this._measureAndDuplicate());
-    observer.observe(this.shadowRoot.querySelector('.ticker-wrap'));
-  }
-
-  updated(changedProperties) {
-    if (changedProperties.has('_config')) {
-      this._numCopies = 2;
-    }
-    this._measureAndDuplicate();
   }
 
   getCardSize() {
@@ -158,7 +121,13 @@ class StripCard extends LitElement {
     let content = renderedEntities;
 
     if (this._config.continuous_scroll) {
-      content = Array(this._numCopies || 2).fill(renderedEntities).flat();
+      const containerWidth = this.getBoundingClientRect().width;
+      const minCopies = Math.ceil(containerWidth / (renderedEntities.length * 100)) + 2;
+      const copies = minCopies > 2 ? minCopies : 2;
+      content = [];
+      for (let i = 0; i < copies; i++) {
+        content.push(...renderedEntities);
+      }
     }
     
     return html`
