@@ -63,7 +63,7 @@ Example:
 
 ```yaml
 name_replace:
-  - pattern: ' ?Offener Betrag'
+  - pattern: ' ?your Text'
     flags: 'gi'
     replace: ''
 ```
