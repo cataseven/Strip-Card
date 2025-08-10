@@ -36,10 +36,17 @@ class StripCard extends LitElement {
     };
   }
 
+  constructor() {
+    super();
+    this._nameReplace = [];
+  }
+
   setConfig(config) {
     if (!config.entities || !Array.isArray(config.entities)) {
       throw new Error("The 'entities' list must be present in the configuration.");
     }
+    const nr = config && config.name_replace ? config.name_replace : [];
+    this._nameReplace = Array.isArray(nr) ? nr : [nr];
     this._config = {
       title: "",
       duration: 20,
@@ -98,6 +105,26 @@ class StripCard extends LitElement {
       console.warn("Template evaluation failed:", e, template);
       return template;
     }
+  }
+
+  _sanitizeName(name) {
+    let out = name || "";
+    for (const rule of this._nameReplace || []) {
+      if (!rule) continue;
+      try {
+        if (typeof rule === "string") {
+          out = out.replace(new RegExp(rule, "gi"), "");
+        } else {
+          const pat = rule.pattern || "";
+          const flags = rule.flags || "gi";
+          const rep = rule.replace || "";
+          out = out.replace(new RegExp(pat, flags), rep);
+        }
+      } catch (e) {
+        console.warn("[Strip Card] Invalid name_replace rule:", rule, e);
+      }
+    }
+    return out.trim();
   }
 
   render() {
@@ -160,7 +187,8 @@ class StripCard extends LitElement {
       value = value.charAt(0).toUpperCase() + value.slice(1);
     }
 
-    const name = entityConfig.name || stateObj.attributes.friendly_name;
+    const rawName = stateObj.attributes.friendly_name || entityId;
+    const name = entityConfig.name ? entityConfig.name : this._sanitizeName(rawName);
     const unit = entityConfig.unit !== undefined ? entityConfig.unit : (stateObj.attributes.unit_of_measurement || "");
     let showIcon = entityConfig.show_icon !== undefined ? entityConfig.show_icon : this._config.show_icon;
     showIcon = this.evaluateTemplate(showIcon, this.hass);

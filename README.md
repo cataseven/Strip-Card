@@ -260,6 +260,37 @@ You can also just list the entity ID for default behavior:
 
 ---
 
+## 🖊️ Regex Support for Entity Friendly Names 
+Allows removing or replacing parts of the friendly name via regular expressions.
+- `string`: treated as pattern with flags `gi`, replacement `""`.
+- `object`: `{ pattern: string, flags?: string, replace?: string }`.
+
+Example:
+
+```yaml
+name_replace:
+  - pattern: your Text
+    flags: 'gi'
+    replace: 'your new Text'
+  - pattern: your Text 2
+    flags: 'gi'
+    replace: ''
+```
+```yaml
+type: custom:strip-card
+entities:
+  - entity: sensor.smart_plug_living_room_power_consumption
+  - entity: sensor.smart_plug_kitchen_room_power_consumption
+  - entity: sensor.smart_plug_kids_room_power_consumption
+  - entity: sensor.smart_plug_garden_power_consumption
+  - entity: sensor.smart_plug_car_power_consumption
+name_replace:
+  - pattern: "sensor.smart_plug_"
+    replace: ""
+  - pattern: "_power_consumption"
+    replace: ""
+```
+
 ## ⚡ Tap to Call Action
 
 By default, clicking an item opens the `more-info` dialog. You can also trigger a service/action instead:
