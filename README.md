@@ -279,17 +279,14 @@ name_replace:
 ```yaml
 type: custom:strip-card
 entities:
-  - entity: sensor.smart_plug_living_room_power_consumption
-  - entity: sensor.smart_plug_kitchen_room_power_consumption
-  - entity: sensor.smart_plug_kids_room_power_consumption
-  - entity: sensor.smart_plug_garden_power_consumption
-  - entity: sensor.smart_plug_car_power_consumption
+  - entity: sensor.temperature     ##friendly name: LIVING ROOM  -> Result: LIVING
+  - entity: sensor.temperature_2   ##friendly name: KIDS ROOM    -> Result: KIDS
+  - entity: sensor.temperature_3   ##friendly name: GUEST ROOM   -> Result: GUEST
 name_replace:
-  - pattern: "sensor.smart_plug_"
-    replace: ""
-  - pattern: "_power_consumption"
+  - pattern: "ROOM"
     replace: ""
 ```
+
 
 ## ⚡ Tap to Call Action
 
