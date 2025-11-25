@@ -3,7 +3,7 @@ const html = LitElement.prototype.html;
 const css = LitElement.prototype.css;
 
 console.info(
-  `%c STRIP-CARD %c Loaded - Version 1.1.0 (Width Fix) `,
+  `%c STRIP-CARD %c Loaded - Version 1.4.0 (Clean) `,
   "color: orange; font-weight: bold; background: black",
   "color: white; font-weight: bold; background: dimgray"
 );
@@ -61,15 +61,13 @@ class StripCard extends LitElement {
       unit_position: 'right',
       border_radius: "0px",
       card_height: "50px",
-      // --- DEĞİŞİKLİK BURADA ---
-      // card_width için varsayılan bir değer atandı.
       card_width: "400px",
-      // --- DEĞİŞİKLİK SONU ---
       fading: false,
       vertical_scroll: false,
       vertical_alignment: 'stack',
       continuous_scroll: true,
-      ...config, // Kullanıcı kendi değerini girerse bu varsayılanı ezer.
+      transparent: false,
+      ...config,
     };
   }
 
@@ -137,19 +135,37 @@ class StripCard extends LitElement {
     const verticalAlignmentClass = this._config.vertical_alignment === 'inline' ? 'has-inline-vertical-alignment' : '';
     const animationIteration = this._config.continuous_scroll ? 'infinite' : '1';
     
+    let transparentStyle = '';
+    if (this._config.transparent) {
+        transparentStyle = `
+            --ha-card-background: transparent;
+            --card-background-color: transparent;
+            background: transparent;
+            box-shadow: none;
+            border: none;
+        `;
+    }
+
     const cardStyles = `
       --strip-card-font-size: ${this._config.font_size};
       --strip-card-border-radius: ${this._config.border_radius};
       --strip-card-height: ${this._config.card_height};
       ${cardWidthStyle}
+      ${transparentStyle} 
     `;
 
-    const renderedEntities = this._config.entities.map((entityConfig) => this.renderEntity(entityConfig));
+    const renderedEntities = this._config.entities
+        .map((entityConfig) => this.renderEntity(entityConfig))
+        .filter(Boolean); 
+    
+    if (renderedEntities.length === 0) return html``;
+
     let content = renderedEntities;
 
     if (this._config.continuous_scroll) {
-      const containerWidth = this.getBoundingClientRect().width;
-      const minCopies = Math.ceil(containerWidth / (renderedEntities.length * 100)) + 2;
+      const containerWidth = this.getBoundingClientRect().width || 400;
+      const divisor = (renderedEntities.length * 100) || 100; 
+      const minCopies = Math.ceil(containerWidth / divisor) + 2;
       const copies = minCopies > 2 ? minCopies : 2;
       content = [];
       for (let i = 0; i < copies; i++) {
@@ -170,8 +186,18 @@ class StripCard extends LitElement {
 
   renderEntity(entityConfig) {
     const entityId = typeof entityConfig === "string" ? entityConfig : entityConfig.entity;
-    const stateObj = this.hass.states[entityId];
+    
+    if (entityConfig.visible_if) {
+        let isVisible = this.evaluateTemplate(entityConfig.visible_if, this.hass);
+        if (String(isVisible).toLowerCase() === 'false') {
+            isVisible = false;
+        }
+        if (!isVisible) {
+            return null;
+        }
+    }
 
+    const stateObj = this.hass.states[entityId];
     if (!stateObj) {
       return html`<div class="ticker-item error">Unknown Entity: ${entityId}</div>`;
     }
@@ -183,6 +209,7 @@ class StripCard extends LitElement {
     if (entityConfig.value_template) {
         value = this.evaluateTemplate(entityConfig.value_template, this.hass);
     }
+
     if (typeof value === 'string' && value.length > 0) {
       value = value.charAt(0).toUpperCase() + value.slice(1);
     }
@@ -240,7 +267,7 @@ class StripCard extends LitElement {
         align-items: center;
         width: 100%;
         overflow: hidden;
-        background-color: var(--card-background-color, white);
+        background-color: var(--card-background-color, white); 
         padding: 0;
         box-sizing: border-box;
         position: relative;
