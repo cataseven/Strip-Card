@@ -81,6 +81,7 @@ lovelace:
 | `show_icon`          | `boolean`    | Inherits from card        | Overrides icon visibility for this specific entity.                              |
 | `service`            | `string`     | —                         | Home Assistant service to call on click (e.g., `"light.toggle"`).               |
 | `data`               | `object`     | —                         | Additional data to pass with the service call (e.g., `{"entity_id": "light.kitchen"}`). |
+| `visible_if`         | `string`     | —                         | entity is visible if template is true. Example: visible_if:{{ states['sun.sun'].state == 'above_horizon' }} |
 
 
 ---
@@ -160,6 +161,7 @@ Vertical Scroll Example
     - entity: sun.sun
       name: "Sun Position"
       show_icon: true
+      visible_if:{{ states['sun.sun'].state == 'above_horizon' }} 
     - entity: zone.home
       name: "People at Home"
       show_icon: true
