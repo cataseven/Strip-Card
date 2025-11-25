@@ -57,6 +57,8 @@ lovelace:
 | `fading`              | `boolean`  | `false`                     | Adds fade effect at the card’s edges.                                           |
 | `show_icon`           | `boolean`  | `false`                     | Displays the entity icon if true.                                               |
 | `unit_position`       | `string`   | `"right"`                   | Position of unit label relative to value. Options: `"left"` or `"right"`.     |
+| `transparent`         | `boolean`  | `false`                     | Background transparent. Options: `true` or `false`.     |
+
 
 ## Color Options
 
