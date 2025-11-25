@@ -130,6 +130,7 @@ card_width: 250px
 separator: "•"
 pause_on_hover: true
 show_icon: false
+transparent: false
 entities:
   - entity: sensor.cpu_temp
     name: CPU
