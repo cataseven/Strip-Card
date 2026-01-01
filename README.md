@@ -164,7 +164,7 @@ Vertical Scroll Example
     - entity: sun.sun
       name: "Sun Position"
       show_icon: true
-      visible_if:{{ states['sun.sun'].state == 'above_horizon' }} 
+      visible_if:"{{ states['sun.sun'].state == 'above_horizon' }}" 
     - entity: zone.home
       name: "People at Home"
       show_icon: true
