@@ -3,7 +3,7 @@ const html = LitElement.prototype.html;
 const css = LitElement.prototype.css;
 
 console.info(
-  `%c STRIP-CARD %c Loaded - Version 2.0.1 (2-Line + Colors) `,
+  `%c STRIP-CARD %c Loaded - Version 2.0.2 (Fixed Height) `,
   "color: orange; font-weight: bold; background: black",
   "color: white; font-weight: bold; background: dimgray"
 );
@@ -468,6 +468,7 @@ class StripCard extends LitElement {
         gap: 8px;
         padding: 6px 12px;
         margin-right: 8px;
+        min-height: 36px;
         background: var(--strip-card-chip-background);
         border-radius: 18px;
         cursor: pointer;
@@ -475,9 +476,7 @@ class StripCard extends LitElement {
         white-space: nowrap;
         transition: background 0.2s;
         box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
-      }
-      .chip-item.has-label {
-        padding: 8px 12px;
+        box-sizing: border-box;
       }
       .chip-item:hover {
         background: var(--secondary-background-color);
@@ -493,6 +492,7 @@ class StripCard extends LitElement {
         flex-direction: column;
         gap: 2px;
         align-items: flex-start;
+        justify-content: center;
       }
       .chip-item:not(.has-label) .chip-text {
         flex-direction: row;
