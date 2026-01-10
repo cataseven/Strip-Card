@@ -3,7 +3,7 @@ const html = LitElement.prototype.html;
 const css = LitElement.prototype.css;
 
 console.info(
-  `%c STRIP-CARD %c Loaded - Version 1.9.2 (Chips BG) `,
+  `%c STRIP-CARD %c Loaded - Version 1.9.3 (Title Fix) `,
   "color: orange; font-weight: bold; background: black",
   "color: white; font-weight: bold; background: dimgray"
 );
@@ -167,7 +167,6 @@ class StripCard extends LitElement {
       --strip-card-font-size: ${this._config.font_size};
       --strip-card-border-radius: ${this._config.border_radius};
       --strip-card-height: ${this._config.card_height};
-      --strip-card-title-align: ${this._config.title_alignment};
       ${cardWidthStyle}
       ${transparentStyle} 
     `;
@@ -192,7 +191,12 @@ class StripCard extends LitElement {
     }
     
     return html`
-      <ha-card .header="${this._config.title}" style="${cardStyles}">
+      <ha-card style="${cardStyles}">
+        ${this._config.title ? html`
+          <div class="card-header" style="text-align: ${this._config.title_alignment};">
+            ${this._config.title}
+          </div>
+        ` : ''}
         <div class="ticker-wrap ${this._config.pause_on_hover ? 'pausable' : ''} ${fadingClass} ${verticalClass} ${chipsClass}">
           <div class="ticker-move ${verticalAlignmentClass}" style="animation-duration: ${duration}s; animation-iteration-count: ${animationIteration};">
             ${content}
@@ -301,8 +305,12 @@ class StripCard extends LitElement {
         flex-direction: column;
         justify-content: flex-start;
       }
-      ha-card::part(header) {
-        text-align: var(--strip-card-title-align, left) !important;
+      .card-header {
+        padding: 16px;
+        font-size: 16px;
+        font-weight: 400;
+        color: var(--primary-text-color);
+        border-bottom: 1px solid var(--divider-color);
       }
       .ticker-wrap {
         flex-grow: 1;
