@@ -3,7 +3,7 @@ const html = LitElement.prototype.html;
 const css = LitElement.prototype.css;
 
 console.info(
-  `%c STRIP-CARD %c Loaded - Version 1.6.6 (Name Template Support) `,
+  `%c STRIP-CARD %c Loaded - Version 1.6.7 (Entity Picker Fix) `,
   "color: orange; font-weight: bold; background: black",
   "color: white; font-weight: bold; background: dimgray"
 );
@@ -676,14 +676,14 @@ class StripCardEditor extends LitElement {
         ` : ''}
         
         ${entities.map((entity, index) => {
-          const entityId = typeof entity === 'string' ? entity : entity.entity;
-          const entityName = typeof entity === 'string' ? entityId : (entity.name || entityId);
+          const entityId = typeof entity === 'string' ? entity : (entity.entity || '');
+          const entityName = typeof entity === 'string' ? entityId : (entity.name || entityId || 'Neue Entität');
           const isExpanded = this._selectedEntity === index;
           
           return html`
             <div class="entity-row">
               <div class="entity-header">
-                <span @click="${() => this._toggleEntity(index)}">${entityName || 'Neue Entität'}</span>
+                <span @click="${() => this._toggleEntity(index)}">${entityName}</span>
                 <div class="entity-controls">
                   ${index > 0 ? html`
                     <ha-icon-button
@@ -711,7 +711,7 @@ class StripCardEditor extends LitElement {
                 <div class="entity-editor">
                   <ha-entity-picker
                     .hass="${this.hass}"
-                    .value="${entityId}"
+                    .value="${entityId || undefined}"
                     .entityIndex="${index}"
                     @value-changed="${this._entityChanged}"
                     allow-custom-entity
@@ -847,7 +847,7 @@ class StripCardEditor extends LitElement {
 
   _addEntity() {
     const entities = [...this._config.entities];
-    entities.push({ entity: "" });
+    entities.push({});
     this._config = { ...this._config, entities };
     this._selectedEntity = entities.length - 1;
     this._configChanged();
