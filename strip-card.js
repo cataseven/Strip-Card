@@ -3,7 +3,7 @@ const html = LitElement.prototype.html;
 const css = LitElement.prototype.css;
 
 console.info(
-  `%c STRIP-CARD %c Loaded - Version 1.6.3 (Entity Click Fixed) `,
+  `%c STRIP-CARD %c Loaded - Version 1.6.4 (Click & Scrollbar Fixed) `,
   "color: orange; font-weight: bold; background: black",
   "color: white; font-weight: bold; background: dimgray"
 );
@@ -681,28 +681,25 @@ class StripCardEditor extends LitElement {
           
           return html`
             <div class="entity-row">
-              <div class="entity-header" @click="${(e) => this._toggleEntity(e, index)}">
-                <span>${entityName || 'Neue Entität'}</span>
+              <div class="entity-header">
+                <span @click="${() => this._toggleEntity(index)}">${entityName || 'Neue Entität'}</span>
                 <div class="entity-controls">
                   ${index > 0 ? html`
                     <ha-icon-button
-                      .index="${index}"
-                      @click="${this._moveEntityUp}"
+                      @click="${() => this._moveEntityUp(index)}"
                     >
                       <ha-icon icon="mdi:arrow-up"></ha-icon>
                     </ha-icon-button>
                   ` : ''}
                   ${index < entities.length - 1 ? html`
                     <ha-icon-button
-                      .index="${index}"
-                      @click="${this._moveEntityDown}"
+                      @click="${() => this._moveEntityDown(index)}"
                     >
                       <ha-icon icon="mdi:arrow-down"></ha-icon>
                     </ha-icon-button>
                   ` : ''}
                   <ha-icon-button
-                    .index="${index}"
-                    @click="${this._removeEntity}"
+                    @click="${() => this._removeEntity(index)}"
                   >
                     <ha-icon icon="mdi:delete"></ha-icon>
                   </ha-icon-button>
@@ -842,11 +839,7 @@ class StripCardEditor extends LitElement {
     `;
   }
 
-  _toggleEntity(e, index) {
-    // Stop event propagation from controls
-    if (e.target.closest('.entity-controls')) {
-      return;
-    }
+  _toggleEntity(index) {
     this._selectedEntity = this._selectedEntity === index ? null : index;
     this.requestUpdate();
   }
@@ -859,9 +852,7 @@ class StripCardEditor extends LitElement {
     this._configChanged();
   }
 
-  _removeEntity(ev) {
-    ev.stopPropagation();
-    const index = ev.currentTarget.index;
+  _removeEntity(index) {
     const entities = [...this._config.entities];
     entities.splice(index, 1);
     this._config = { ...this._config, entities };
@@ -873,9 +864,7 @@ class StripCardEditor extends LitElement {
     this._configChanged();
   }
 
-  _moveEntityUp(ev) {
-    ev.stopPropagation();
-    const index = ev.currentTarget.index;
+  _moveEntityUp(index) {
     if (index === 0) return;
     const entities = [...this._config.entities];
     [entities[index - 1], entities[index]] = [entities[index], entities[index - 1]];
@@ -888,9 +877,7 @@ class StripCardEditor extends LitElement {
     this._configChanged();
   }
 
-  _moveEntityDown(ev) {
-    ev.stopPropagation();
-    const index = ev.currentTarget.index;
+  _moveEntityDown(index) {
     const entities = [...this._config.entities];
     if (index >= entities.length - 1) return;
     [entities[index], entities[index + 1]] = [entities[index + 1], entities[index]];
@@ -1055,9 +1042,10 @@ class StripCardEditor extends LitElement {
       
       .tabs {
         display: flex;
+        flex-wrap: nowrap;
         border-bottom: 2px solid var(--divider-color);
         background: var(--card-background-color);
-        overflow-x: auto;
+        overflow: hidden;
       }
 
       .tab {
@@ -1071,6 +1059,7 @@ class StripCardEditor extends LitElement {
         color: var(--primary-text-color);
         transition: all 0.2s;
         white-space: nowrap;
+        flex-shrink: 0;
       }
 
       .tab:hover {
@@ -1125,13 +1114,17 @@ class StripCardEditor extends LitElement {
         align-items: center;
         padding: 12px 16px;
         background: var(--secondary-background-color);
-        cursor: pointer;
         user-select: none;
         font-weight: 500;
       }
+
+      .entity-header span {
+        flex: 1;
+        cursor: pointer;
+      }
       
-      .entity-header:hover {
-        background: var(--divider-color);
+      .entity-header:hover span {
+        color: var(--primary-color);
       }
       
       .entity-controls {
