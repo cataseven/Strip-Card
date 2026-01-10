@@ -3,7 +3,7 @@ const html = LitElement.prototype.html;
 const css = LitElement.prototype.css;
 
 console.info(
-  `%c STRIP-CARD %c Loaded - Version 1.9.1 (Fixes) `,
+  `%c STRIP-CARD %c Loaded - Version 1.9.2 (Chips BG) `,
   "color: orange; font-weight: bold; background: black",
   "color: white; font-weight: bold; background: dimgray"
 );
@@ -409,13 +409,13 @@ class StripCard extends LitElement {
         gap: 6px;
         padding: 6px 12px;
         margin-right: 8px;
-        background: var(--ha-card-background, var(--card-background-color));
+        background: var(--primary-background-color);
         border-radius: 18px;
         cursor: pointer;
         font-size: 13px;
         white-space: nowrap;
         transition: background 0.2s;
-        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+        box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
       }
       .chip-item:hover {
         background: var(--secondary-background-color);
