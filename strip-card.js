@@ -3,7 +3,7 @@ const html = LitElement.prototype.html;
 const css = LitElement.prototype.css;
 
 console.info(
-  `%c STRIP-CARD %c Loaded - Version 1.5.1 (UI Editor Fixed) `,
+  `%c STRIP-CARD %c Loaded - Version 1.6.0 (UI with Tabs) `,
   "color: orange; font-weight: bold; background: black",
   "color: white; font-weight: bold; background: dimgray"
 );
@@ -391,13 +391,14 @@ class StripCard extends LitElement {
   }
 }
 
-// Visual Editor
+// Visual Editor with Tabs
 class StripCardEditor extends LitElement {
   static get properties() {
     return {
       hass: { type: Object },
       _config: { type: Object },
-      _selectedEntity: { type: Number }
+      _selectedEntity: { type: Number },
+      _currentTab: { type: Number }
     };
   }
 
@@ -426,6 +427,7 @@ class StripCardEditor extends LitElement {
       entities: config.entities || []
     };
     this._selectedEntity = null;
+    this._currentTab = 0;
   }
 
   render() {
@@ -433,12 +435,37 @@ class StripCardEditor extends LitElement {
       return html``;
     }
 
-    const entities = this._config.entities || [];
-
     return html`
       <div class="card-config">
-        <h3>Allgemeine Einstellungen</h3>
-        
+        <mwc-tab-bar
+          .activeIndex=${this._currentTab}
+          @MDCTabBar:activated=${this._handleTabChanged}
+        >
+          <mwc-tab label="Allgemein"></mwc-tab>
+          <mwc-tab label="Aussehen"></mwc-tab>
+          <mwc-tab label="Farben"></mwc-tab>
+          <mwc-tab label="Optionen"></mwc-tab>
+          <mwc-tab label="Entitäten" .badge=${this._config.entities.length}></mwc-tab>
+        </mwc-tab-bar>
+
+        <div class="tab-content">
+          ${this._currentTab === 0 ? this._renderGeneralTab() : ''}
+          ${this._currentTab === 1 ? this._renderAppearanceTab() : ''}
+          ${this._currentTab === 2 ? this._renderColorsTab() : ''}
+          ${this._currentTab === 3 ? this._renderOptionsTab() : ''}
+          ${this._currentTab === 4 ? this._renderEntitiesTab() : ''}
+        </div>
+      </div>
+    `;
+  }
+
+  _handleTabChanged(ev) {
+    this._currentTab = ev.detail.index;
+  }
+
+  _renderGeneralTab() {
+    return html`
+      <div class="tab-panel">
         <ha-textfield
           label="Titel (optional)"
           .value="${this._config.title || ''}"
@@ -460,9 +487,13 @@ class StripCardEditor extends LitElement {
           .configValue="${"separator"}"
           @input="${this._valueChanged}"
         ></ha-textfield>
+      </div>
+    `;
+  }
 
-        <h3>Aussehen</h3>
-
+  _renderAppearanceTab() {
+    return html`
+      <div class="tab-panel">
         <ha-textfield
           label="Schriftgröße (z.B. 14px, 1rem)"
           .value="${this._config.font_size}"
@@ -490,9 +521,13 @@ class StripCardEditor extends LitElement {
           .configValue="${"card_width"}"
           @input="${this._valueChanged}"
         ></ha-textfield>
+      </div>
+    `;
+  }
 
-        <h3>Farben</h3>
-
+  _renderColorsTab() {
+    return html`
+      <div class="tab-panel">
         <ha-textfield
           label="Namen-Farbe (z.B. #ff0000, var(--primary-text-color))"
           .value="${this._config.name_color}"
@@ -520,9 +555,13 @@ class StripCardEditor extends LitElement {
           .configValue="${"icon_color"}"
           @input="${this._valueChanged}"
         ></ha-textfield>
+      </div>
+    `;
+  }
 
-        <h3>Optionen</h3>
-
+  _renderOptionsTab() {
+    return html`
+      <div class="tab-panel">
         <ha-formfield label="Icons anzeigen">
           <ha-switch
             .checked="${this._config.show_icon}"
@@ -592,9 +631,15 @@ class StripCardEditor extends LitElement {
           <mwc-list-item value="stack">Gestapelt</mwc-list-item>
           <mwc-list-item value="inline">Inline</mwc-list-item>
         </ha-select>
+      </div>
+    `;
+  }
 
-        <h3>Entitäten</h3>
-        
+  _renderEntitiesTab() {
+    const entities = this._config.entities || [];
+
+    return html`
+      <div class="tab-panel">
         ${entities.map((entity, index) => {
           const entityId = typeof entity === 'string' ? entity : entity.entity;
           const entityName = typeof entity === 'string' ? entityId : (entity.name || entityId);
@@ -673,7 +718,7 @@ class StripCardEditor extends LitElement {
                   ></ha-textfield>
 
                   <ha-textfield
-                    label="Value Template (optional, z.B. {{ states('sensor.temp') }})"
+                    label="Value Template (optional)"
                     .value="${entity.value_template || ''}"
                     .index="${index}"
                     .configValue="${"value_template"}"
@@ -953,13 +998,22 @@ class StripCardEditor extends LitElement {
   static get styles() {
     return css`
       .card-config {
-        padding: 16px;
+        display: flex;
+        flex-direction: column;
+        height: 100%;
       }
       
-      h3 {
-        margin: 20px 0 12px 0;
-        font-weight: 500;
-        font-size: 16px;
+      mwc-tab-bar {
+        border-bottom: 1px solid var(--divider-color);
+      }
+
+      .tab-content {
+        flex: 1;
+        overflow-y: auto;
+      }
+
+      .tab-panel {
+        padding: 16px;
       }
       
       ha-textfield,
