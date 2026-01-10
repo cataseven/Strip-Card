@@ -3,7 +3,7 @@ const html = LitElement.prototype.html;
 const css = LitElement.prototype.css;
 
 console.info(
-  `%c STRIP-CARD %c Loaded - Version 1.9.7 (Smart UI) `,
+  `%c STRIP-CARD %c Loaded - Version 2.0.0 (Mushroom-Style) `,
   "color: orange; font-weight: bold; background: black",
   "color: white; font-weight: bold; background: dimgray"
 );
@@ -28,8 +28,8 @@ class StripCard extends LitElement {
     return {
       type: "custom:strip-card",
       entities: [
-        { entity: "sun.sun", name: "Sun" },
-        { entity: "zone.home", name: "People at Home" },
+        { entity: "sun.sun" },
+        { entity: "zone.home" },
       ],
       duration: 20,
       separator: "•"
@@ -42,15 +42,12 @@ class StripCard extends LitElement {
 
   constructor() {
     super();
-    this._nameReplace = [];
   }
 
   setConfig(config) {
     if (!config.entities || !Array.isArray(config.entities)) {
       throw new Error("The 'entities' list must be present in the configuration.");
     }
-    const nr = config && config.name_replace ? config.name_replace : [];
-    this._nameReplace = Array.isArray(nr) ? nr : [nr];
     this._config = {
       title: "",
       title_alignment: 'left',
@@ -62,14 +59,8 @@ class StripCard extends LitElement {
       duration: 20,
       separator: "•",
       font_size: "14px",
-      name_color: "var(--primary-text-color)",
-      value_color: "var(--primary-color)",
-      unit_color: "var(--secondary-text-color)",
-      icon_color: "var(--primary-text-color)",
-      chip_background_color: "var(--primary-background-color)",
       show_icon: false,
       pause_on_hover: false,
-      unit_position: 'right',
       border_radius: "0px",
       card_height: "auto",
       card_width: "100%",
@@ -88,7 +79,6 @@ class StripCard extends LitElement {
   }
 
   shouldUpdate(changedProps) {
-    // Only update if config changed, not just hass states
     if (changedProps.has('_config')) {
       return true;
     }
@@ -97,7 +87,6 @@ class StripCard extends LitElement {
       const oldHass = changedProps.get('hass');
       if (!oldHass) return true;
       
-      // Check if any tracked entity actually changed
       for (const entityConfig of this._config.entities) {
         const entityId = typeof entityConfig === "string" ? entityConfig : entityConfig.entity;
         if (!entityId) continue;
@@ -118,32 +107,50 @@ class StripCard extends LitElement {
   _handleIconClick(action) {
     if (!action) return;
     
-    // Check if it's a navigation action (starts with /)
     if (action.startsWith('/')) {
       window.history.pushState(null, '', action);
       window.dispatchEvent(new CustomEvent('location-changed'));
       return;
     }
     
-    // Otherwise treat as entity
     const event = new Event("hass-more-info", { bubbles: true, composed: true });
     event.detail = { entityId: action };
     this.dispatchEvent(event);
   }
 
   _handleTap(entityConfig) {
-    if (entityConfig.service) {
-      const [domain, service] = entityConfig.service.split(".");
-      if (!domain || !service) {
-        console.error(`[Strip Card] Invalid service format: ${entityConfig.service}. Must be in 'domain.service' format.`);
-        return;
-      }
-      this.hass.callService(domain, service, entityConfig.data || {});
-    } else {
-      const entityId = typeof entityConfig === "string" ? entityConfig : entityConfig.entity;
-      const event = new Event("hass-more-info", { bubbles: true, composed: true });
-      event.detail = { entityId };
-      this.dispatchEvent(event);
+    const tapAction = entityConfig.tap_action || { action: 'more-info' };
+    const entityId = typeof entityConfig === "string" ? entityConfig : entityConfig.entity;
+    
+    switch (tapAction.action) {
+      case 'more-info':
+        const event = new Event("hass-more-info", { bubbles: true, composed: true });
+        event.detail = { entityId: tapAction.entity || entityId };
+        this.dispatchEvent(event);
+        break;
+      
+      case 'navigate':
+        if (tapAction.navigation_path) {
+          window.history.pushState(null, '', tapAction.navigation_path);
+          window.dispatchEvent(new CustomEvent('location-changed'));
+        }
+        break;
+      
+      case 'call-service':
+        if (tapAction.service) {
+          const [domain, service] = tapAction.service.split(".");
+          if (domain && service) {
+            this.hass.callService(domain, service, tapAction.service_data || {});
+          }
+        }
+        break;
+      
+      case 'toggle':
+        this.hass.callService('homeassistant', 'toggle', { entity_id: entityId });
+        break;
+      
+      case 'none':
+        break;
     }
   }
 
@@ -167,26 +174,6 @@ class StripCard extends LitElement {
       console.warn("Template evaluation failed:", e, template);
       return template;
     }
-  }
-
-  _sanitizeName(name) {
-    let out = name || "";
-    for (const rule of this._nameReplace || []) {
-      if (!rule) continue;
-      try {
-        if (typeof rule === "string") {
-          out = out.replace(new RegExp(rule, "gi"), "");
-        } else {
-          const pat = rule.pattern || "";
-          const flags = rule.flags || "gi";
-          const rep = rule.replace || "";
-          out = out.replace(new RegExp(pat, flags), rep);
-        }
-      } catch (e) {
-        console.warn("[Strip Card] Invalid name_replace rule:", rule, e);
-      }
-    }
-    return out.trim();
   }
 
   render() {
@@ -215,7 +202,6 @@ class StripCard extends LitElement {
       --strip-card-font-size: ${this._config.font_size};
       --strip-card-border-radius: ${this._config.border_radius};
       --strip-card-height: ${this._config.card_height};
-      --strip-card-chip-background: ${this._config.chip_background_color};
       --strip-card-title-font-size: ${this._config.title_font_size};
       ${cardWidthStyle}
       ${transparentStyle} 
@@ -275,69 +261,44 @@ class StripCard extends LitElement {
   renderEntity(entityConfig) {
     const entityId = typeof entityConfig === "string" ? entityConfig : entityConfig.entity;
     
-    if (entityConfig.visible_if) {
-        let isVisible = this.evaluateTemplate(entityConfig.visible_if, this.hass);
-        if (String(isVisible).toLowerCase() === 'false') {
-            isVisible = false;
-        }
-        if (!isVisible) {
-            return null;
-        }
-    }
-
     const stateObj = this.hass.states[entityId];
     if (!stateObj) {
       return html`<div class="ticker-item error">Unknown Entity: ${entityId}</div>`;
     }
 
-    let value = stateObj.state;
-    if (entityConfig.attribute && stateObj.attributes[entityConfig.attribute] !== undefined) {
-      value = stateObj.attributes[entityConfig.attribute];
-    }
-    if (entityConfig.value_template) {
-        value = this.evaluateTemplate(entityConfig.value_template, this.hass);
-    }
-
-    if (typeof value === 'string' && value.length > 0) {
-      value = value.charAt(0).toUpperCase() + value.slice(1);
+    // Evaluate content (main text)
+    let content = '';
+    if (entityConfig.content) {
+      content = this.evaluateTemplate(entityConfig.content, this.hass);
+    } else {
+      // Fallback to friendly_name + state
+      const name = stateObj.attributes.friendly_name || entityId;
+      content = `${name}: ${stateObj.state}`;
     }
 
-    const rawName = stateObj.attributes.friendly_name || entityId;
-    const name = entityConfig.name 
-      ? this.evaluateTemplate(entityConfig.name, this.hass)
-      : this._sanitizeName(rawName);
-    const unit = entityConfig.unit !== undefined ? entityConfig.unit : (stateObj.attributes.unit_of_measurement || "");
-    let showIcon = entityConfig.show_icon !== undefined ? entityConfig.show_icon : this._config.show_icon;
-    showIcon = this.evaluateTemplate(showIcon, this.hass);
-    const unit_position = entityConfig.unit_position || this._config.unit_position;
+    // Evaluate label (secondary text)
+    const label = entityConfig.label ? this.evaluateTemplate(entityConfig.label, this.hass) : '';
 
-    const nameColor = this.evaluateTemplate(entityConfig.name_color || this._config.name_color, this.hass);
-    const valueColor = this.evaluateTemplate(entityConfig.value_color || this._config.value_color, this.hass);
-    const unitColor = this.evaluateTemplate(entityConfig.unit_color || this._config.unit_color, this.hass);
-    const iconColor = this.evaluateTemplate(entityConfig.icon_color || this._config.icon_color, this.hass);
-    const customIcon = this.evaluateTemplate(entityConfig.icon, this.hass);
+    // Get icon
+    let showIcon = entityConfig.icon !== undefined ? entityConfig.icon : (this._config.show_icon ? stateObj.attributes.icon || 'mdi:eye' : null);
+    if (showIcon) {
+      showIcon = this.evaluateTemplate(showIcon, this.hass);
+    }
 
-    const valuePart = html`<span class="value" style="color: ${valueColor};">${value}</span>`;
-    const unitPart = html`<span class="unit" style="color: ${unitColor};">${unit}</span>`;
-
-    const titleText = unit_position === 'left' ? `${name}: ${unit}${value}` : `${name}: ${value} ${unit}`;
+    // Get color
+    const color = entityConfig.color ? this.evaluateTemplate(entityConfig.color, this.hass) : 'var(--primary-text-color)';
 
     if (this._config.badge_style) {
       return html`
         <div
           class="chip-item"
           @click=${() => this._handleTap(entityConfig)}
-          title="${titleText}"
+          title="${content}${label ? ' - ' + label : ''}"
+          style="${color !== 'var(--primary-text-color)' ? `color: ${color};` : ''}"
         >
-          ${showIcon || customIcon
-            ? customIcon
-              ? html`<ha-icon class="chip-icon" .icon=${customIcon} style="color: ${iconColor};"></ha-icon>`
-              : html`<state-badge class="chip-icon" .hass=${this.hass} .stateObj=${stateObj}></state-badge>`
-            : ''}
-          <span class="chip-name" style="color: ${nameColor};">${name}</span>
-          <div class="chip-value">
-            ${unit_position === 'left' ? html`${unitPart}${valuePart}` : html`${valuePart}${unitPart}`}
-          </div>
+          ${showIcon ? html`<ha-icon class="chip-icon" .icon=${showIcon}></ha-icon>` : ''}
+          <span class="chip-content">${content}</span>
+          ${label ? html`<span class="chip-label">${label}</span>` : ''}
         </div>
       `;
     }
@@ -346,15 +307,12 @@ class StripCard extends LitElement {
       <div
         class="ticker-item"
         @click=${() => this._handleTap(entityConfig)}
-        title="${titleText}"
+        title="${content}${label ? ' - ' + label : ''}"
+        style="${color !== 'var(--primary-text-color)' ? `color: ${color};` : ''}"
       >
-        ${showIcon
-          ? customIcon
-            ? html`<ha-icon class="icon" .icon=${customIcon} style="color: ${iconColor};"></ha-icon>`
-            : html`<state-badge class="icon" .hass=${this.hass} .stateObj=${stateObj}></state-badge>`
-          : ''}
-        <span class="name" style="color: ${nameColor};">${name}:</span>
-        ${unit_position === 'left' ? html`${unitPart}${valuePart}` : html`${valuePart}${unitPart}`}
+        ${showIcon ? html`<ha-icon class="icon" .icon=${showIcon}></ha-icon>` : ''}
+        <span class="content">${content}</span>
+        ${label ? html`<span class="label">${label}</span>` : ''}
         <span class="separator">${this._config.separator}</span>
       </div>
     `;
@@ -504,7 +462,7 @@ class StripCard extends LitElement {
         gap: 6px;
         padding: 6px 12px;
         margin-right: 8px;
-        background: var(--strip-card-chip-background, var(--primary-background-color));
+        background: var(--primary-background-color);
         border-radius: 18px;
         cursor: pointer;
         font-size: 13px;
@@ -521,30 +479,26 @@ class StripCard extends LitElement {
         height: 18px;
         flex-shrink: 0;
       }
-      .chip-name {
+      .chip-content {
         font-weight: 500;
         flex-shrink: 0;
       }
-      .chip-value {
-        display: flex;
-        align-items: baseline;
-        gap: 0.2em;
-        font-weight: 600;
+      .chip-label {
+        font-weight: 400;
+        opacity: 0.8;
+        font-size: 0.9em;
       }
       .icon {
+        --mdc-icon-size: 20px;
         margin-right: 0.5em;
       }
-      .ticker-item .name {
-        font-weight: bold;
-        margin-right: 0.5em;
+      .ticker-item .content {
+        font-weight: 500;
       }
-      .ticker-item .value + .unit,
-      .ticker-item .unit + .value {
-        margin-left: 0.2em;
-      }
-      .chip-value .value,
-      .chip-value .unit {
-        line-height: 1;
+      .ticker-item .label {
+        font-weight: 400;
+        opacity: 0.8;
+        margin-left: 0.5em;
       }
       .error {
         color: var(--error-color);
@@ -566,7 +520,7 @@ class StripCard extends LitElement {
   }
 }
 
-// Visual Editor with Persistent Tabs
+// Visual Editor
 class StripCardEditor extends LitElement {
   static get properties() {
     return {
@@ -595,14 +549,8 @@ class StripCardEditor extends LitElement {
       duration: 20,
       separator: "•",
       font_size: "14px",
-      name_color: "var(--primary-text-color)",
-      value_color: "var(--primary-color)",
-      unit_color: "var(--secondary-text-color)",
-      icon_color: "var(--primary-text-color)",
-      chip_background_color: "var(--primary-background-color)",
       show_icon: false,
       pause_on_hover: false,
-      unit_position: 'right',
       border_radius: "0px",
       card_height: "auto",
       card_width: "100%",
@@ -644,12 +592,6 @@ class StripCardEditor extends LitElement {
             Stil
           </button>
           <button 
-            class="tab ${this._currentTab === 'colors' ? 'active' : ''}"
-            @click=${() => this._switchTab('colors')}
-          >
-            Farben
-          </button>
-          <button 
             class="tab ${this._currentTab === 'entities' ? 'active' : ''}"
             @click=${() => this._switchTab('entities')}
           >
@@ -661,7 +603,6 @@ class StripCardEditor extends LitElement {
           ${this._currentTab === 'general' ? this._renderGeneralTab() : ''}
           ${this._currentTab === 'scroll' ? this._renderScrollTab() : ''}
           ${this._currentTab === 'style' ? this._renderStyleTab() : ''}
-          ${this._currentTab === 'colors' ? this._renderColorsTab() : ''}
           ${this._currentTab === 'entities' ? this._renderEntitiesTab() : ''}
         </div>
       </div>
@@ -685,7 +626,7 @@ class StripCardEditor extends LitElement {
 
         ${this._config.title ? html`
           <ha-textfield
-            label="Titel-Schriftgröße (z.B. 16px, 1.2rem)"
+            label="Titel-Schriftgröße"
             .value="${this._config.title_font_size}"
             .configValue="${"title_font_size"}"
             @input="${this._valueChanged}"
@@ -706,7 +647,7 @@ class StripCardEditor extends LitElement {
           <div class="section-divider">Linkes Icon</div>
 
           <ha-textfield
-            label="Icon links (z.B. mdi:home)"
+            label="Icon links"
             .value="${this._config.title_left_icon || ''}"
             .configValue="${"title_left_icon"}"
             @input="${this._valueChanged}"
@@ -714,18 +655,18 @@ class StripCardEditor extends LitElement {
 
           ${this._config.title_left_icon ? html`
             <ha-textfield
-              label="Aktion links (Entity-ID oder /dashboard-pfad)"
+              label="Aktion links"
               .value="${this._config.title_left_action || ''}"
               .configValue="${"title_left_action"}"
               @input="${this._valueChanged}"
-              helper-text="Z.B. 'light.wohnzimmer' oder '/lovelace/home'"
+              helper-text="Entity-ID oder /pfad"
             ></ha-textfield>
           ` : ''}
 
           <div class="section-divider">Rechtes Icon</div>
 
           <ha-textfield
-            label="Icon rechts (z.B. mdi:cog)"
+            label="Icon rechts"
             .value="${this._config.title_right_icon || ''}"
             .configValue="${"title_right_icon"}"
             @input="${this._valueChanged}"
@@ -733,11 +674,11 @@ class StripCardEditor extends LitElement {
 
           ${this._config.title_right_icon ? html`
             <ha-textfield
-              label="Aktion rechts (Entity-ID oder /dashboard-pfad)"
+              label="Aktion rechts"
               .value="${this._config.title_right_action || ''}"
               .configValue="${"title_right_action"}"
               @input="${this._valueChanged}"
-              helper-text="Z.B. 'light.wohnzimmer' oder '/lovelace/settings'"
+              helper-text="Entity-ID oder /pfad"
             ></ha-textfield>
           ` : ''}
         ` : ''}
@@ -799,7 +740,7 @@ class StripCardEditor extends LitElement {
   _renderStyleTab() {
     return html`
       <div class="tab-panel">
-        <ha-formfield label="Chips-Stil (kompakte Darstellung)">
+        <ha-formfield label="Chips-Stil">
           <ha-switch
             .checked="${this._config.badge_style}"
             .configValue="${"badge_style"}"
@@ -807,7 +748,7 @@ class StripCardEditor extends LitElement {
           ></ha-switch>
         </ha-formfield>
 
-        <ha-formfield label="Icons anzeigen">
+        <ha-formfield label="Icons anzeigen (Standard)">
           <ha-switch
             .checked="${this._config.show_icon}"
             .configValue="${"show_icon"}"
@@ -815,7 +756,7 @@ class StripCardEditor extends LitElement {
           ></ha-switch>
         </ha-formfield>
 
-        <ha-formfield label="Ausblenden (Fading)">
+        <ha-formfield label="Fading">
           <ha-switch
             .checked="${this._config.fading}"
             .configValue="${"fading"}"
@@ -823,7 +764,7 @@ class StripCardEditor extends LitElement {
           ></ha-switch>
         </ha-formfield>
 
-        <ha-formfield label="Transparenter Hintergrund">
+        <ha-formfield label="Transparent">
           <ha-switch
             .checked="${this._config.transparent}"
             .configValue="${"transparent"}"
@@ -840,87 +781,33 @@ class StripCardEditor extends LitElement {
           ></ha-textfield>
         ` : ''}
 
-        <ha-select
-          label="Einheit-Position"
-          .value="${this._config.unit_position}"
-          .configValue="${"unit_position"}"
-          @selected="${this._selectChanged}"
-          @closed="${(e) => e.stopPropagation()}"
-        >
-          <mwc-list-item value="left">Links</mwc-list-item>
-          <mwc-list-item value="right">Rechts</mwc-list-item>
-        </ha-select>
-
         <ha-textfield
-          label="Schriftgröße (z.B. 14px, 1rem)"
+          label="Schriftgröße"
           .value="${this._config.font_size}"
           .configValue="${"font_size"}"
           @input="${this._valueChanged}"
         ></ha-textfield>
 
         <ha-textfield
-          label="Rahmenradius (z.B. 0px, 8px)"
+          label="Rahmenradius"
           .value="${this._config.border_radius}"
           .configValue="${"border_radius"}"
           @input="${this._valueChanged}"
         ></ha-textfield>
 
         <ha-textfield
-          label="Kartenhöhe (z.B. auto, 50px)"
+          label="Kartenhöhe"
           .value="${this._config.card_height}"
           .configValue="${"card_height"}"
           @input="${this._valueChanged}"
         ></ha-textfield>
 
         <ha-textfield
-          label="Kartenbreite (z.B. 100%, 400px)"
+          label="Kartenbreite"
           .value="${this._config.card_width}"
           .configValue="${"card_width"}"
           @input="${this._valueChanged}"
         ></ha-textfield>
-      </div>
-    `;
-  }
-
-  _renderColorsTab() {
-    return html`
-      <div class="tab-panel">
-        <ha-textfield
-          label="Namen-Farbe"
-          .value="${this._config.name_color}"
-          .configValue="${"name_color"}"
-          @input="${this._valueChanged}"
-        ></ha-textfield>
-
-        <ha-textfield
-          label="Wert-Farbe"
-          .value="${this._config.value_color}"
-          .configValue="${"value_color"}"
-          @input="${this._valueChanged}"
-        ></ha-textfield>
-
-        <ha-textfield
-          label="Einheit-Farbe"
-          .value="${this._config.unit_color}"
-          .configValue="${"unit_color"}"
-          @input="${this._valueChanged}"
-        ></ha-textfield>
-
-        <ha-textfield
-          label="Icon-Farbe"
-          .value="${this._config.icon_color}"
-          .configValue="${"icon_color"}"
-          @input="${this._valueChanged}"
-        ></ha-textfield>
-
-        ${this._config.badge_style ? html`
-          <ha-textfield
-            label="Chip-Hintergrundfarbe"
-            .value="${this._config.chip_background_color}"
-            .configValue="${"chip_background_color"}"
-            @input="${this._valueChanged}"
-          ></ha-textfield>
-        ` : ''}
       </div>
     `;
   }
@@ -932,7 +819,7 @@ class StripCardEditor extends LitElement {
       <div class="tab-panel">
         ${entities.length === 0 ? html`
           <div class="no-entities">
-            <p>Keine Entitäten konfiguriert. Füge eine Entität hinzu, um zu beginnen.</p>
+            <p>Keine Entitäten konfiguriert.</p>
           </div>
         ` : ''}
         
@@ -948,29 +835,23 @@ class StripCardEditor extends LitElement {
                 <span @click="${() => this._toggleEntity(index)}">${entityName}</span>
                 <div class="entity-controls">
                   ${index > 0 ? html`
-                    <ha-icon-button
-                      @click="${() => this._moveEntityUp(index)}"
-                    >
+                    <ha-icon-button @click="${() => this._moveEntityUp(index)}">
                       <ha-icon icon="mdi:arrow-up"></ha-icon>
                     </ha-icon-button>
                   ` : ''}
                   ${index < entities.length - 1 ? html`
-                    <ha-icon-button
-                      @click="${() => this._moveEntityDown(index)}"
-                    >
+                    <ha-icon-button @click="${() => this._moveEntityDown(index)}">
                       <ha-icon icon="mdi:arrow-down"></ha-icon>
                     </ha-icon-button>
                   ` : ''}
-                  <ha-icon-button
-                    @click="${() => this._removeEntity(index)}"
-                  >
+                  <ha-icon-button @click="${() => this._removeEntity(index)}">
                     <ha-icon icon="mdi:delete"></ha-icon>
                   </ha-icon-button>
                 </div>
               </div>
               
               ${isExpanded ? html`
-                <div class="entity-editor" .key="${`entity-editor-${index}`}">
+                <div class="entity-editor">
                   <ha-entity-picker
                     .hass="${this.hass}"
                     .value="${entityId}"
@@ -980,15 +861,25 @@ class StripCardEditor extends LitElement {
                   ></ha-entity-picker>
 
                   <ha-textfield
-                    label="Name (optional, unterstützt Templates)"
-                    .value="${entityObj.name || ''}"
+                    label="Content (Template)"
+                    .value="${entityObj.content || ''}"
                     .entityIndex="${index}"
-                    .configValue="${"name"}"
+                    .configValue="${"content"}"
                     @input="${this._entityPropertyChanged}"
+                    helper-text="z.B: {{ states('sensor.temp') }} °C"
                   ></ha-textfield>
 
                   <ha-textfield
-                    label="Icon (optional, z.B. mdi:home)"
+                    label="Label (Template)"
+                    .value="${entityObj.label || ''}"
+                    .entityIndex="${index}"
+                    .configValue="${"label"}"
+                    @input="${this._entityPropertyChanged}"
+                    helper-text="Zusätzlicher Text"
+                  ></ha-textfield>
+
+                  <ha-textfield
+                    label="Icon (optional)"
                     .value="${entityObj.icon || ''}"
                     .entityIndex="${index}"
                     .configValue="${"icon"}"
@@ -996,99 +887,52 @@ class StripCardEditor extends LitElement {
                   ></ha-textfield>
 
                   <ha-textfield
-                    label="Attribut (optional)"
-                    .value="${entityObj.attribute || ''}"
+                    label="Farbe (optional)"
+                    .value="${entityObj.color || ''}"
                     .entityIndex="${index}"
-                    .configValue="${"attribute"}"
+                    .configValue="${"color"}"
                     @input="${this._entityPropertyChanged}"
+                    helper-text="z.B: red, #ff0000, white"
                   ></ha-textfield>
 
-                  <ha-textfield
-                    label="Einheit (optional)"
-                    .value="${entityObj.unit || ''}"
-                    .entityIndex="${index}"
-                    .configValue="${"unit"}"
-                    @input="${this._entityPropertyChanged}"
-                  ></ha-textfield>
-
-                  <ha-textfield
-                    label="Value Template (optional)"
-                    .value="${entityObj.value_template || ''}"
-                    .entityIndex="${index}"
-                    .configValue="${"value_template"}"
-                    @input="${this._entityPropertyChanged}"
-                  ></ha-textfield>
-
-                  <ha-textfield
-                    label="Visible If Template (optional)"
-                    .value="${entityObj.visible_if || ''}"
-                    .entityIndex="${index}"
-                    .configValue="${"visible_if"}"
-                    @input="${this._entityPropertyChanged}"
-                  ></ha-textfield>
-
-                  <ha-textfield
-                    label="Namen-Farbe (optional)"
-                    .value="${entityObj.name_color || ''}"
-                    .entityIndex="${index}"
-                    .configValue="${"name_color"}"
-                    @input="${this._entityPropertyChanged}"
-                  ></ha-textfield>
-
-                  <ha-textfield
-                    label="Wert-Farbe (optional)"
-                    .value="${entityObj.value_color || ''}"
-                    .entityIndex="${index}"
-                    .configValue="${"value_color"}"
-                    @input="${this._entityPropertyChanged}"
-                  ></ha-textfield>
-
-                  <ha-textfield
-                    label="Einheit-Farbe (optional)"
-                    .value="${entityObj.unit_color || ''}"
-                    .entityIndex="${index}"
-                    .configValue="${"unit_color"}"
-                    @input="${this._entityPropertyChanged}"
-                  ></ha-textfield>
-
-                  <ha-textfield
-                    label="Icon-Farbe (optional)"
-                    .value="${entityObj.icon_color || ''}"
-                    .entityIndex="${index}"
-                    .configValue="${"icon_color"}"
-                    @input="${this._entityPropertyChanged}"
-                  ></ha-textfield>
-
-                  <ha-textfield
-                    label="Service (optional, z.B. light.turn_on)"
-                    .value="${entityObj.service || ''}"
-                    .entityIndex="${index}"
-                    .configValue="${"service"}"
-                    @input="${this._entityPropertyChanged}"
-                  ></ha-textfield>
+                  <div class="section-divider">Tap Action</div>
 
                   <ha-select
-                    label="Einheit-Position (überschreibt global)"
-                    .value="${entityObj.unit_position || ''}"
+                    label="Aktion"
+                    .value="${entityObj.tap_action?.action || 'more-info'}"
                     .entityIndex="${index}"
-                    .configValue="${"unit_position"}"
+                    .configValue="${"tap_action.action"}"
                     @selected="${this._entitySelectChanged}"
                     @closed="${(e) => e.stopPropagation()}"
                   >
-                    <mwc-list-item value="">Standard</mwc-list-item>
-                    <mwc-list-item value="left">Links</mwc-list-item>
-                    <mwc-list-item value="right">Rechts</mwc-list-item>
+                    <mwc-list-item value="more-info">More Info</mwc-list-item>
+                    <mwc-list-item value="toggle">Toggle</mwc-list-item>
+                    <mwc-list-item value="navigate">Navigate</mwc-list-item>
+                    <mwc-list-item value="call-service">Call Service</mwc-list-item>
+                    <mwc-list-item value="none">Keine</mwc-list-item>
                   </ha-select>
 
-                  <ha-formfield label="Icon anzeigen (überschreibt global)">
-                    <ha-switch
-                      .checked="${entityObj.show_icon !== undefined ? entityObj.show_icon : false}"
-                      .indeterminate="${entityObj.show_icon === undefined}"
+                  ${entityObj.tap_action?.action === 'navigate' ? html`
+                    <ha-textfield
+                      label="Navigation Path"
+                      .value="${entityObj.tap_action?.navigation_path || ''}"
                       .entityIndex="${index}"
-                      .configValue="${"show_icon"}"
-                      @change="${this._entitySwitchChanged}"
-                    ></ha-switch>
-                  </ha-formfield>
+                      .configValue="${"tap_action.navigation_path"}"
+                      @input="${this._entityPropertyChanged}"
+                      helper-text="z.B: /lovelace/home"
+                    ></ha-textfield>
+                  ` : ''}
+
+                  ${entityObj.tap_action?.action === 'call-service' ? html`
+                    <ha-textfield
+                      label="Service"
+                      .value="${entityObj.tap_action?.service || ''}"
+                      .entityIndex="${index}"
+                      .configValue="${"tap_action.service"}"
+                      @input="${this._entityPropertyChanged}"
+                      helper-text="z.B: light.turn_on"
+                    ></ha-textfield>
+                  ` : ''}
                 </div>
               ` : ''}
             </div>
@@ -1107,8 +951,8 @@ class StripCardEditor extends LitElement {
       return entityId || 'Neue Entität';
     }
     
-    if (entity.name) {
-      return entity.name;
+    if (entity.content) {
+      return entity.content.substring(0, 30) + (entity.content.length > 30 ? '...' : '');
     }
     
     if (entityId && this.hass && this.hass.states[entityId]) {
@@ -1129,7 +973,7 @@ class StripCardEditor extends LitElement {
 
   _addEntity() {
     const entities = [...this._config.entities];
-    entities.push({ entity: '' });
+    entities.push({ entity: '', content: '' });
     this._config = { ...this._config, entities };
     this._selectedEntity = entities.length - 1;
     this._configChanged();
@@ -1195,13 +1039,18 @@ class StripCardEditor extends LitElement {
     const value = ev.currentTarget.value;
 
     const entities = [...this._config.entities];
+    const entity = typeof entities[index] === 'string' ? { entity: entities[index] } : { ...entities[index] };
     
-    if (typeof entities[index] === 'string') {
-      entities[index] = { entity: entities[index], [configValue]: value };
+    // Handle nested properties like tap_action.action
+    if (configValue.includes('.')) {
+      const [parent, child] = configValue.split('.');
+      if (!entity[parent]) entity[parent] = {};
+      entity[parent][child] = value;
     } else {
-      entities[index] = { ...entities[index], [configValue]: value };
+      entity[configValue] = value;
     }
     
+    entities[index] = entity;
     this._config = { ...this._config, entities };
     this._configChanged();
   }
@@ -1212,98 +1061,60 @@ class StripCardEditor extends LitElement {
     const value = ev.currentTarget.value;
 
     const entities = [...this._config.entities];
+    const entity = typeof entities[index] === 'string' ? { entity: entities[index] } : { ...entities[index] };
     
-    if (typeof entities[index] === 'string') {
-      entities[index] = { entity: entities[index], [configValue]: value };
+    // Handle nested properties
+    if (configValue.includes('.')) {
+      const [parent, child] = configValue.split('.');
+      if (!entity[parent]) entity[parent] = {};
+      entity[parent][child] = value;
     } else {
-      entities[index] = { ...entities[index], [configValue]: value };
+      entity[configValue] = value;
     }
     
+    entities[index] = entity;
     this._config = { ...this._config, entities };
     this._configChanged();
-  }
-
-  _entitySwitchChanged(ev) {
-    const index = ev.currentTarget.entityIndex;
-    const configValue = ev.currentTarget.configValue;
-    const value = ev.currentTarget.checked;
-
-    const entities = [...this._config.entities];
-    
-    if (typeof entities[index] === 'string') {
-      entities[index] = { entity: entities[index], [configValue]: value };
-    } else {
-      entities[index] = { ...entities[index], [configValue]: value };
-    }
-    
-    this._config = { ...this._config, entities };
-    this._configChanged();
+    this.requestUpdate();
   }
 
   _valueChanged(ev) {
-    if (!this._config || !this.hass) {
-      return;
-    }
+    if (!this._config || !this.hass) return;
     
     const target = ev.currentTarget;
     const configValue = target.configValue;
     const value = target.value;
 
-    if (!configValue) {
-      return;
-    }
+    if (!configValue) return;
+    if (this._config[configValue] === value) return;
 
-    if (this._config[configValue] === value) {
-      return;
-    }
-
-    this._config = {
-      ...this._config,
-      [configValue]: value,
-    };
-
+    this._config = { ...this._config, [configValue]: value };
     this._configChanged();
   }
 
   _switchChanged(ev) {
-    if (!this._config || !this.hass) {
-      return;
-    }
+    if (!this._config || !this.hass) return;
     
     const target = ev.currentTarget;
     const configValue = target.configValue;
     const value = target.checked;
 
-    if (!configValue) {
-      return;
-    }
+    if (!configValue) return;
 
-    this._config = {
-      ...this._config,
-      [configValue]: value,
-    };
-
+    this._config = { ...this._config, [configValue]: value };
     this._configChanged();
   }
 
   _selectChanged(ev) {
-    if (!this._config || !this.hass) {
-      return;
-    }
+    if (!this._config || !this.hass) return;
     
     const target = ev.currentTarget;
     const configValue = target.configValue;
     const value = target.value;
 
-    if (!configValue) {
-      return;
-    }
+    if (!configValue) return;
 
-    this._config = {
-      ...this._config,
-      [configValue]: value,
-    };
-
+    this._config = { ...this._config, [configValue]: value };
     this._configChanged();
   }
 
