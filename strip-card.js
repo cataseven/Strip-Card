@@ -3,7 +3,7 @@ const html = LitElement.prototype.html;
 const css = LitElement.prototype.css;
 
 console.info(
-  `%c STRIP-CARD %c Loaded - Version 1.6.7 (Entity Picker Fix) `,
+  `%c STRIP-CARD %c Loaded - Version 1.6.8 (Template Function Fix) `,
   "color: orange; font-weight: bold; background: black",
   "color: white; font-weight: bold; background: dimgray"
 );
@@ -101,8 +101,18 @@ class StripCard extends LitElement {
 
     try {
       const expression = template.match(/{{(.*?)}}/s)[1];
-      const func = new Function("states", `"use strict"; return (${expression.trim()});`);
-      return func(hass.states);
+      // Provide states() function like in Home Assistant
+      const states = (entityId) => {
+        const entity = hass.states[entityId];
+        return entity ? entity.state : 'unknown';
+      };
+      // Provide state_attr() function
+      const state_attr = (entityId, attr) => {
+        const entity = hass.states[entityId];
+        return entity && entity.attributes[attr] !== undefined ? entity.attributes[attr] : null;
+      };
+      const func = new Function("states", "state_attr", `"use strict"; return (${expression.trim()});`);
+      return func(states, state_attr);
     } catch (e) {
       console.warn("Template evaluation failed:", e, template);
       return template;
