@@ -3,7 +3,7 @@ const html = LitElement.prototype.html;
 const css = LitElement.prototype.css;
 
 console.info(
-  `%c STRIP-CARD %c Loaded - Version 2.0.0 (Mushroom-Style) `,
+  `%c STRIP-CARD %c Loaded - Version 2.0.1 (2-Line + Colors) `,
   "color: orange; font-weight: bold; background: black",
   "color: white; font-weight: bold; background: dimgray"
 );
@@ -59,6 +59,9 @@ class StripCard extends LitElement {
       duration: 20,
       separator: "•",
       font_size: "14px",
+      content_color: "var(--primary-text-color)",
+      label_color: "var(--secondary-text-color)",
+      chip_background: "var(--primary-background-color)",
       show_icon: false,
       pause_on_hover: false,
       border_radius: "0px",
@@ -203,6 +206,9 @@ class StripCard extends LitElement {
       --strip-card-border-radius: ${this._config.border_radius};
       --strip-card-height: ${this._config.card_height};
       --strip-card-title-font-size: ${this._config.title_font_size};
+      --strip-card-content-color: ${this._config.content_color};
+      --strip-card-label-color: ${this._config.label_color};
+      --strip-card-chip-background: ${this._config.chip_background};
       ${cardWidthStyle}
       ${transparentStyle} 
     `;
@@ -286,19 +292,20 @@ class StripCard extends LitElement {
     }
 
     // Get color
-    const color = entityConfig.color ? this.evaluateTemplate(entityConfig.color, this.hass) : 'var(--primary-text-color)';
+    const color = entityConfig.color ? this.evaluateTemplate(entityConfig.color, this.hass) : null;
 
     if (this._config.badge_style) {
       return html`
         <div
-          class="chip-item"
+          class="chip-item ${label ? 'has-label' : ''}"
           @click=${() => this._handleTap(entityConfig)}
           title="${content}${label ? ' - ' + label : ''}"
-          style="${color !== 'var(--primary-text-color)' ? `color: ${color};` : ''}"
         >
-          ${showIcon ? html`<ha-icon class="chip-icon" .icon=${showIcon}></ha-icon>` : ''}
-          <span class="chip-content">${content}</span>
-          ${label ? html`<span class="chip-label">${label}</span>` : ''}
+          ${showIcon ? html`<ha-icon class="chip-icon" .icon=${showIcon} style="${color ? `color: ${color};` : ''}"></ha-icon>` : ''}
+          <div class="chip-text">
+            ${label ? html`<span class="chip-label" style="${color ? `color: ${color};` : ''}">${label}</span>` : ''}
+            <span class="chip-content" style="${color ? `color: ${color};` : ''}">${content}</span>
+          </div>
         </div>
       `;
     }
@@ -308,11 +315,10 @@ class StripCard extends LitElement {
         class="ticker-item"
         @click=${() => this._handleTap(entityConfig)}
         title="${content}${label ? ' - ' + label : ''}"
-        style="${color !== 'var(--primary-text-color)' ? `color: ${color};` : ''}"
       >
-        ${showIcon ? html`<ha-icon class="icon" .icon=${showIcon}></ha-icon>` : ''}
-        <span class="content">${content}</span>
-        ${label ? html`<span class="label">${label}</span>` : ''}
+        ${showIcon ? html`<ha-icon class="icon" .icon=${showIcon} style="${color ? `color: ${color};` : ''}"></ha-icon>` : ''}
+        <span class="content" style="${color ? `color: ${color};` : ''}">${content}</span>
+        ${label ? html`<span class="label" style="${color ? `color: ${color};` : ''}">${label}</span>` : ''}
         <span class="separator">${this._config.separator}</span>
       </div>
     `;
@@ -459,16 +465,19 @@ class StripCard extends LitElement {
       .chip-item {
         display: inline-flex;
         align-items: center;
-        gap: 6px;
+        gap: 8px;
         padding: 6px 12px;
         margin-right: 8px;
-        background: var(--primary-background-color);
+        background: var(--strip-card-chip-background);
         border-radius: 18px;
         cursor: pointer;
         font-size: 13px;
         white-space: nowrap;
         transition: background 0.2s;
         box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+      }
+      .chip-item.has-label {
+        padding: 8px 12px;
       }
       .chip-item:hover {
         background: var(--secondary-background-color);
@@ -479,14 +488,27 @@ class StripCard extends LitElement {
         height: 18px;
         flex-shrink: 0;
       }
-      .chip-content {
-        font-weight: 500;
-        flex-shrink: 0;
+      .chip-text {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+        align-items: flex-start;
+      }
+      .chip-item:not(.has-label) .chip-text {
+        flex-direction: row;
+        align-items: center;
       }
       .chip-label {
+        font-size: 10px;
         font-weight: 400;
         opacity: 0.8;
-        font-size: 0.9em;
+        line-height: 1.2;
+        color: var(--strip-card-label-color);
+      }
+      .chip-content {
+        font-weight: 600;
+        line-height: 1.2;
+        color: var(--strip-card-content-color);
       }
       .icon {
         --mdc-icon-size: 20px;
@@ -494,11 +516,13 @@ class StripCard extends LitElement {
       }
       .ticker-item .content {
         font-weight: 500;
+        color: var(--strip-card-content-color);
       }
       .ticker-item .label {
         font-weight: 400;
         opacity: 0.8;
         margin-left: 0.5em;
+        color: var(--strip-card-label-color);
       }
       .error {
         color: var(--error-color);
@@ -549,6 +573,9 @@ class StripCardEditor extends LitElement {
       duration: 20,
       separator: "•",
       font_size: "14px",
+      content_color: "var(--primary-text-color)",
+      label_color: "var(--secondary-text-color)",
+      chip_background: "var(--primary-background-color)",
       show_icon: false,
       pause_on_hover: false,
       border_radius: "0px",
@@ -592,6 +619,12 @@ class StripCardEditor extends LitElement {
             Stil
           </button>
           <button 
+            class="tab ${this._currentTab === 'colors' ? 'active' : ''}"
+            @click=${() => this._switchTab('colors')}
+          >
+            Farben
+          </button>
+          <button 
             class="tab ${this._currentTab === 'entities' ? 'active' : ''}"
             @click=${() => this._switchTab('entities')}
           >
@@ -603,6 +636,7 @@ class StripCardEditor extends LitElement {
           ${this._currentTab === 'general' ? this._renderGeneralTab() : ''}
           ${this._currentTab === 'scroll' ? this._renderScrollTab() : ''}
           ${this._currentTab === 'style' ? this._renderStyleTab() : ''}
+          ${this._currentTab === 'colors' ? this._renderColorsTab() : ''}
           ${this._currentTab === 'entities' ? this._renderEntitiesTab() : ''}
         </div>
       </div>
@@ -812,6 +846,37 @@ class StripCardEditor extends LitElement {
     `;
   }
 
+  _renderColorsTab() {
+    return html`
+      <div class="tab-panel">
+        <ha-textfield
+          label="Content-Farbe"
+          .value="${this._config.content_color}"
+          .configValue="${"content_color"}"
+          @input="${this._valueChanged}"
+          helper-text="Haupttext-Farbe"
+        ></ha-textfield>
+
+        <ha-textfield
+          label="Label-Farbe"
+          .value="${this._config.label_color}"
+          .configValue="${"label_color"}"
+          @input="${this._valueChanged}"
+          helper-text="Sekundärtext-Farbe"
+        ></ha-textfield>
+
+        ${this._config.badge_style ? html`
+          <ha-textfield
+            label="Chip-Hintergrund"
+            .value="${this._config.chip_background}"
+            .configValue="${"chip_background"}"
+            @input="${this._valueChanged}"
+          ></ha-textfield>
+        ` : ''}
+      </div>
+    `;
+  }
+
   _renderEntitiesTab() {
     const entities = this._config.entities || [];
 
@@ -875,7 +940,7 @@ class StripCardEditor extends LitElement {
                     .entityIndex="${index}"
                     .configValue="${"label"}"
                     @input="${this._entityPropertyChanged}"
-                    helper-text="Zusätzlicher Text"
+                    helper-text="Chips: oben, Normal: rechts"
                   ></ha-textfield>
 
                   <ha-textfield
@@ -892,7 +957,7 @@ class StripCardEditor extends LitElement {
                     .entityIndex="${index}"
                     .configValue="${"color"}"
                     @input="${this._entityPropertyChanged}"
-                    helper-text="z.B: red, #ff0000, white"
+                    helper-text="Überschreibt globale Farben"
                   ></ha-textfield>
 
                   <div class="section-divider">Tap Action</div>
