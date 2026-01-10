@@ -3,7 +3,7 @@ const html = LitElement.prototype.html;
 const css = LitElement.prototype.css;
 
 console.info(
-  `%c STRIP-CARD %c Loaded - Version 1.6.4 (Click & Scrollbar Fixed) `,
+  `%c STRIP-CARD %c Loaded - Version 1.6.5 (Entity Click Working!) `,
   "color: orange; font-weight: bold; background: black",
   "color: white; font-weight: bold; background: dimgray"
 );
@@ -432,7 +432,6 @@ class StripCardEditor extends LitElement {
       ...config,
       entities: config.entities || []
     };
-    // Don't reset tab and selectedEntity on config updates
   }
 
   render() {
@@ -711,7 +710,7 @@ class StripCardEditor extends LitElement {
                   <ha-entity-picker
                     .hass="${this.hass}"
                     .value="${entityId}"
-                    .index="${index}"
+                    .entityIndex="${index}"
                     @value-changed="${this._entityChanged}"
                     allow-custom-entity
                   ></ha-entity-picker>
@@ -719,7 +718,7 @@ class StripCardEditor extends LitElement {
                   <ha-textfield
                     label="Name (optional)"
                     .value="${entity.name || ''}"
-                    .index="${index}"
+                    .entityIndex="${index}"
                     .configValue="${"name"}"
                     @input="${this._entityPropertyChanged}"
                   ></ha-textfield>
@@ -727,7 +726,7 @@ class StripCardEditor extends LitElement {
                   <ha-textfield
                     label="Icon (optional, z.B. mdi:home)"
                     .value="${entity.icon || ''}"
-                    .index="${index}"
+                    .entityIndex="${index}"
                     .configValue="${"icon"}"
                     @input="${this._entityPropertyChanged}"
                   ></ha-textfield>
@@ -735,7 +734,7 @@ class StripCardEditor extends LitElement {
                   <ha-textfield
                     label="Attribut (optional)"
                     .value="${entity.attribute || ''}"
-                    .index="${index}"
+                    .entityIndex="${index}"
                     .configValue="${"attribute"}"
                     @input="${this._entityPropertyChanged}"
                   ></ha-textfield>
@@ -743,7 +742,7 @@ class StripCardEditor extends LitElement {
                   <ha-textfield
                     label="Einheit (optional)"
                     .value="${entity.unit || ''}"
-                    .index="${index}"
+                    .entityIndex="${index}"
                     .configValue="${"unit"}"
                     @input="${this._entityPropertyChanged}"
                   ></ha-textfield>
@@ -751,7 +750,7 @@ class StripCardEditor extends LitElement {
                   <ha-textfield
                     label="Value Template (optional)"
                     .value="${entity.value_template || ''}"
-                    .index="${index}"
+                    .entityIndex="${index}"
                     .configValue="${"value_template"}"
                     @input="${this._entityPropertyChanged}"
                   ></ha-textfield>
@@ -759,7 +758,7 @@ class StripCardEditor extends LitElement {
                   <ha-textfield
                     label="Visible If Template (optional)"
                     .value="${entity.visible_if || ''}"
-                    .index="${index}"
+                    .entityIndex="${index}"
                     .configValue="${"visible_if"}"
                     @input="${this._entityPropertyChanged}"
                   ></ha-textfield>
@@ -767,7 +766,7 @@ class StripCardEditor extends LitElement {
                   <ha-textfield
                     label="Namen-Farbe (optional)"
                     .value="${entity.name_color || ''}"
-                    .index="${index}"
+                    .entityIndex="${index}"
                     .configValue="${"name_color"}"
                     @input="${this._entityPropertyChanged}"
                   ></ha-textfield>
@@ -775,7 +774,7 @@ class StripCardEditor extends LitElement {
                   <ha-textfield
                     label="Wert-Farbe (optional)"
                     .value="${entity.value_color || ''}"
-                    .index="${index}"
+                    .entityIndex="${index}"
                     .configValue="${"value_color"}"
                     @input="${this._entityPropertyChanged}"
                   ></ha-textfield>
@@ -783,7 +782,7 @@ class StripCardEditor extends LitElement {
                   <ha-textfield
                     label="Einheit-Farbe (optional)"
                     .value="${entity.unit_color || ''}"
-                    .index="${index}"
+                    .entityIndex="${index}"
                     .configValue="${"unit_color"}"
                     @input="${this._entityPropertyChanged}"
                   ></ha-textfield>
@@ -791,7 +790,7 @@ class StripCardEditor extends LitElement {
                   <ha-textfield
                     label="Icon-Farbe (optional)"
                     .value="${entity.icon_color || ''}"
-                    .index="${index}"
+                    .entityIndex="${index}"
                     .configValue="${"icon_color"}"
                     @input="${this._entityPropertyChanged}"
                   ></ha-textfield>
@@ -799,7 +798,7 @@ class StripCardEditor extends LitElement {
                   <ha-textfield
                     label="Service (optional, z.B. light.turn_on)"
                     .value="${entity.service || ''}"
-                    .index="${index}"
+                    .entityIndex="${index}"
                     .configValue="${"service"}"
                     @input="${this._entityPropertyChanged}"
                   ></ha-textfield>
@@ -807,7 +806,7 @@ class StripCardEditor extends LitElement {
                   <ha-select
                     label="Einheit-Position (überschreibt global)"
                     .value="${entity.unit_position || ''}"
-                    .index="${index}"
+                    .entityIndex="${index}"
                     .configValue="${"unit_position"}"
                     @selected="${this._entitySelectChanged}"
                     @closed="${(e) => e.stopPropagation()}"
@@ -821,7 +820,7 @@ class StripCardEditor extends LitElement {
                     <ha-switch
                       .checked="${entity.show_icon !== undefined ? entity.show_icon : false}"
                       .indeterminate="${entity.show_icon === undefined}"
-                      .index="${index}"
+                      .entityIndex="${index}"
                       .configValue="${"show_icon"}"
                       @change="${this._entitySwitchChanged}"
                     ></ha-switch>
@@ -891,7 +890,7 @@ class StripCardEditor extends LitElement {
   }
 
   _entityChanged(ev) {
-    const index = ev.currentTarget.index;
+    const index = ev.currentTarget.entityIndex;
     const newEntityId = ev.detail.value;
     const entities = [...this._config.entities];
     
@@ -906,7 +905,7 @@ class StripCardEditor extends LitElement {
   }
 
   _entityPropertyChanged(ev) {
-    const index = ev.currentTarget.index;
+    const index = ev.currentTarget.entityIndex;
     const configValue = ev.currentTarget.configValue;
     const value = ev.currentTarget.value;
 
@@ -923,7 +922,7 @@ class StripCardEditor extends LitElement {
   }
 
   _entitySelectChanged(ev) {
-    const index = ev.currentTarget.index;
+    const index = ev.currentTarget.entityIndex;
     const configValue = ev.currentTarget.configValue;
     const value = ev.currentTarget.value;
 
@@ -940,7 +939,7 @@ class StripCardEditor extends LitElement {
   }
 
   _entitySwitchChanged(ev) {
-    const index = ev.currentTarget.index;
+    const index = ev.currentTarget.entityIndex;
     const configValue = ev.currentTarget.configValue;
     const value = ev.currentTarget.checked;
 
@@ -1030,7 +1029,6 @@ class StripCardEditor extends LitElement {
     });
     event.detail = { config: this._config };
     this.dispatchEvent(event);
-    // Don't call requestUpdate() here - that would reset the tab
   }
 
   static get styles() {
