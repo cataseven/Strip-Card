@@ -3,7 +3,7 @@ const html = LitElement.prototype.html;
 const css = LitElement.prototype.css;
 
 console.info(
-  `%c STRIP-CARD %c Loaded - Version 1.6.1 (Tabs Fixed) `,
+  `%c STRIP-CARD %c Loaded - Version 1.6.2 (Tabs Persistent) `,
   "color: orange; font-weight: bold; background: black",
   "color: white; font-weight: bold; background: dimgray"
 );
@@ -391,7 +391,7 @@ class StripCard extends LitElement {
   }
 }
 
-// Visual Editor with Simple Tabs
+// Visual Editor with Persistent Tabs
 class StripCardEditor extends LitElement {
   static get properties() {
     return {
@@ -400,6 +400,12 @@ class StripCardEditor extends LitElement {
       _selectedEntity: { type: Number },
       _currentTab: { type: String }
     };
+  }
+
+  constructor() {
+    super();
+    this._currentTab = 'general';
+    this._selectedEntity = null;
   }
 
   setConfig(config) {
@@ -426,8 +432,7 @@ class StripCardEditor extends LitElement {
       ...config,
       entities: config.entities || []
     };
-    this._selectedEntity = null;
-    this._currentTab = 'general';
+    // Don't reset tab and selectedEntity on config updates
   }
 
   render() {
@@ -483,6 +488,7 @@ class StripCardEditor extends LitElement {
 
   _switchTab(tab) {
     this._currentTab = tab;
+    this.requestUpdate();
   }
 
   _renderGeneralTab() {
@@ -662,6 +668,12 @@ class StripCardEditor extends LitElement {
 
     return html`
       <div class="tab-panel">
+        ${entities.length === 0 ? html`
+          <div class="no-entities">
+            <p>Keine Entitäten konfiguriert. Füge eine Entität hinzu, um zu beginnen.</p>
+          </div>
+        ` : ''}
+        
         ${entities.map((entity, index) => {
           const entityId = typeof entity === 'string' ? entity : entity.entity;
           const entityName = typeof entity === 'string' ? entityId : (entity.name || entityId);
@@ -851,6 +863,8 @@ class StripCardEditor extends LitElement {
     this._config = { ...this._config, entities };
     if (this._selectedEntity === index) {
       this._selectedEntity = null;
+    } else if (this._selectedEntity > index) {
+      this._selectedEntity--;
     }
     this._configChanged();
   }
@@ -862,6 +876,11 @@ class StripCardEditor extends LitElement {
     const entities = [...this._config.entities];
     [entities[index - 1], entities[index]] = [entities[index], entities[index - 1]];
     this._config = { ...this._config, entities };
+    if (this._selectedEntity === index) {
+      this._selectedEntity = index - 1;
+    } else if (this._selectedEntity === index - 1) {
+      this._selectedEntity = index;
+    }
     this._configChanged();
   }
 
@@ -872,6 +891,11 @@ class StripCardEditor extends LitElement {
     if (index >= entities.length - 1) return;
     [entities[index], entities[index + 1]] = [entities[index + 1], entities[index]];
     this._config = { ...this._config, entities };
+    if (this._selectedEntity === index) {
+      this._selectedEntity = index + 1;
+    } else if (this._selectedEntity === index + 1) {
+      this._selectedEntity = index;
+    }
     this._configChanged();
   }
 
@@ -1015,6 +1039,7 @@ class StripCardEditor extends LitElement {
     });
     event.detail = { config: this._config };
     this.dispatchEvent(event);
+    // Don't call requestUpdate() here - that would reset the tab
   }
 
   static get styles() {
@@ -1074,6 +1099,12 @@ class StripCardEditor extends LitElement {
         display: block;
         margin: 12px 0;
         padding: 8px 0;
+      }
+      
+      .no-entities {
+        text-align: center;
+        padding: 24px;
+        color: var(--secondary-text-color);
       }
       
       .entity-row {
