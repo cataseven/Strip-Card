@@ -3,7 +3,7 @@ const html = LitElement.prototype.html;
 const css = LitElement.prototype.css;
 
 console.info(
-  `%c STRIP-CARD %c Loaded - Version 1.9.4 (Chip Color) `,
+  `%c STRIP-CARD %c Loaded - Version 1.9.5 (Title & UI) `,
   "color: orange; font-weight: bold; background: black",
   "color: white; font-weight: bold; background: dimgray"
 );
@@ -54,6 +54,7 @@ class StripCard extends LitElement {
     this._config = {
       title: "",
       title_alignment: 'left',
+      title_font_size: "16px",
       duration: 20,
       separator: "•",
       font_size: "14px",
@@ -169,6 +170,7 @@ class StripCard extends LitElement {
       --strip-card-border-radius: ${this._config.border_radius};
       --strip-card-height: ${this._config.card_height};
       --strip-card-chip-background: ${this._config.chip_background_color};
+      --strip-card-title-font-size: ${this._config.title_font_size};
       ${cardWidthStyle}
       ${transparentStyle} 
     `;
@@ -309,10 +311,9 @@ class StripCard extends LitElement {
       }
       .card-header {
         padding: 16px;
-        font-size: 16px;
+        font-size: var(--strip-card-title-font-size, 16px);
         font-weight: 400;
         color: var(--primary-text-color);
-        border-bottom: 1px solid var(--divider-color);
       }
       .ticker-wrap {
         flex-grow: 1;
@@ -502,6 +503,7 @@ class StripCardEditor extends LitElement {
     this._config = {
       title: "",
       title_alignment: 'left',
+      title_font_size: "16px",
       duration: 20,
       separator: "•",
       font_size: "14px",
@@ -539,25 +541,25 @@ class StripCardEditor extends LitElement {
             class="tab ${this._currentTab === 'general' ? 'active' : ''}"
             @click=${() => this._switchTab('general')}
           >
-            Allgemein
+            Titel
           </button>
           <button 
-            class="tab ${this._currentTab === 'appearance' ? 'active' : ''}"
-            @click=${() => this._switchTab('appearance')}
+            class="tab ${this._currentTab === 'scroll' ? 'active' : ''}"
+            @click=${() => this._switchTab('scroll')}
           >
-            Aussehen
+            Scroll
+          </button>
+          <button 
+            class="tab ${this._currentTab === 'style' ? 'active' : ''}"
+            @click=${() => this._switchTab('style')}
+          >
+            Stil
           </button>
           <button 
             class="tab ${this._currentTab === 'colors' ? 'active' : ''}"
             @click=${() => this._switchTab('colors')}
           >
             Farben
-          </button>
-          <button 
-            class="tab ${this._currentTab === 'options' ? 'active' : ''}"
-            @click=${() => this._switchTab('options')}
-          >
-            Optionen
           </button>
           <button 
             class="tab ${this._currentTab === 'entities' ? 'active' : ''}"
@@ -569,9 +571,9 @@ class StripCardEditor extends LitElement {
 
         <div class="tab-content">
           ${this._currentTab === 'general' ? this._renderGeneralTab() : ''}
-          ${this._currentTab === 'appearance' ? this._renderAppearanceTab() : ''}
+          ${this._currentTab === 'scroll' ? this._renderScrollTab() : ''}
+          ${this._currentTab === 'style' ? this._renderStyleTab() : ''}
           ${this._currentTab === 'colors' ? this._renderColorsTab() : ''}
-          ${this._currentTab === 'options' ? this._renderOptionsTab() : ''}
           ${this._currentTab === 'entities' ? this._renderEntitiesTab() : ''}
         </div>
       </div>
@@ -593,6 +595,13 @@ class StripCardEditor extends LitElement {
           @input="${this._valueChanged}"
         ></ha-textfield>
 
+        <ha-textfield
+          label="Titel-Schriftgröße (z.B. 16px, 1.2rem)"
+          .value="${this._config.title_font_size}"
+          .configValue="${"title_font_size"}"
+          @input="${this._valueChanged}"
+        ></ha-textfield>
+
         <ha-select
           label="Titel-Ausrichtung"
           .value="${this._config.title_alignment}"
@@ -604,7 +613,13 @@ class StripCardEditor extends LitElement {
           <mwc-list-item value="center">Zentriert</mwc-list-item>
           <mwc-list-item value="right">Rechtsbündig</mwc-list-item>
         </ha-select>
+      </div>
+    `;
+  }
 
+  _renderScrollTab() {
+    return html`
+      <div class="tab-panel">
         <ha-textfield
           label="Scroll-Dauer (Sekunden)"
           type="number"
@@ -613,19 +628,97 @@ class StripCardEditor extends LitElement {
           @input="${this._valueChanged}"
         ></ha-textfield>
 
+        <ha-formfield label="Kontinuierliches Scrollen">
+          <ha-switch
+            .checked="${this._config.continuous_scroll}"
+            .configValue="${"continuous_scroll"}"
+            @change="${this._switchChanged}"
+          ></ha-switch>
+        </ha-formfield>
+
+        <ha-formfield label="Bei Hover pausieren">
+          <ha-switch
+            .checked="${this._config.pause_on_hover}"
+            .configValue="${"pause_on_hover"}"
+            @change="${this._switchChanged}"
+          ></ha-switch>
+        </ha-formfield>
+
+        <ha-formfield label="Vertikales Scrollen">
+          <ha-switch
+            .checked="${this._config.vertical_scroll}"
+            .configValue="${"vertical_scroll"}"
+            @change="${this._switchChanged}"
+          ></ha-switch>
+        </ha-formfield>
+
+        <ha-select
+          label="Vertikale Ausrichtung"
+          .value="${this._config.vertical_alignment}"
+          .configValue="${"vertical_alignment"}"
+          @selected="${this._selectChanged}"
+          @closed="${(e) => e.stopPropagation()}"
+        >
+          <mwc-list-item value="stack">Gestapelt</mwc-list-item>
+          <mwc-list-item value="inline">Inline</mwc-list-item>
+        </ha-select>
+      </div>
+    `;
+  }
+
+  _renderStyleTab() {
+    return html`
+      <div class="tab-panel">
+        <ha-formfield label="Chips-Stil (kompakte Darstellung)">
+          <ha-switch
+            .checked="${this._config.badge_style}"
+            .configValue="${"badge_style"}"
+            @change="${this._switchChanged}"
+          ></ha-switch>
+        </ha-formfield>
+
+        <ha-formfield label="Icons anzeigen">
+          <ha-switch
+            .checked="${this._config.show_icon}"
+            .configValue="${"show_icon"}"
+            @change="${this._switchChanged}"
+          ></ha-switch>
+        </ha-formfield>
+
+        <ha-formfield label="Ausblenden (Fading)">
+          <ha-switch
+            .checked="${this._config.fading}"
+            .configValue="${"fading"}"
+            @change="${this._switchChanged}"
+          ></ha-switch>
+        </ha-formfield>
+
+        <ha-formfield label="Transparenter Hintergrund">
+          <ha-switch
+            .checked="${this._config.transparent}"
+            .configValue="${"transparent"}"
+            @change="${this._switchChanged}"
+          ></ha-switch>
+        </ha-formfield>
+
         <ha-textfield
           label="Trennzeichen"
           .value="${this._config.separator}"
           .configValue="${"separator"}"
           @input="${this._valueChanged}"
         ></ha-textfield>
-      </div>
-    `;
-  }
 
-  _renderAppearanceTab() {
-    return html`
-      <div class="tab-panel">
+        <ha-select
+          label="Einheit-Position"
+          .value="${this._config.unit_position}"
+          .configValue="${"unit_position"}"
+          @selected="${this._selectChanged}"
+          @closed="${(e) => e.stopPropagation()}"
+        >
+          <mwc-list-item value="left">Links</mwc-list-item>
+          <mwc-list-item value="right">Rechts</mwc-list-item>
+        </ha-select>
+
         <ha-textfield
           label="Schriftgröße (z.B. 14px, 1rem)"
           .value="${this._config.font_size}"
@@ -661,7 +754,7 @@ class StripCardEditor extends LitElement {
     return html`
       <div class="tab-panel">
         <ha-textfield
-          label="Namen-Farbe (z.B. #ff0000, var(--primary-text-color))"
+          label="Namen-Farbe"
           .value="${this._config.name_color}"
           .configValue="${"name_color"}"
           @input="${this._valueChanged}"
@@ -694,90 +787,6 @@ class StripCardEditor extends LitElement {
           .configValue="${"chip_background_color"}"
           @input="${this._valueChanged}"
         ></ha-textfield>
-      </div>
-    `;
-  }
-
-  _renderOptionsTab() {
-    return html`
-      <div class="tab-panel">
-        <ha-formfield label="Chips-Stil (kompakte Darstellung)">
-          <ha-switch
-            .checked="${this._config.badge_style}"
-            .configValue="${"badge_style"}"
-            @change="${this._switchChanged}"
-          ></ha-switch>
-        </ha-formfield>
-
-        <ha-formfield label="Icons anzeigen">
-          <ha-switch
-            .checked="${this._config.show_icon}"
-            .configValue="${"show_icon"}"
-            @change="${this._switchChanged}"
-          ></ha-switch>
-        </ha-formfield>
-
-        <ha-formfield label="Bei Hover pausieren">
-          <ha-switch
-            .checked="${this._config.pause_on_hover}"
-            .configValue="${"pause_on_hover"}"
-            @change="${this._switchChanged}"
-          ></ha-switch>
-        </ha-formfield>
-
-        <ha-formfield label="Ausblenden (Fading)">
-          <ha-switch
-            .checked="${this._config.fading}"
-            .configValue="${"fading"}"
-            @change="${this._switchChanged}"
-          ></ha-switch>
-        </ha-formfield>
-
-        <ha-formfield label="Vertikales Scrollen">
-          <ha-switch
-            .checked="${this._config.vertical_scroll}"
-            .configValue="${"vertical_scroll"}"
-            @change="${this._switchChanged}"
-          ></ha-switch>
-        </ha-formfield>
-
-        <ha-formfield label="Kontinuierliches Scrollen">
-          <ha-switch
-            .checked="${this._config.continuous_scroll}"
-            .configValue="${"continuous_scroll"}"
-            @change="${this._switchChanged}"
-          ></ha-switch>
-        </ha-formfield>
-
-        <ha-formfield label="Transparenter Hintergrund">
-          <ha-switch
-            .checked="${this._config.transparent}"
-            .configValue="${"transparent"}"
-            @change="${this._switchChanged}"
-          ></ha-switch>
-        </ha-formfield>
-
-        <ha-select
-          label="Einheit-Position"
-          .value="${this._config.unit_position}"
-          .configValue="${"unit_position"}"
-          @selected="${this._selectChanged}"
-          @closed="${(e) => e.stopPropagation()}"
-        >
-          <mwc-list-item value="left">Links</mwc-list-item>
-          <mwc-list-item value="right">Rechts</mwc-list-item>
-        </ha-select>
-
-        <ha-select
-          label="Vertikale Ausrichtung"
-          .value="${this._config.vertical_alignment}"
-          .configValue="${"vertical_alignment"}"
-          @selected="${this._selectChanged}"
-          @closed="${(e) => e.stopPropagation()}"
-        >
-          <mwc-list-item value="stack">Gestapelt</mwc-list-item>
-          <mwc-list-item value="inline">Inline</mwc-list-item>
-        </ha-select>
       </div>
     `;
   }
@@ -964,22 +973,18 @@ class StripCardEditor extends LitElement {
       return entityId || 'Neue Entität';
     }
     
-    // If custom name is set, use it
     if (entity.name) {
       return entity.name;
     }
     
-    // If entity ID exists, try to get friendly name from hass
     if (entityId && this.hass && this.hass.states[entityId]) {
       return this.hass.states[entityId].attributes.friendly_name || entityId;
     }
     
-    // If entity ID exists but no hass state, show the ID
     if (entityId) {
       return entityId;
     }
     
-    // Fallback for completely empty entities
     return 'Neue Entität';
   }
 
