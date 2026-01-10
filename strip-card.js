@@ -3,7 +3,7 @@ const html = LitElement.prototype.html;
 const css = LitElement.prototype.css;
 
 console.info(
-  `%c STRIP-CARD %c Loaded - Version 1.6.2 (Tabs Persistent) `,
+  `%c STRIP-CARD %c Loaded - Version 1.6.3 (Entity Click Fixed) `,
   "color: orange; font-weight: bold; background: black",
   "color: white; font-weight: bold; background: dimgray"
 );
@@ -681,7 +681,7 @@ class StripCardEditor extends LitElement {
           
           return html`
             <div class="entity-row">
-              <div class="entity-header" @click="${() => this._toggleEntity(index)}">
+              <div class="entity-header" @click="${(e) => this._toggleEntity(e, index)}">
                 <span>${entityName || 'Neue Entität'}</span>
                 <div class="entity-controls">
                   ${index > 0 ? html`
@@ -842,7 +842,11 @@ class StripCardEditor extends LitElement {
     `;
   }
 
-  _toggleEntity(index) {
+  _toggleEntity(e, index) {
+    // Stop event propagation from controls
+    if (e.target.closest('.entity-controls')) {
+      return;
+    }
     this._selectedEntity = this._selectedEntity === index ? null : index;
     this.requestUpdate();
   }
