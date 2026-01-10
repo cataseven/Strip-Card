@@ -3,7 +3,7 @@ const html = LitElement.prototype.html;
 const css = LitElement.prototype.css;
 
 console.info(
-  `%c STRIP-CARD %c Loaded - Version 1.7.0 (Editor Stability) `,
+  `%c STRIP-CARD %c Loaded - Version 1.8.0 (Badge Style) `,
   "color: orange; font-weight: bold; background: black",
   "color: white; font-weight: bold; background: dimgray"
 );
@@ -71,6 +71,7 @@ class StripCard extends LitElement {
       vertical_alignment: 'stack',
       continuous_scroll: true,
       transparent: false,
+      badge_style: false,
       ...config,
     };
   }
@@ -147,6 +148,7 @@ class StripCard extends LitElement {
     const fadingClass = this._config.fading ? 'has-fading' : '';
     const verticalClass = this._config.vertical_scroll ? 'has-vertical-scroll' : '';
     const verticalAlignmentClass = this._config.vertical_alignment === 'inline' ? 'has-inline-vertical-alignment' : '';
+    const badgeClass = this._config.badge_style ? 'has-badge-style' : '';
     const animationIteration = this._config.continuous_scroll ? 'infinite' : '1';
     
     let transparentStyle = '';
@@ -176,7 +178,7 @@ class StripCard extends LitElement {
 
     let content = renderedEntities;
 
-    if (this._config.continuous_scroll) {
+    if (this._config.continuous_scroll && !this._config.badge_style) {
       const containerWidth = this.getBoundingClientRect().width || 400;
       const divisor = (renderedEntities.length * 100) || 100; 
       const minCopies = Math.ceil(containerWidth / divisor) + 2;
@@ -189,7 +191,7 @@ class StripCard extends LitElement {
     
     return html`
       <ha-card .header="${this._config.title}" style="${cardStyles}">
-        <div class="ticker-wrap ${this._config.pause_on_hover ? 'pausable' : ''} ${fadingClass} ${verticalClass}">
+        <div class="ticker-wrap ${this._config.pause_on_hover ? 'pausable' : ''} ${fadingClass} ${verticalClass} ${badgeClass}">
           <div class="ticker-move ${verticalAlignmentClass}" style="animation-duration: ${duration}s; animation-iteration-count: ${animationIteration};">
             ${content}
           </div>
@@ -248,6 +250,27 @@ class StripCard extends LitElement {
 
     const titleText = unit_position === 'left' ? `${name}: ${unit}${value}` : `${name}: ${value} ${unit}`;
 
+    if (this._config.badge_style) {
+      return html`
+        <div
+          class="badge-item"
+          @click=${() => this._handleTap(entityConfig)}
+          title="${titleText}"
+        >
+          ${customIcon
+            ? html`<ha-icon class="badge-icon" .icon=${customIcon} style="color: ${iconColor};"></ha-icon>`
+            : html`<state-badge class="badge-icon" .hass=${this.hass} .stateObj=${stateObj}></state-badge>`
+          }
+          <div class="badge-content">
+            <span class="badge-name" style="color: ${nameColor};">${name}</span>
+            <div class="badge-value-row">
+              ${unit_position === 'left' ? html`${unitPart}${valuePart}` : html`${valuePart}${unitPart}`}
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
     return html`
       <div
         class="ticker-item"
@@ -294,6 +317,10 @@ class StripCard extends LitElement {
         height: var(--strip-card-height, auto);
         overflow: hidden;
       }
+      .ticker-wrap.has-badge-style {
+        padding: 16px 8px;
+        min-height: auto;
+      }
       .ticker-wrap.has-fading {
         -webkit-mask-image: linear-gradient(to right,
           rgba(0, 0, 0, 0) 0%,
@@ -322,6 +349,10 @@ class StripCard extends LitElement {
           rgba(0, 0, 0, 0) 100%
         );
       }
+      .ticker-wrap.has-badge-style.has-fading {
+        -webkit-mask-image: none;
+        mask-image: none;
+      }
       .ticker-wrap.pausable:hover .ticker-move {
         animation-play-state: paused;
       }
@@ -333,6 +364,14 @@ class StripCard extends LitElement {
         animation-name: ticker;
         animation-timing-function: linear;
         animation-iteration-count: infinite;
+      }
+      .ticker-wrap.has-badge-style .ticker-move {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: 12px;
+        animation: none;
+        width: 100%;
       }
       .ticker-move.has-inline-vertical-alignment {
         display: block;
@@ -373,6 +412,49 @@ class StripCard extends LitElement {
         display: inline-flex;
         margin: 0.5rem 1rem;
       }
+      .badge-item {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        min-width: 80px;
+        padding: 12px;
+        cursor: pointer;
+        border-radius: 12px;
+        background: var(--ha-card-background, var(--card-background-color));
+        transition: background 0.2s;
+      }
+      .badge-item:hover {
+        background: var(--secondary-background-color);
+      }
+      .badge-icon {
+        --mdc-icon-size: 40px;
+        width: 40px;
+        height: 40px;
+        margin-bottom: 8px;
+      }
+      .badge-content {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+        width: 100%;
+      }
+      .badge-name {
+        font-size: 12px;
+        font-weight: 500;
+        margin-bottom: 4px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        max-width: 100%;
+      }
+      .badge-value-row {
+        display: flex;
+        align-items: baseline;
+        gap: 0.2em;
+        font-size: var(--strip-card-font-size, 14px);
+        font-weight: bold;
+      }
       .icon {
         margin-right: 0.5em;
       }
@@ -383,6 +465,10 @@ class StripCard extends LitElement {
       .ticker-item .value + .unit,
       .ticker-item .unit + .value {
         margin-left: 0.2em;
+      }
+      .badge-value-row .value,
+      .badge-value-row .unit {
+        line-height: 1;
       }
       .error {
         color: var(--error-color);
@@ -442,6 +528,7 @@ class StripCardEditor extends LitElement {
       vertical_alignment: 'stack',
       continuous_scroll: true,
       transparent: false,
+      badge_style: false,
       ...config,
       entities: config.entities || []
     };
@@ -602,6 +689,14 @@ class StripCardEditor extends LitElement {
   _renderOptionsTab() {
     return html`
       <div class="tab-panel">
+        <ha-formfield label="Badge-Stil (wie HA Badges)">
+          <ha-switch
+            .checked="${this._config.badge_style}"
+            .configValue="${"badge_style"}"
+            @change="${this._switchChanged}"
+          ></ha-switch>
+        </ha-formfield>
+
         <ha-formfield label="Icons anzeigen">
           <ha-switch
             .checked="${this._config.show_icon}"
@@ -615,6 +710,7 @@ class StripCardEditor extends LitElement {
             .checked="${this._config.pause_on_hover}"
             .configValue="${"pause_on_hover"}"
             @change="${this._switchChanged}"
+            .disabled="${this._config.badge_style}"
           ></ha-switch>
         </ha-formfield>
 
@@ -623,6 +719,7 @@ class StripCardEditor extends LitElement {
             .checked="${this._config.fading}"
             .configValue="${"fading"}"
             @change="${this._switchChanged}"
+            .disabled="${this._config.badge_style}"
           ></ha-switch>
         </ha-formfield>
 
@@ -631,6 +728,7 @@ class StripCardEditor extends LitElement {
             .checked="${this._config.vertical_scroll}"
             .configValue="${"vertical_scroll"}"
             @change="${this._switchChanged}"
+            .disabled="${this._config.badge_style}"
           ></ha-switch>
         </ha-formfield>
 
@@ -639,6 +737,7 @@ class StripCardEditor extends LitElement {
             .checked="${this._config.continuous_scroll}"
             .configValue="${"continuous_scroll"}"
             @change="${this._switchChanged}"
+            .disabled="${this._config.badge_style}"
           ></ha-switch>
         </ha-formfield>
 
@@ -667,6 +766,7 @@ class StripCardEditor extends LitElement {
           .configValue="${"vertical_alignment"}"
           @selected="${this._selectChanged}"
           @closed="${(e) => e.stopPropagation()}"
+          .disabled="${this._config.badge_style}"
         >
           <mwc-list-item value="stack">Gestapelt</mwc-list-item>
           <mwc-list-item value="inline">Inline</mwc-list-item>
@@ -687,8 +787,9 @@ class StripCardEditor extends LitElement {
         ` : ''}
         
         ${entities.map((entity, index) => {
-          const entityId = typeof entity === 'string' ? entity : (entity.entity || '');
-          const entityName = this._getEntityDisplayName(entity, entityId);
+          const entityObj = typeof entity === 'string' ? { entity: entity } : entity;
+          const entityId = entityObj.entity || '';
+          const entityName = this._getEntityDisplayName(entityObj, entityId);
           const isExpanded = this._selectedEntity === index;
           
           return html`
@@ -719,10 +820,10 @@ class StripCardEditor extends LitElement {
               </div>
               
               ${isExpanded ? html`
-                <div class="entity-editor">
+                <div class="entity-editor" .key="${`entity-editor-${index}`}">
                   <ha-entity-picker
                     .hass="${this.hass}"
-                    .value="${entityId || ''}"
+                    .value="${entityId}"
                     .entityIndex="${index}"
                     @value-changed="${this._entityChanged}"
                     allow-custom-entity
@@ -730,7 +831,7 @@ class StripCardEditor extends LitElement {
 
                   <ha-textfield
                     label="Name (optional, unterstützt Templates)"
-                    .value="${entity.name || ''}"
+                    .value="${entityObj.name || ''}"
                     .entityIndex="${index}"
                     .configValue="${"name"}"
                     @input="${this._entityPropertyChanged}"
@@ -738,7 +839,7 @@ class StripCardEditor extends LitElement {
 
                   <ha-textfield
                     label="Icon (optional, z.B. mdi:home)"
-                    .value="${entity.icon || ''}"
+                    .value="${entityObj.icon || ''}"
                     .entityIndex="${index}"
                     .configValue="${"icon"}"
                     @input="${this._entityPropertyChanged}"
@@ -746,7 +847,7 @@ class StripCardEditor extends LitElement {
 
                   <ha-textfield
                     label="Attribut (optional)"
-                    .value="${entity.attribute || ''}"
+                    .value="${entityObj.attribute || ''}"
                     .entityIndex="${index}"
                     .configValue="${"attribute"}"
                     @input="${this._entityPropertyChanged}"
@@ -754,7 +855,7 @@ class StripCardEditor extends LitElement {
 
                   <ha-textfield
                     label="Einheit (optional)"
-                    .value="${entity.unit || ''}"
+                    .value="${entityObj.unit || ''}"
                     .entityIndex="${index}"
                     .configValue="${"unit"}"
                     @input="${this._entityPropertyChanged}"
@@ -762,7 +863,7 @@ class StripCardEditor extends LitElement {
 
                   <ha-textfield
                     label="Value Template (optional)"
-                    .value="${entity.value_template || ''}"
+                    .value="${entityObj.value_template || ''}"
                     .entityIndex="${index}"
                     .configValue="${"value_template"}"
                     @input="${this._entityPropertyChanged}"
@@ -770,7 +871,7 @@ class StripCardEditor extends LitElement {
 
                   <ha-textfield
                     label="Visible If Template (optional)"
-                    .value="${entity.visible_if || ''}"
+                    .value="${entityObj.visible_if || ''}"
                     .entityIndex="${index}"
                     .configValue="${"visible_if"}"
                     @input="${this._entityPropertyChanged}"
@@ -778,7 +879,7 @@ class StripCardEditor extends LitElement {
 
                   <ha-textfield
                     label="Namen-Farbe (optional)"
-                    .value="${entity.name_color || ''}"
+                    .value="${entityObj.name_color || ''}"
                     .entityIndex="${index}"
                     .configValue="${"name_color"}"
                     @input="${this._entityPropertyChanged}"
@@ -786,7 +887,7 @@ class StripCardEditor extends LitElement {
 
                   <ha-textfield
                     label="Wert-Farbe (optional)"
-                    .value="${entity.value_color || ''}"
+                    .value="${entityObj.value_color || ''}"
                     .entityIndex="${index}"
                     .configValue="${"value_color"}"
                     @input="${this._entityPropertyChanged}"
@@ -794,7 +895,7 @@ class StripCardEditor extends LitElement {
 
                   <ha-textfield
                     label="Einheit-Farbe (optional)"
-                    .value="${entity.unit_color || ''}"
+                    .value="${entityObj.unit_color || ''}"
                     .entityIndex="${index}"
                     .configValue="${"unit_color"}"
                     @input="${this._entityPropertyChanged}"
@@ -802,7 +903,7 @@ class StripCardEditor extends LitElement {
 
                   <ha-textfield
                     label="Icon-Farbe (optional)"
-                    .value="${entity.icon_color || ''}"
+                    .value="${entityObj.icon_color || ''}"
                     .entityIndex="${index}"
                     .configValue="${"icon_color"}"
                     @input="${this._entityPropertyChanged}"
@@ -810,7 +911,7 @@ class StripCardEditor extends LitElement {
 
                   <ha-textfield
                     label="Service (optional, z.B. light.turn_on)"
-                    .value="${entity.service || ''}"
+                    .value="${entityObj.service || ''}"
                     .entityIndex="${index}"
                     .configValue="${"service"}"
                     @input="${this._entityPropertyChanged}"
@@ -818,7 +919,7 @@ class StripCardEditor extends LitElement {
 
                   <ha-select
                     label="Einheit-Position (überschreibt global)"
-                    .value="${entity.unit_position || ''}"
+                    .value="${entityObj.unit_position || ''}"
                     .entityIndex="${index}"
                     .configValue="${"unit_position"}"
                     @selected="${this._entitySelectChanged}"
@@ -831,8 +932,8 @@ class StripCardEditor extends LitElement {
 
                   <ha-formfield label="Icon anzeigen (überschreibt global)">
                     <ha-switch
-                      .checked="${entity.show_icon !== undefined ? entity.show_icon : false}"
-                      .indeterminate="${entity.show_icon === undefined}"
+                      .checked="${entityObj.show_icon !== undefined ? entityObj.show_icon : false}"
+                      .indeterminate="${entityObj.show_icon === undefined}"
                       .entityIndex="${index}"
                       .configValue="${"show_icon"}"
                       @change="${this._entitySwitchChanged}"
@@ -882,7 +983,7 @@ class StripCardEditor extends LitElement {
 
   _addEntity() {
     const entities = [...this._config.entities];
-    entities.push({});
+    entities.push({ entity: '' });
     this._config = { ...this._config, entities };
     this._selectedEntity = entities.length - 1;
     this._configChanged();
