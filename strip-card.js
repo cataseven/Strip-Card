@@ -3,7 +3,7 @@ const html = LitElement.prototype.html;
 const css = LitElement.prototype.css;
 
 console.info(
-  `%c STRIP-CARD %c Loaded - Version 1.6.8 (Template Function Fix) `,
+  `%c STRIP-CARD %c Loaded - Version 1.6.9 (Auto-fit dimensions) `,
   "color: orange; font-weight: bold; background: black",
   "color: white; font-weight: bold; background: dimgray"
 );
@@ -64,8 +64,8 @@ class StripCard extends LitElement {
       pause_on_hover: false,
       unit_position: 'right',
       border_radius: "0px",
-      card_height: "50px",
-      card_width: "400px",
+      card_height: "auto",
+      card_width: "100%",
       fading: false,
       vertical_scroll: false,
       vertical_alignment: 'stack',
@@ -271,8 +271,8 @@ class StripCard extends LitElement {
       ha-card {
         overflow: hidden;
         border-radius: var(--strip-card-border-radius, 0px);
-        height: var(--strip-card-height, 50px);
-        width: var(--strip-card-width);
+        height: var(--strip-card-height, auto);
+        width: var(--strip-card-width, 100%);
         display: flex;
         flex-direction: column;
         justify-content: flex-start;
@@ -287,10 +287,11 @@ class StripCard extends LitElement {
         padding: 0;
         box-sizing: border-box;
         position: relative;
+        min-height: 50px;
       }
       .ticker-wrap.has-vertical-scroll {
         flex-direction: column;
-        height: var(--strip-card-height, 50px);
+        height: var(--strip-card-height, auto);
         overflow: hidden;
       }
       .ticker-wrap.has-fading {
@@ -434,8 +435,8 @@ class StripCardEditor extends LitElement {
       pause_on_hover: false,
       unit_position: 'right',
       border_radius: "0px",
-      card_height: "50px",
-      card_width: "400px",
+      card_height: "auto",
+      card_width: "100%",
       fading: false,
       vertical_scroll: false,
       vertical_alignment: 'stack',
@@ -548,14 +549,14 @@ class StripCardEditor extends LitElement {
         ></ha-textfield>
 
         <ha-textfield
-          label="Kartenhöhe (z.B. 50px)"
+          label="Kartenhöhe (z.B. auto, 50px)"
           .value="${this._config.card_height}"
           .configValue="${"card_height"}"
           @input="${this._valueChanged}"
         ></ha-textfield>
 
         <ha-textfield
-          label="Kartenbreite (z.B. 400px, 100%)"
+          label="Kartenbreite (z.B. 100%, 400px)"
           .value="${this._config.card_width}"
           .configValue="${"card_width"}"
           @input="${this._valueChanged}"
