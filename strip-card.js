@@ -3,7 +3,7 @@ const html = LitElement.prototype.html;
 const css = LitElement.prototype.css;
 
 console.info(
-  `%c STRIP-CARD %c Loaded - Version 1.9.6 (Icons & Fix) `,
+  `%c STRIP-CARD %c Loaded - Version 1.9.7 (Smart UI) `,
   "color: orange; font-weight: bold; background: black",
   "color: white; font-weight: bold; background: dimgray"
 );
@@ -683,58 +683,64 @@ class StripCardEditor extends LitElement {
           @input="${this._valueChanged}"
         ></ha-textfield>
 
-        <ha-textfield
-          label="Titel-Schriftgröße (z.B. 16px, 1.2rem)"
-          .value="${this._config.title_font_size}"
-          .configValue="${"title_font_size"}"
-          @input="${this._valueChanged}"
-        ></ha-textfield>
+        ${this._config.title ? html`
+          <ha-textfield
+            label="Titel-Schriftgröße (z.B. 16px, 1.2rem)"
+            .value="${this._config.title_font_size}"
+            .configValue="${"title_font_size"}"
+            @input="${this._valueChanged}"
+          ></ha-textfield>
 
-        <ha-select
-          label="Titel-Ausrichtung"
-          .value="${this._config.title_alignment}"
-          .configValue="${"title_alignment"}"
-          @selected="${this._selectChanged}"
-          @closed="${(e) => e.stopPropagation()}"
-        >
-          <mwc-list-item value="left">Linksbündig</mwc-list-item>
-          <mwc-list-item value="center">Zentriert</mwc-list-item>
-          <mwc-list-item value="right">Rechtsbündig</mwc-list-item>
-        </ha-select>
+          <ha-select
+            label="Titel-Ausrichtung"
+            .value="${this._config.title_alignment}"
+            .configValue="${"title_alignment"}"
+            @selected="${this._selectChanged}"
+            @closed="${(e) => e.stopPropagation()}"
+          >
+            <mwc-list-item value="left">Linksbündig</mwc-list-item>
+            <mwc-list-item value="center">Zentriert</mwc-list-item>
+            <mwc-list-item value="right">Rechtsbündig</mwc-list-item>
+          </ha-select>
 
-        <div class="section-divider">Linkes Icon</div>
+          <div class="section-divider">Linkes Icon</div>
 
-        <ha-textfield
-          label="Icon links (z.B. mdi:home)"
-          .value="${this._config.title_left_icon || ''}"
-          .configValue="${"title_left_icon"}"
-          @input="${this._valueChanged}"
-        ></ha-textfield>
+          <ha-textfield
+            label="Icon links (z.B. mdi:home)"
+            .value="${this._config.title_left_icon || ''}"
+            .configValue="${"title_left_icon"}"
+            @input="${this._valueChanged}"
+          ></ha-textfield>
 
-        <ha-textfield
-          label="Aktion links (Entity-ID oder /dashboard-pfad)"
-          .value="${this._config.title_left_action || ''}"
-          .configValue="${"title_left_action"}"
-          @input="${this._valueChanged}"
-          helper-text="Z.B. 'light.wohnzimmer' oder '/lovelace/home'"
-        ></ha-textfield>
+          ${this._config.title_left_icon ? html`
+            <ha-textfield
+              label="Aktion links (Entity-ID oder /dashboard-pfad)"
+              .value="${this._config.title_left_action || ''}"
+              .configValue="${"title_left_action"}"
+              @input="${this._valueChanged}"
+              helper-text="Z.B. 'light.wohnzimmer' oder '/lovelace/home'"
+            ></ha-textfield>
+          ` : ''}
 
-        <div class="section-divider">Rechtes Icon</div>
+          <div class="section-divider">Rechtes Icon</div>
 
-        <ha-textfield
-          label="Icon rechts (z.B. mdi:cog)"
-          .value="${this._config.title_right_icon || ''}"
-          .configValue="${"title_right_icon"}"
-          @input="${this._valueChanged}"
-        ></ha-textfield>
+          <ha-textfield
+            label="Icon rechts (z.B. mdi:cog)"
+            .value="${this._config.title_right_icon || ''}"
+            .configValue="${"title_right_icon"}"
+            @input="${this._valueChanged}"
+          ></ha-textfield>
 
-        <ha-textfield
-          label="Aktion rechts (Entity-ID oder /dashboard-pfad)"
-          .value="${this._config.title_right_action || ''}"
-          .configValue="${"title_right_action"}"
-          @input="${this._valueChanged}"
-          helper-text="Z.B. 'light.wohnzimmer' oder '/lovelace/settings'"
-        ></ha-textfield>
+          ${this._config.title_right_icon ? html`
+            <ha-textfield
+              label="Aktion rechts (Entity-ID oder /dashboard-pfad)"
+              .value="${this._config.title_right_action || ''}"
+              .configValue="${"title_right_action"}"
+              @input="${this._valueChanged}"
+              helper-text="Z.B. 'light.wohnzimmer' oder '/lovelace/settings'"
+            ></ha-textfield>
+          ` : ''}
+        ` : ''}
       </div>
     `;
   }
@@ -774,16 +780,18 @@ class StripCardEditor extends LitElement {
           ></ha-switch>
         </ha-formfield>
 
-        <ha-select
-          label="Vertikale Ausrichtung"
-          .value="${this._config.vertical_alignment}"
-          .configValue="${"vertical_alignment"}"
-          @selected="${this._selectChanged}"
-          @closed="${(e) => e.stopPropagation()}"
-        >
-          <mwc-list-item value="stack">Gestapelt</mwc-list-item>
-          <mwc-list-item value="inline">Inline</mwc-list-item>
-        </ha-select>
+        ${this._config.vertical_scroll ? html`
+          <ha-select
+            label="Vertikale Ausrichtung"
+            .value="${this._config.vertical_alignment}"
+            .configValue="${"vertical_alignment"}"
+            @selected="${this._selectChanged}"
+            @closed="${(e) => e.stopPropagation()}"
+          >
+            <mwc-list-item value="stack">Gestapelt</mwc-list-item>
+            <mwc-list-item value="inline">Inline</mwc-list-item>
+          </ha-select>
+        ` : ''}
       </div>
     `;
   }
@@ -823,12 +831,14 @@ class StripCardEditor extends LitElement {
           ></ha-switch>
         </ha-formfield>
 
-        <ha-textfield
-          label="Trennzeichen"
-          .value="${this._config.separator}"
-          .configValue="${"separator"}"
-          @input="${this._valueChanged}"
-        ></ha-textfield>
+        ${!this._config.badge_style ? html`
+          <ha-textfield
+            label="Trennzeichen"
+            .value="${this._config.separator}"
+            .configValue="${"separator"}"
+            @input="${this._valueChanged}"
+          ></ha-textfield>
+        ` : ''}
 
         <ha-select
           label="Einheit-Position"
@@ -903,12 +913,14 @@ class StripCardEditor extends LitElement {
           @input="${this._valueChanged}"
         ></ha-textfield>
 
-        <ha-textfield
-          label="Chip-Hintergrundfarbe (für Chips-Stil)"
-          .value="${this._config.chip_background_color}"
-          .configValue="${"chip_background_color"}"
-          @input="${this._valueChanged}"
-        ></ha-textfield>
+        ${this._config.badge_style ? html`
+          <ha-textfield
+            label="Chip-Hintergrundfarbe"
+            .value="${this._config.chip_background_color}"
+            .configValue="${"chip_background_color"}"
+            @input="${this._valueChanged}"
+          ></ha-textfield>
+        ` : ''}
       </div>
     `;
   }
