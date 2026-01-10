@@ -3,7 +3,7 @@ const html = LitElement.prototype.html;
 const css = LitElement.prototype.css;
 
 console.info(
-  `%c STRIP-CARD %c Loaded - Version 1.9.3 (Title Fix) `,
+  `%c STRIP-CARD %c Loaded - Version 1.9.4 (Chip Color) `,
   "color: orange; font-weight: bold; background: black",
   "color: white; font-weight: bold; background: dimgray"
 );
@@ -61,6 +61,7 @@ class StripCard extends LitElement {
       value_color: "var(--primary-color)",
       unit_color: "var(--secondary-text-color)",
       icon_color: "var(--primary-text-color)",
+      chip_background_color: "var(--primary-background-color)",
       show_icon: false,
       pause_on_hover: false,
       unit_position: 'right',
@@ -167,6 +168,7 @@ class StripCard extends LitElement {
       --strip-card-font-size: ${this._config.font_size};
       --strip-card-border-radius: ${this._config.border_radius};
       --strip-card-height: ${this._config.card_height};
+      --strip-card-chip-background: ${this._config.chip_background_color};
       ${cardWidthStyle}
       ${transparentStyle} 
     `;
@@ -417,7 +419,7 @@ class StripCard extends LitElement {
         gap: 6px;
         padding: 6px 12px;
         margin-right: 8px;
-        background: var(--primary-background-color);
+        background: var(--strip-card-chip-background, var(--primary-background-color));
         border-radius: 18px;
         cursor: pointer;
         font-size: 13px;
@@ -507,6 +509,7 @@ class StripCardEditor extends LitElement {
       value_color: "var(--primary-color)",
       unit_color: "var(--secondary-text-color)",
       icon_color: "var(--primary-text-color)",
+      chip_background_color: "var(--primary-background-color)",
       show_icon: false,
       pause_on_hover: false,
       unit_position: 'right',
@@ -682,6 +685,13 @@ class StripCardEditor extends LitElement {
           label="Icon-Farbe"
           .value="${this._config.icon_color}"
           .configValue="${"icon_color"}"
+          @input="${this._valueChanged}"
+        ></ha-textfield>
+
+        <ha-textfield
+          label="Chip-Hintergrundfarbe (für Chips-Stil)"
+          .value="${this._config.chip_background_color}"
+          .configValue="${"chip_background_color"}"
           @input="${this._valueChanged}"
         ></ha-textfield>
       </div>
