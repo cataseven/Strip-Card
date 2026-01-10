@@ -3,7 +3,7 @@ const html = LitElement.prototype.html;
 const css = LitElement.prototype.css;
 
 console.info(
-  `%c STRIP-CARD %c Loaded - Version 1.8.0 (Badge Style) `,
+  `%c STRIP-CARD %c Loaded - Version 1.8.1 (Title Alignment) `,
   "color: orange; font-weight: bold; background: black",
   "color: white; font-weight: bold; background: dimgray"
 );
@@ -53,6 +53,7 @@ class StripCard extends LitElement {
     this._nameReplace = Array.isArray(nr) ? nr : [nr];
     this._config = {
       title: "",
+      title_alignment: 'left',
       duration: 20,
       separator: "•",
       font_size: "14px",
@@ -166,6 +167,7 @@ class StripCard extends LitElement {
       --strip-card-font-size: ${this._config.font_size};
       --strip-card-border-radius: ${this._config.border_radius};
       --strip-card-height: ${this._config.card_height};
+      --strip-card-title-align: ${this._config.title_alignment};
       ${cardWidthStyle}
       ${transparentStyle} 
     `;
@@ -300,6 +302,9 @@ class StripCard extends LitElement {
         flex-direction: column;
         justify-content: flex-start;
       }
+      ha-card .card-header {
+        text-align: var(--strip-card-title-align, left);
+      }
       .ticker-wrap {
         flex-grow: 1;
         display: flex;
@@ -401,12 +406,11 @@ class StripCard extends LitElement {
         margin: 0;
       }
       .ticker-item .separator {
-        margin-left: 1rem;
+        margin: 0 1rem;
         color: var(--disabled-text-color);
       }
       .ticker-wrap.has-vertical-scroll .ticker-item .separator {
-        margin-left: 0;
-        margin-top: 0.5rem;
+        margin: 0.5rem 0 0 0;
       }
       .ticker-move.has-inline-vertical-alignment .ticker-item {
         display: inline-flex;
@@ -510,6 +514,7 @@ class StripCardEditor extends LitElement {
   setConfig(config) {
     this._config = {
       title: "",
+      title_alignment: 'left',
       duration: 20,
       separator: "•",
       font_size: "14px",
@@ -599,6 +604,18 @@ class StripCardEditor extends LitElement {
           .configValue="${"title"}"
           @input="${this._valueChanged}"
         ></ha-textfield>
+
+        <ha-select
+          label="Titel-Ausrichtung"
+          .value="${this._config.title_alignment}"
+          .configValue="${"title_alignment"}"
+          @selected="${this._selectChanged}"
+          @closed="${(e) => e.stopPropagation()}"
+        >
+          <mwc-list-item value="left">Linksbündig</mwc-list-item>
+          <mwc-list-item value="center">Zentriert</mwc-list-item>
+          <mwc-list-item value="right">Rechtsbündig</mwc-list-item>
+        </ha-select>
 
         <ha-textfield
           label="Scroll-Dauer (Sekunden)"
