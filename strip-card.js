@@ -3,7 +3,7 @@ const html = LitElement.prototype.html;
 const css = LitElement.prototype.css;
 
 console.info(
-  `%c STRIP-CARD %c Loaded - Version 1.8.1 (Title Alignment) `,
+  `%c STRIP-CARD %c Loaded - Version 1.8.2 (Fixes) `,
   "color: orange; font-weight: bold; background: black",
   "color: white; font-weight: bold; background: dimgray"
 );
@@ -302,8 +302,10 @@ class StripCard extends LitElement {
         flex-direction: column;
         justify-content: flex-start;
       }
-      ha-card .card-header {
-        text-align: var(--strip-card-title-align, left);
+      :host ::slotted(.card-header),
+      ha-card > .card-header,
+      .card-header {
+        text-align: var(--strip-card-title-align, left) !important;
       }
       .ticker-wrap {
         flex-grow: 1;
@@ -394,7 +396,7 @@ class StripCard extends LitElement {
       .ticker-item {
         display: inline-flex;
         align-items: center;
-        margin: 0 1rem;
+        margin-right: 2rem;
         font-size: var(--strip-card-font-size, 14px);
         cursor: pointer;
       }
@@ -403,10 +405,10 @@ class StripCard extends LitElement {
         flex-direction: column;
         align-items: flex-start;
         padding: 0.5rem 1rem;
-        margin: 0;
+        margin-right: 0;
       }
       .ticker-item .separator {
-        margin: 0 1rem;
+        margin-left: 1rem;
         color: var(--disabled-text-color);
       }
       .ticker-wrap.has-vertical-scroll .ticker-item .separator {
