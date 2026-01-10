@@ -3,7 +3,7 @@ const html = LitElement.prototype.html;
 const css = LitElement.prototype.css;
 
 console.info(
-  `%c STRIP-CARD %c Loaded - Version 1.4.0 (Clean) `,
+  `%c STRIP-CARD %c Loaded - Version 1.5.0 (UI Editor) `,
   "color: orange; font-weight: bold; background: black",
   "color: white; font-weight: bold; background: dimgray"
 );
@@ -34,6 +34,10 @@ class StripCard extends LitElement {
       duration: 20,
       separator: "•"
     };
+  }
+
+  static getConfigElement() {
+    return document.createElement("strip-card-editor");
   }
 
   constructor() {
@@ -387,4 +391,595 @@ class StripCard extends LitElement {
   }
 }
 
+// Visual Editor
+class StripCardEditor extends LitElement {
+  static get properties() {
+    return {
+      hass: { type: Object },
+      _config: { type: Object },
+      _selectedEntity: { type: Number }
+    };
+  }
+
+  setConfig(config) {
+    this._config = {
+      ...config,
+      entities: config.entities || []
+    };
+    this._selectedEntity = null;
+  }
+
+  get _title() {
+    return this._config.title || "";
+  }
+
+  get _duration() {
+    return this._config.duration || 20;
+  }
+
+  get _separator() {
+    return this._config.separator || "•";
+  }
+
+  get _font_size() {
+    return this._config.font_size || "14px";
+  }
+
+  get _name_color() {
+    return this._config.name_color || "var(--primary-text-color)";
+  }
+
+  get _value_color() {
+    return this._config.value_color || "var(--primary-color)";
+  }
+
+  get _unit_color() {
+    return this._config.unit_color || "var(--secondary-text-color)";
+  }
+
+  get _icon_color() {
+    return this._config.icon_color || "var(--primary-text-color)";
+  }
+
+  get _show_icon() {
+    return this._config.show_icon !== undefined ? this._config.show_icon : false;
+  }
+
+  get _pause_on_hover() {
+    return this._config.pause_on_hover !== undefined ? this._config.pause_on_hover : false;
+  }
+
+  get _unit_position() {
+    return this._config.unit_position || "right";
+  }
+
+  get _border_radius() {
+    return this._config.border_radius || "0px";
+  }
+
+  get _card_height() {
+    return this._config.card_height || "50px";
+  }
+
+  get _card_width() {
+    return this._config.card_width || "400px";
+  }
+
+  get _fading() {
+    return this._config.fading !== undefined ? this._config.fading : false;
+  }
+
+  get _vertical_scroll() {
+    return this._config.vertical_scroll !== undefined ? this._config.vertical_scroll : false;
+  }
+
+  get _vertical_alignment() {
+    return this._config.vertical_alignment || "stack";
+  }
+
+  get _continuous_scroll() {
+    return this._config.continuous_scroll !== undefined ? this._config.continuous_scroll : true;
+  }
+
+  get _transparent() {
+    return this._config.transparent !== undefined ? this._config.transparent : false;
+  }
+
+  render() {
+    if (!this.hass || !this._config) {
+      return html``;
+    }
+
+    const entities = this._config.entities || [];
+
+    return html`
+      <div class="card-config">
+        <h3>Allgemeine Einstellungen</h3>
+        
+        <paper-input
+          label="Titel (optional)"
+          .value="${this._title}"
+          .configValue="${"title"}"
+          @value-changed="${this._valueChanged}"
+        ></paper-input>
+
+        <paper-input
+          label="Scroll-Dauer (Sekunden)"
+          type="number"
+          .value="${this._duration}"
+          .configValue="${"duration"}"
+          @value-changed="${this._valueChanged}"
+        ></paper-input>
+
+        <paper-input
+          label="Trennzeichen"
+          .value="${this._separator}"
+          .configValue="${"separator"}"
+          @value-changed="${this._valueChanged}"
+        ></paper-input>
+
+        <h3>Aussehen</h3>
+
+        <paper-input
+          label="Schriftgröße"
+          .value="${this._font_size}"
+          .configValue="${"font_size"}"
+          @value-changed="${this._valueChanged}"
+        ></paper-input>
+
+        <paper-input
+          label="Rahmenradius"
+          .value="${this._border_radius}"
+          .configValue="${"border_radius"}"
+          @value-changed="${this._valueChanged}"
+        ></paper-input>
+
+        <paper-input
+          label="Kartenhöhe"
+          .value="${this._card_height}"
+          .configValue="${"card_height"}"
+          @value-changed="${this._valueChanged}"
+        ></paper-input>
+
+        <paper-input
+          label="Kartenbreite"
+          .value="${this._card_width}"
+          .configValue="${"card_width"}"
+          @value-changed="${this._valueChanged}"
+        ></paper-input>
+
+        <h3>Farben</h3>
+
+        <paper-input
+          label="Namen-Farbe"
+          .value="${this._name_color}"
+          .configValue="${"name_color"}"
+          @value-changed="${this._valueChanged}"
+        ></paper-input>
+
+        <paper-input
+          label="Wert-Farbe"
+          .value="${this._value_color}"
+          .configValue="${"value_color"}"
+          @value-changed="${this._valueChanged}"
+        ></paper-input>
+
+        <paper-input
+          label="Einheit-Farbe"
+          .value="${this._unit_color}"
+          .configValue="${"unit_color"}"
+          @value-changed="${this._valueChanged}"
+        ></paper-input>
+
+        <paper-input
+          label="Icon-Farbe"
+          .value="${this._icon_color}"
+          .configValue="${"icon_color"}"
+          @value-changed="${this._valueChanged}"
+        ></paper-input>
+
+        <h3>Optionen</h3>
+
+        <ha-formfield label="Icons anzeigen">
+          <ha-switch
+            .checked="${this._show_icon}"
+            .configValue="${"show_icon"}"
+            @change="${this._valueChanged}"
+          ></ha-switch>
+        </ha-formfield>
+
+        <ha-formfield label="Bei Hover pausieren">
+          <ha-switch
+            .checked="${this._pause_on_hover}"
+            .configValue="${"pause_on_hover"}"
+            @change="${this._valueChanged}"
+          ></ha-switch>
+        </ha-formfield>
+
+        <ha-formfield label="Ausblenden (Fading)">
+          <ha-switch
+            .checked="${this._fading}"
+            .configValue="${"fading"}"
+            @change="${this._valueChanged}"
+          ></ha-switch>
+        </ha-formfield>
+
+        <ha-formfield label="Vertikales Scrollen">
+          <ha-switch
+            .checked="${this._vertical_scroll}"
+            .configValue="${"vertical_scroll"}"
+            @change="${this._valueChanged}"
+          ></ha-switch>
+        </ha-formfield>
+
+        <ha-formfield label="Kontinuierliches Scrollen">
+          <ha-switch
+            .checked="${this._continuous_scroll}"
+            .configValue="${"continuous_scroll"}"
+            @change="${this._valueChanged}"
+          ></ha-switch>
+        </ha-formfield>
+
+        <ha-formfield label="Transparenter Hintergrund">
+          <ha-switch
+            .checked="${this._transparent}"
+            .configValue="${"transparent"}"
+            @change="${this._valueChanged}"
+          ></ha-switch>
+        </ha-formfield>
+
+        <div class="side-by-side">
+          <paper-dropdown-menu
+            label="Einheit-Position"
+            @value-changed="${this._valueChanged}"
+            .configValue="${"unit_position"}"
+          >
+            <paper-listbox
+              slot="dropdown-content"
+              .selected="${this._unit_position === 'left' ? 0 : 1}"
+            >
+              <paper-item value="left">Links</paper-item>
+              <paper-item value="right">Rechts</paper-item>
+            </paper-listbox>
+          </paper-dropdown-menu>
+
+          <paper-dropdown-menu
+            label="Vertikale Ausrichtung"
+            @value-changed="${this._valueChanged}"
+            .configValue="${"vertical_alignment"}"
+          >
+            <paper-listbox
+              slot="dropdown-content"
+              .selected="${this._vertical_alignment === 'stack' ? 0 : 1}"
+            >
+              <paper-item value="stack">Gestapelt</paper-item>
+              <paper-item value="inline">Inline</paper-item>
+            </paper-listbox>
+          </paper-dropdown-menu>
+        </div>
+
+        <h3>Entitäten</h3>
+        
+        ${entities.map((entity, index) => {
+          const entityId = typeof entity === 'string' ? entity : entity.entity;
+          const entityName = typeof entity === 'string' ? entityId : (entity.name || entityId);
+          
+          return html`
+            <div class="entity-row">
+              <div class="entity-header" @click="${() => this._toggleEntity(index)}">
+                <span>${entityName}</span>
+                <div class="entity-controls">
+                  ${index > 0 ? html`
+                    <ha-icon-button
+                      .index="${index}"
+                      @click="${this._moveEntityUp}"
+                      .path="${"M7.41,15.41L12,10.83L16.59,15.41L18,14L12,8L6,14L7.41,15.41Z"}"
+                    ></ha-icon-button>
+                  ` : ''}
+                  ${index < entities.length - 1 ? html`
+                    <ha-icon-button
+                      .index="${index}"
+                      @click="${this._moveEntityDown}"
+                      .path="${"M7.41,8.58L12,13.17L16.59,8.58L18,10L12,16L6,10L7.41,8.58Z"}"
+                    ></ha-icon-button>
+                  ` : ''}
+                  <ha-icon-button
+                    .index="${index}"
+                    @click="${this._removeEntity}"
+                    .path="${"M19,4H15.5L14.5,3H9.5L8.5,4H5V6H19M6,19A2,2 0 0,0 8,21H16A2,2 0 0,0 18,19V7H6V19Z"}"
+                  ></ha-icon-button>
+                </div>
+              </div>
+              
+              ${this._selectedEntity === index ? html`
+                <div class="entity-editor">
+                  <ha-entity-picker
+                    .hass="${this.hass}"
+                    .value="${entityId}"
+                    .index="${index}"
+                    @value-changed="${this._entityChanged}"
+                    allow-custom-entity
+                  ></ha-entity-picker>
+
+                  <paper-input
+                    label="Name (optional)"
+                    .value="${entity.name || ''}"
+                    .index="${index}"
+                    .configValue="${"name"}"
+                    @value-changed="${this._entityPropertyChanged}"
+                  ></paper-input>
+
+                  <paper-input
+                    label="Icon (optional, z.B. mdi:home)"
+                    .value="${entity.icon || ''}"
+                    .index="${index}"
+                    .configValue="${"icon"}"
+                    @value-changed="${this._entityPropertyChanged}"
+                  ></paper-input>
+
+                  <paper-input
+                    label="Attribut (optional)"
+                    .value="${entity.attribute || ''}"
+                    .index="${index}"
+                    .configValue="${"attribute"}"
+                    @value-changed="${this._entityPropertyChanged}"
+                  ></paper-input>
+
+                  <paper-input
+                    label="Einheit (optional)"
+                    .value="${entity.unit || ''}"
+                    .index="${index}"
+                    .configValue="${"unit"}"
+                    @value-changed="${this._entityPropertyChanged}"
+                  ></paper-input>
+
+                  <paper-input
+                    label="Value Template (optional)"
+                    .value="${entity.value_template || ''}"
+                    .index="${index}"
+                    .configValue="${"value_template"}"
+                    @value-changed="${this._entityPropertyChanged}"
+                  ></paper-input>
+
+                  <paper-input
+                    label="Namen-Farbe (optional)"
+                    .value="${entity.name_color || ''}"
+                    .index="${index}"
+                    .configValue="${"name_color"}"
+                    @value-changed="${this._entityPropertyChanged}"
+                  ></paper-input>
+
+                  <paper-input
+                    label="Wert-Farbe (optional)"
+                    .value="${entity.value_color || ''}"
+                    .index="${index}"
+                    .configValue="${"value_color"}"
+                    @value-changed="${this._entityPropertyChanged}"
+                  ></paper-input>
+
+                  <paper-input
+                    label="Service (optional, z.B. light.turn_on)"
+                    .value="${entity.service || ''}"
+                    .index="${index}"
+                    .configValue="${"service"}"
+                    @value-changed="${this._entityPropertyChanged}"
+                  ></paper-input>
+
+                  <ha-formfield label="Icon anzeigen (überschreibt global)">
+                    <ha-switch
+                      .checked="${entity.show_icon !== undefined ? entity.show_icon : this._show_icon}"
+                      .index="${index}"
+                      .configValue="${"show_icon"}"
+                      @change="${this._entityPropertyChanged}"
+                    ></ha-switch>
+                  </ha-formfield>
+                </div>
+              ` : ''}
+            </div>
+          `;
+        })}
+
+        <mwc-button @click="${this._addEntity}">
+          Entität hinzufügen
+        </mwc-button>
+      </div>
+    `;
+  }
+
+  _toggleEntity(index) {
+    this._selectedEntity = this._selectedEntity === index ? null : index;
+    this.requestUpdate();
+  }
+
+  _addEntity() {
+    const entities = [...this._config.entities];
+    entities.push({ entity: "" });
+    this._config = { ...this._config, entities };
+    this._selectedEntity = entities.length - 1;
+    this._configChanged();
+  }
+
+  _removeEntity(ev) {
+    ev.stopPropagation();
+    const index = ev.currentTarget.index;
+    const entities = [...this._config.entities];
+    entities.splice(index, 1);
+    this._config = { ...this._config, entities };
+    if (this._selectedEntity === index) {
+      this._selectedEntity = null;
+    }
+    this._configChanged();
+  }
+
+  _moveEntityUp(ev) {
+    ev.stopPropagation();
+    const index = ev.currentTarget.index;
+    if (index === 0) return;
+    const entities = [...this._config.entities];
+    [entities[index - 1], entities[index]] = [entities[index], entities[index - 1]];
+    this._config = { ...this._config, entities };
+    this._configChanged();
+  }
+
+  _moveEntityDown(ev) {
+    ev.stopPropagation();
+    const index = ev.currentTarget.index;
+    const entities = [...this._config.entities];
+    if (index >= entities.length - 1) return;
+    [entities[index], entities[index + 1]] = [entities[index + 1], entities[index]];
+    this._config = { ...this._config, entities };
+    this._configChanged();
+  }
+
+  _entityChanged(ev) {
+    const index = ev.currentTarget.index;
+    const newEntityId = ev.detail.value;
+    const entities = [...this._config.entities];
+    
+    if (typeof entities[index] === 'string') {
+      entities[index] = { entity: newEntityId };
+    } else {
+      entities[index] = { ...entities[index], entity: newEntityId };
+    }
+    
+    this._config = { ...this._config, entities };
+    this._configChanged();
+  }
+
+  _entityPropertyChanged(ev) {
+    const index = ev.currentTarget.index;
+    const configValue = ev.currentTarget.configValue;
+    let value = ev.detail ? ev.detail.value : ev.currentTarget.value;
+    
+    if (ev.currentTarget.type === 'checkbox' || ev.target.tagName === 'HA-SWITCH') {
+      value = ev.currentTarget.checked || ev.target.checked;
+    }
+
+    const entities = [...this._config.entities];
+    
+    if (typeof entities[index] === 'string') {
+      entities[index] = { entity: entities[index], [configValue]: value };
+    } else {
+      entities[index] = { ...entities[index], [configValue]: value };
+    }
+    
+    this._config = { ...this._config, entities };
+    this._configChanged();
+  }
+
+  _valueChanged(ev) {
+    if (!this._config || !this.hass) {
+      return;
+    }
+    
+    const target = ev.currentTarget || ev.target;
+    const configValue = target.configValue;
+    
+    if (!configValue) {
+      return;
+    }
+
+    let value;
+    
+    if (target.type === 'checkbox' || target.tagName === 'HA-SWITCH') {
+      value = target.checked;
+    } else if (target.tagName === 'PAPER-DROPDOWN-MENU') {
+      const listbox = target.querySelector('paper-listbox');
+      const selectedItem = listbox.selectedItem;
+      value = selectedItem ? selectedItem.getAttribute('value') : null;
+    } else {
+      value = ev.detail ? ev.detail.value : target.value;
+    }
+
+    if (this._config[configValue] === value) {
+      return;
+    }
+
+    this._config = {
+      ...this._config,
+      [configValue]: value,
+    };
+
+    this._configChanged();
+  }
+
+  _configChanged() {
+    const event = new Event("config-changed", {
+      bubbles: true,
+      composed: true,
+    });
+    event.detail = { config: this._config };
+    this.dispatchEvent(event);
+  }
+
+  static get styles() {
+    return css`
+      .card-config {
+        padding: 16px;
+      }
+      
+      h3 {
+        margin: 16px 0 8px 0;
+        font-weight: 500;
+      }
+      
+      paper-input,
+      paper-dropdown-menu {
+        width: 100%;
+        margin-bottom: 8px;
+      }
+      
+      ha-formfield {
+        display: block;
+        margin: 8px 0;
+      }
+      
+      .side-by-side {
+        display: flex;
+        gap: 8px;
+      }
+      
+      .side-by-side > * {
+        flex: 1;
+      }
+      
+      .entity-row {
+        border: 1px solid var(--divider-color);
+        border-radius: 4px;
+        margin: 8px 0;
+        overflow: hidden;
+      }
+      
+      .entity-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 12px;
+        background: var(--secondary-background-color);
+        cursor: pointer;
+        user-select: none;
+      }
+      
+      .entity-header:hover {
+        background: var(--divider-color);
+      }
+      
+      .entity-controls {
+        display: flex;
+        gap: 4px;
+      }
+      
+      .entity-editor {
+        padding: 12px;
+        border-top: 1px solid var(--divider-color);
+      }
+      
+      mwc-button {
+        margin-top: 16px;
+      }
+    `;
+  }
+}
+
 customElements.define("strip-card", StripCard);
+customElements.define("strip-card-editor", StripCardEditor);
