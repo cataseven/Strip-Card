@@ -3,7 +3,7 @@ const html = LitElement.prototype.html;
 const css = LitElement.prototype.css;
 
 console.info(
-  `%c STRIP-CARD %c Loaded - Version 1.6.5 (Entity Click Working!) `,
+  `%c STRIP-CARD %c Loaded - Version 1.6.6 (Name Template Support) `,
   "color: orange; font-weight: bold; background: black",
   "color: white; font-weight: bold; background: dimgray"
 );
@@ -219,7 +219,9 @@ class StripCard extends LitElement {
     }
 
     const rawName = stateObj.attributes.friendly_name || entityId;
-    const name = entityConfig.name ? entityConfig.name : this._sanitizeName(rawName);
+    const name = entityConfig.name 
+      ? this.evaluateTemplate(entityConfig.name, this.hass)
+      : this._sanitizeName(rawName);
     const unit = entityConfig.unit !== undefined ? entityConfig.unit : (stateObj.attributes.unit_of_measurement || "");
     let showIcon = entityConfig.show_icon !== undefined ? entityConfig.show_icon : this._config.show_icon;
     showIcon = this.evaluateTemplate(showIcon, this.hass);
@@ -716,7 +718,7 @@ class StripCardEditor extends LitElement {
                   ></ha-entity-picker>
 
                   <ha-textfield
-                    label="Name (optional)"
+                    label="Name (optional, unterstützt Templates)"
                     .value="${entity.name || ''}"
                     .entityIndex="${index}"
                     .configValue="${"name"}"
