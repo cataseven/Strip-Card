@@ -3,7 +3,7 @@ const html = LitElement.prototype.html;
 const css = LitElement.prototype.css;
 
 console.info(
-  `%c STRIP-CARD %c Loaded - Version 1.9.5 (Title & UI) `,
+  `%c STRIP-CARD %c Loaded - Version 1.9.6 (Icons & Fix) `,
   "color: orange; font-weight: bold; background: black",
   "color: white; font-weight: bold; background: dimgray"
 );
@@ -55,6 +55,10 @@ class StripCard extends LitElement {
       title: "",
       title_alignment: 'left',
       title_font_size: "16px",
+      title_left_icon: "",
+      title_left_action: "",
+      title_right_icon: "",
+      title_right_action: "",
       duration: 20,
       separator: "•",
       font_size: "14px",
@@ -83,6 +87,50 @@ class StripCard extends LitElement {
     return 1;
   }
 
+  shouldUpdate(changedProps) {
+    // Only update if config changed, not just hass states
+    if (changedProps.has('_config')) {
+      return true;
+    }
+    
+    if (changedProps.has('hass')) {
+      const oldHass = changedProps.get('hass');
+      if (!oldHass) return true;
+      
+      // Check if any tracked entity actually changed
+      for (const entityConfig of this._config.entities) {
+        const entityId = typeof entityConfig === "string" ? entityConfig : entityConfig.entity;
+        if (!entityId) continue;
+        
+        const oldState = oldHass.states[entityId];
+        const newState = this.hass.states[entityId];
+        
+        if (!oldState || !newState) return true;
+        if (oldState.state !== newState.state) return true;
+        if (JSON.stringify(oldState.attributes) !== JSON.stringify(newState.attributes)) return true;
+      }
+      return false;
+    }
+    
+    return true;
+  }
+
+  _handleIconClick(action) {
+    if (!action) return;
+    
+    // Check if it's a navigation action (starts with /)
+    if (action.startsWith('/')) {
+      window.history.pushState(null, '', action);
+      window.dispatchEvent(new CustomEvent('location-changed'));
+      return;
+    }
+    
+    // Otherwise treat as entity
+    const event = new Event("hass-more-info", { bubbles: true, composed: true });
+    event.detail = { entityId: action };
+    this.dispatchEvent(event);
+  }
+
   _handleTap(entityConfig) {
     if (entityConfig.service) {
       const [domain, service] = entityConfig.service.split(".");
@@ -105,12 +153,10 @@ class StripCard extends LitElement {
 
     try {
       const expression = template.match(/{{(.*?)}}/s)[1];
-      // Provide states() function like in Home Assistant
       const states = (entityId) => {
         const entity = hass.states[entityId];
         return entity ? entity.state : 'unknown';
       };
-      // Provide state_attr() function
       const state_attr = (entityId, attr) => {
         const entity = hass.states[entityId];
         return entity && entity.attributes[attr] !== undefined ? entity.attributes[attr] : null;
@@ -198,7 +244,23 @@ class StripCard extends LitElement {
       <ha-card style="${cardStyles}">
         ${this._config.title ? html`
           <div class="card-header" style="text-align: ${this._config.title_alignment};">
-            ${this._config.title}
+            ${this._config.title_left_icon ? html`
+              <ha-icon 
+                class="title-icon left"
+                .icon=${this._config.title_left_icon}
+                @click=${() => this._handleIconClick(this._config.title_left_action)}
+                style="cursor: ${this._config.title_left_action ? 'pointer' : 'default'};"
+              ></ha-icon>
+            ` : ''}
+            <span class="title-text">${this._config.title}</span>
+            ${this._config.title_right_icon ? html`
+              <ha-icon 
+                class="title-icon right"
+                .icon=${this._config.title_right_icon}
+                @click=${() => this._handleIconClick(this._config.title_right_action)}
+                style="cursor: ${this._config.title_right_action ? 'pointer' : 'default'};"
+              ></ha-icon>
+            ` : ''}
           </div>
         ` : ''}
         <div class="ticker-wrap ${this._config.pause_on_hover ? 'pausable' : ''} ${fadingClass} ${verticalClass} ${chipsClass}">
@@ -314,6 +376,28 @@ class StripCard extends LitElement {
         font-size: var(--strip-card-title-font-size, 16px);
         font-weight: 400;
         color: var(--primary-text-color);
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+      }
+      .title-text {
+        flex: 1;
+      }
+      .title-icon {
+        --mdc-icon-size: 24px;
+        flex-shrink: 0;
+        color: var(--primary-text-color);
+        transition: color 0.2s;
+      }
+      .title-icon:hover {
+        color: var(--primary-color);
+      }
+      .title-icon.left {
+        order: -1;
+      }
+      .title-icon.right {
+        order: 1;
       }
       .ticker-wrap {
         flex-grow: 1;
@@ -504,6 +588,10 @@ class StripCardEditor extends LitElement {
       title: "",
       title_alignment: 'left',
       title_font_size: "16px",
+      title_left_icon: "",
+      title_left_action: "",
+      title_right_icon: "",
+      title_right_action: "",
       duration: 20,
       separator: "•",
       font_size: "14px",
@@ -613,6 +701,40 @@ class StripCardEditor extends LitElement {
           <mwc-list-item value="center">Zentriert</mwc-list-item>
           <mwc-list-item value="right">Rechtsbündig</mwc-list-item>
         </ha-select>
+
+        <div class="section-divider">Linkes Icon</div>
+
+        <ha-textfield
+          label="Icon links (z.B. mdi:home)"
+          .value="${this._config.title_left_icon || ''}"
+          .configValue="${"title_left_icon"}"
+          @input="${this._valueChanged}"
+        ></ha-textfield>
+
+        <ha-textfield
+          label="Aktion links (Entity-ID oder /dashboard-pfad)"
+          .value="${this._config.title_left_action || ''}"
+          .configValue="${"title_left_action"}"
+          @input="${this._valueChanged}"
+          helper-text="Z.B. 'light.wohnzimmer' oder '/lovelace/home'"
+        ></ha-textfield>
+
+        <div class="section-divider">Rechtes Icon</div>
+
+        <ha-textfield
+          label="Icon rechts (z.B. mdi:cog)"
+          .value="${this._config.title_right_icon || ''}"
+          .configValue="${"title_right_icon"}"
+          @input="${this._valueChanged}"
+        ></ha-textfield>
+
+        <ha-textfield
+          label="Aktion rechts (Entity-ID oder /dashboard-pfad)"
+          .value="${this._config.title_right_action || ''}"
+          .configValue="${"title_right_action"}"
+          @input="${this._valueChanged}"
+          helper-text="Z.B. 'light.wohnzimmer' oder '/lovelace/settings'"
+        ></ha-textfield>
       </div>
     `;
   }
@@ -1228,6 +1350,15 @@ class StripCardEditor extends LitElement {
 
       .tab-panel {
         padding: 16px;
+      }
+      
+      .section-divider {
+        font-weight: 500;
+        font-size: 14px;
+        color: var(--primary-color);
+        margin: 20px 0 12px 0;
+        padding-bottom: 8px;
+        border-bottom: 1px solid var(--divider-color);
       }
       
       ha-textfield,
