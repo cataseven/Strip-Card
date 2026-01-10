@@ -3,7 +3,7 @@ const html = LitElement.prototype.html;
 const css = LitElement.prototype.css;
 
 console.info(
-  `%c STRIP-CARD %c Loaded - Version 1.6.9 (Auto-fit dimensions) `,
+  `%c STRIP-CARD %c Loaded - Version 1.7.0 (Editor Stability) `,
   "color: orange; font-weight: bold; background: black",
   "color: white; font-weight: bold; background: dimgray"
 );
@@ -688,7 +688,7 @@ class StripCardEditor extends LitElement {
         
         ${entities.map((entity, index) => {
           const entityId = typeof entity === 'string' ? entity : (entity.entity || '');
-          const entityName = typeof entity === 'string' ? entityId : (entity.name || entityId || 'Neue Entität');
+          const entityName = this._getEntityDisplayName(entity, entityId);
           const isExpanded = this._selectedEntity === index;
           
           return html`
@@ -722,7 +722,7 @@ class StripCardEditor extends LitElement {
                 <div class="entity-editor">
                   <ha-entity-picker
                     .hass="${this.hass}"
-                    .value="${entityId || undefined}"
+                    .value="${entityId || ''}"
                     .entityIndex="${index}"
                     @value-changed="${this._entityChanged}"
                     allow-custom-entity
@@ -851,6 +851,30 @@ class StripCardEditor extends LitElement {
     `;
   }
 
+  _getEntityDisplayName(entity, entityId) {
+    if (typeof entity === 'string') {
+      return entityId || 'Neue Entität';
+    }
+    
+    // If custom name is set, use it
+    if (entity.name) {
+      return entity.name;
+    }
+    
+    // If entity ID exists, try to get friendly name from hass
+    if (entityId && this.hass && this.hass.states[entityId]) {
+      return this.hass.states[entityId].attributes.friendly_name || entityId;
+    }
+    
+    // If entity ID exists but no hass state, show the ID
+    if (entityId) {
+      return entityId;
+    }
+    
+    // Fallback for completely empty entities
+    return 'Neue Entität';
+  }
+
   _toggleEntity(index) {
     this._selectedEntity = this._selectedEntity === index ? null : index;
     this.requestUpdate();
@@ -915,6 +939,7 @@ class StripCardEditor extends LitElement {
     
     this._config = { ...this._config, entities };
     this._configChanged();
+    this.requestUpdate();
   }
 
   _entityPropertyChanged(ev) {
