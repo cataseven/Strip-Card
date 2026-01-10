@@ -3,7 +3,7 @@ const html = LitElement.prototype.html;
 const css = LitElement.prototype.css;
 
 console.info(
-  `%c STRIP-CARD %c Loaded - Version 2.0.2 (Fixed Height) `,
+  `%c STRIP-CARD %c Loaded - Version 2.0.3 (Smart UI) `,
   "color: orange; font-weight: bold; background: black",
   "color: white; font-weight: bold; background: dimgray"
 );
@@ -813,21 +813,23 @@ class StripCardEditor extends LitElement {
             .configValue="${"separator"}"
             @input="${this._valueChanged}"
           ></ha-textfield>
+
+          <ha-textfield
+            label="Schriftgröße"
+            .value="${this._config.font_size}"
+            .configValue="${"font_size"}"
+            @input="${this._valueChanged}"
+          ></ha-textfield>
         ` : ''}
 
-        <ha-textfield
-          label="Schriftgröße"
-          .value="${this._config.font_size}"
-          .configValue="${"font_size"}"
-          @input="${this._valueChanged}"
-        ></ha-textfield>
-
-        <ha-textfield
-          label="Rahmenradius"
-          .value="${this._config.border_radius}"
-          .configValue="${"border_radius"}"
-          @input="${this._valueChanged}"
-        ></ha-textfield>
+        ${!this._config.transparent ? html`
+          <ha-textfield
+            label="Rahmenradius"
+            .value="${this._config.border_radius}"
+            .configValue="${"border_radius"}"
+            @input="${this._valueChanged}"
+          ></ha-textfield>
+        ` : ''}
 
         <ha-textfield
           label="Kartenhöhe"
