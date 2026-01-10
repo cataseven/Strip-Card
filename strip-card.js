@@ -3,7 +3,7 @@ const html = LitElement.prototype.html;
 const css = LitElement.prototype.css;
 
 console.info(
-  `%c STRIP-CARD %c Loaded - Version 1.6.0 (UI with Tabs) `,
+  `%c STRIP-CARD %c Loaded - Version 1.6.1 (Tabs Fixed) `,
   "color: orange; font-weight: bold; background: black",
   "color: white; font-weight: bold; background: dimgray"
 );
@@ -391,14 +391,14 @@ class StripCard extends LitElement {
   }
 }
 
-// Visual Editor with Tabs
+// Visual Editor with Simple Tabs
 class StripCardEditor extends LitElement {
   static get properties() {
     return {
       hass: { type: Object },
       _config: { type: Object },
       _selectedEntity: { type: Number },
-      _currentTab: { type: Number }
+      _currentTab: { type: String }
     };
   }
 
@@ -427,7 +427,7 @@ class StripCardEditor extends LitElement {
       entities: config.entities || []
     };
     this._selectedEntity = null;
-    this._currentTab = 0;
+    this._currentTab = 'general';
   }
 
   render() {
@@ -437,30 +437,52 @@ class StripCardEditor extends LitElement {
 
     return html`
       <div class="card-config">
-        <mwc-tab-bar
-          .activeIndex=${this._currentTab}
-          @MDCTabBar:activated=${this._handleTabChanged}
-        >
-          <mwc-tab label="Allgemein"></mwc-tab>
-          <mwc-tab label="Aussehen"></mwc-tab>
-          <mwc-tab label="Farben"></mwc-tab>
-          <mwc-tab label="Optionen"></mwc-tab>
-          <mwc-tab label="Entitäten" .badge=${this._config.entities.length}></mwc-tab>
-        </mwc-tab-bar>
+        <div class="tabs">
+          <button 
+            class="tab ${this._currentTab === 'general' ? 'active' : ''}"
+            @click=${() => this._switchTab('general')}
+          >
+            Allgemein
+          </button>
+          <button 
+            class="tab ${this._currentTab === 'appearance' ? 'active' : ''}"
+            @click=${() => this._switchTab('appearance')}
+          >
+            Aussehen
+          </button>
+          <button 
+            class="tab ${this._currentTab === 'colors' ? 'active' : ''}"
+            @click=${() => this._switchTab('colors')}
+          >
+            Farben
+          </button>
+          <button 
+            class="tab ${this._currentTab === 'options' ? 'active' : ''}"
+            @click=${() => this._switchTab('options')}
+          >
+            Optionen
+          </button>
+          <button 
+            class="tab ${this._currentTab === 'entities' ? 'active' : ''}"
+            @click=${() => this._switchTab('entities')}
+          >
+            Entitäten (${this._config.entities.length})
+          </button>
+        </div>
 
         <div class="tab-content">
-          ${this._currentTab === 0 ? this._renderGeneralTab() : ''}
-          ${this._currentTab === 1 ? this._renderAppearanceTab() : ''}
-          ${this._currentTab === 2 ? this._renderColorsTab() : ''}
-          ${this._currentTab === 3 ? this._renderOptionsTab() : ''}
-          ${this._currentTab === 4 ? this._renderEntitiesTab() : ''}
+          ${this._currentTab === 'general' ? this._renderGeneralTab() : ''}
+          ${this._currentTab === 'appearance' ? this._renderAppearanceTab() : ''}
+          ${this._currentTab === 'colors' ? this._renderColorsTab() : ''}
+          ${this._currentTab === 'options' ? this._renderOptionsTab() : ''}
+          ${this._currentTab === 'entities' ? this._renderEntitiesTab() : ''}
         </div>
       </div>
     `;
   }
 
-  _handleTabChanged(ev) {
-    this._currentTab = ev.detail.index;
+  _switchTab(tab) {
+    this._currentTab = tab;
   }
 
   _renderGeneralTab() {
@@ -1000,11 +1022,36 @@ class StripCardEditor extends LitElement {
       .card-config {
         display: flex;
         flex-direction: column;
-        height: 100%;
       }
       
-      mwc-tab-bar {
-        border-bottom: 1px solid var(--divider-color);
+      .tabs {
+        display: flex;
+        border-bottom: 2px solid var(--divider-color);
+        background: var(--card-background-color);
+        overflow-x: auto;
+      }
+
+      .tab {
+        padding: 12px 16px;
+        background: none;
+        border: none;
+        border-bottom: 2px solid transparent;
+        margin-bottom: -2px;
+        cursor: pointer;
+        font-size: 14px;
+        color: var(--primary-text-color);
+        transition: all 0.2s;
+        white-space: nowrap;
+      }
+
+      .tab:hover {
+        background: var(--secondary-background-color);
+      }
+
+      .tab.active {
+        border-bottom-color: var(--primary-color);
+        color: var(--primary-color);
+        font-weight: 500;
       }
 
       .tab-content {
