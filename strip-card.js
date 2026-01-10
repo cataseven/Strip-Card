@@ -3,7 +3,7 @@ const html = LitElement.prototype.html;
 const css = LitElement.prototype.css;
 
 console.info(
-  `%c STRIP-CARD %c Loaded - Version 1.5.0 (UI Editor) `,
+  `%c STRIP-CARD %c Loaded - Version 1.5.1 (UI Editor Fixed) `,
   "color: orange; font-weight: bold; background: black",
   "color: white; font-weight: bold; background: dimgray"
 );
@@ -403,86 +403,29 @@ class StripCardEditor extends LitElement {
 
   setConfig(config) {
     this._config = {
+      title: "",
+      duration: 20,
+      separator: "•",
+      font_size: "14px",
+      name_color: "var(--primary-text-color)",
+      value_color: "var(--primary-color)",
+      unit_color: "var(--secondary-text-color)",
+      icon_color: "var(--primary-text-color)",
+      show_icon: false,
+      pause_on_hover: false,
+      unit_position: 'right',
+      border_radius: "0px",
+      card_height: "50px",
+      card_width: "400px",
+      fading: false,
+      vertical_scroll: false,
+      vertical_alignment: 'stack',
+      continuous_scroll: true,
+      transparent: false,
       ...config,
       entities: config.entities || []
     };
     this._selectedEntity = null;
-  }
-
-  get _title() {
-    return this._config.title || "";
-  }
-
-  get _duration() {
-    return this._config.duration || 20;
-  }
-
-  get _separator() {
-    return this._config.separator || "•";
-  }
-
-  get _font_size() {
-    return this._config.font_size || "14px";
-  }
-
-  get _name_color() {
-    return this._config.name_color || "var(--primary-text-color)";
-  }
-
-  get _value_color() {
-    return this._config.value_color || "var(--primary-color)";
-  }
-
-  get _unit_color() {
-    return this._config.unit_color || "var(--secondary-text-color)";
-  }
-
-  get _icon_color() {
-    return this._config.icon_color || "var(--primary-text-color)";
-  }
-
-  get _show_icon() {
-    return this._config.show_icon !== undefined ? this._config.show_icon : false;
-  }
-
-  get _pause_on_hover() {
-    return this._config.pause_on_hover !== undefined ? this._config.pause_on_hover : false;
-  }
-
-  get _unit_position() {
-    return this._config.unit_position || "right";
-  }
-
-  get _border_radius() {
-    return this._config.border_radius || "0px";
-  }
-
-  get _card_height() {
-    return this._config.card_height || "50px";
-  }
-
-  get _card_width() {
-    return this._config.card_width || "400px";
-  }
-
-  get _fading() {
-    return this._config.fading !== undefined ? this._config.fading : false;
-  }
-
-  get _vertical_scroll() {
-    return this._config.vertical_scroll !== undefined ? this._config.vertical_scroll : false;
-  }
-
-  get _vertical_alignment() {
-    return this._config.vertical_alignment || "stack";
-  }
-
-  get _continuous_scroll() {
-    return this._config.continuous_scroll !== undefined ? this._config.continuous_scroll : true;
-  }
-
-  get _transparent() {
-    return this._config.transparent !== undefined ? this._config.transparent : false;
   }
 
   render() {
@@ -496,202 +439,198 @@ class StripCardEditor extends LitElement {
       <div class="card-config">
         <h3>Allgemeine Einstellungen</h3>
         
-        <paper-input
+        <ha-textfield
           label="Titel (optional)"
-          .value="${this._title}"
+          .value="${this._config.title || ''}"
           .configValue="${"title"}"
-          @value-changed="${this._valueChanged}"
-        ></paper-input>
+          @input="${this._valueChanged}"
+        ></ha-textfield>
 
-        <paper-input
+        <ha-textfield
           label="Scroll-Dauer (Sekunden)"
           type="number"
-          .value="${this._duration}"
+          .value="${this._config.duration}"
           .configValue="${"duration"}"
-          @value-changed="${this._valueChanged}"
-        ></paper-input>
+          @input="${this._valueChanged}"
+        ></ha-textfield>
 
-        <paper-input
+        <ha-textfield
           label="Trennzeichen"
-          .value="${this._separator}"
+          .value="${this._config.separator}"
           .configValue="${"separator"}"
-          @value-changed="${this._valueChanged}"
-        ></paper-input>
+          @input="${this._valueChanged}"
+        ></ha-textfield>
 
         <h3>Aussehen</h3>
 
-        <paper-input
-          label="Schriftgröße"
-          .value="${this._font_size}"
+        <ha-textfield
+          label="Schriftgröße (z.B. 14px, 1rem)"
+          .value="${this._config.font_size}"
           .configValue="${"font_size"}"
-          @value-changed="${this._valueChanged}"
-        ></paper-input>
+          @input="${this._valueChanged}"
+        ></ha-textfield>
 
-        <paper-input
-          label="Rahmenradius"
-          .value="${this._border_radius}"
+        <ha-textfield
+          label="Rahmenradius (z.B. 0px, 8px)"
+          .value="${this._config.border_radius}"
           .configValue="${"border_radius"}"
-          @value-changed="${this._valueChanged}"
-        ></paper-input>
+          @input="${this._valueChanged}"
+        ></ha-textfield>
 
-        <paper-input
-          label="Kartenhöhe"
-          .value="${this._card_height}"
+        <ha-textfield
+          label="Kartenhöhe (z.B. 50px)"
+          .value="${this._config.card_height}"
           .configValue="${"card_height"}"
-          @value-changed="${this._valueChanged}"
-        ></paper-input>
+          @input="${this._valueChanged}"
+        ></ha-textfield>
 
-        <paper-input
-          label="Kartenbreite"
-          .value="${this._card_width}"
+        <ha-textfield
+          label="Kartenbreite (z.B. 400px, 100%)"
+          .value="${this._config.card_width}"
           .configValue="${"card_width"}"
-          @value-changed="${this._valueChanged}"
-        ></paper-input>
+          @input="${this._valueChanged}"
+        ></ha-textfield>
 
         <h3>Farben</h3>
 
-        <paper-input
-          label="Namen-Farbe"
-          .value="${this._name_color}"
+        <ha-textfield
+          label="Namen-Farbe (z.B. #ff0000, var(--primary-text-color))"
+          .value="${this._config.name_color}"
           .configValue="${"name_color"}"
-          @value-changed="${this._valueChanged}"
-        ></paper-input>
+          @input="${this._valueChanged}"
+        ></ha-textfield>
 
-        <paper-input
+        <ha-textfield
           label="Wert-Farbe"
-          .value="${this._value_color}"
+          .value="${this._config.value_color}"
           .configValue="${"value_color"}"
-          @value-changed="${this._valueChanged}"
-        ></paper-input>
+          @input="${this._valueChanged}"
+        ></ha-textfield>
 
-        <paper-input
+        <ha-textfield
           label="Einheit-Farbe"
-          .value="${this._unit_color}"
+          .value="${this._config.unit_color}"
           .configValue="${"unit_color"}"
-          @value-changed="${this._valueChanged}"
-        ></paper-input>
+          @input="${this._valueChanged}"
+        ></ha-textfield>
 
-        <paper-input
+        <ha-textfield
           label="Icon-Farbe"
-          .value="${this._icon_color}"
+          .value="${this._config.icon_color}"
           .configValue="${"icon_color"}"
-          @value-changed="${this._valueChanged}"
-        ></paper-input>
+          @input="${this._valueChanged}"
+        ></ha-textfield>
 
         <h3>Optionen</h3>
 
         <ha-formfield label="Icons anzeigen">
           <ha-switch
-            .checked="${this._show_icon}"
+            .checked="${this._config.show_icon}"
             .configValue="${"show_icon"}"
-            @change="${this._valueChanged}"
+            @change="${this._switchChanged}"
           ></ha-switch>
         </ha-formfield>
 
         <ha-formfield label="Bei Hover pausieren">
           <ha-switch
-            .checked="${this._pause_on_hover}"
+            .checked="${this._config.pause_on_hover}"
             .configValue="${"pause_on_hover"}"
-            @change="${this._valueChanged}"
+            @change="${this._switchChanged}"
           ></ha-switch>
         </ha-formfield>
 
         <ha-formfield label="Ausblenden (Fading)">
           <ha-switch
-            .checked="${this._fading}"
+            .checked="${this._config.fading}"
             .configValue="${"fading"}"
-            @change="${this._valueChanged}"
+            @change="${this._switchChanged}"
           ></ha-switch>
         </ha-formfield>
 
         <ha-formfield label="Vertikales Scrollen">
           <ha-switch
-            .checked="${this._vertical_scroll}"
+            .checked="${this._config.vertical_scroll}"
             .configValue="${"vertical_scroll"}"
-            @change="${this._valueChanged}"
+            @change="${this._switchChanged}"
           ></ha-switch>
         </ha-formfield>
 
         <ha-formfield label="Kontinuierliches Scrollen">
           <ha-switch
-            .checked="${this._continuous_scroll}"
+            .checked="${this._config.continuous_scroll}"
             .configValue="${"continuous_scroll"}"
-            @change="${this._valueChanged}"
+            @change="${this._switchChanged}"
           ></ha-switch>
         </ha-formfield>
 
         <ha-formfield label="Transparenter Hintergrund">
           <ha-switch
-            .checked="${this._transparent}"
+            .checked="${this._config.transparent}"
             .configValue="${"transparent"}"
-            @change="${this._valueChanged}"
+            @change="${this._switchChanged}"
           ></ha-switch>
         </ha-formfield>
 
-        <div class="side-by-side">
-          <paper-dropdown-menu
-            label="Einheit-Position"
-            @value-changed="${this._valueChanged}"
-            .configValue="${"unit_position"}"
-          >
-            <paper-listbox
-              slot="dropdown-content"
-              .selected="${this._unit_position === 'left' ? 0 : 1}"
-            >
-              <paper-item value="left">Links</paper-item>
-              <paper-item value="right">Rechts</paper-item>
-            </paper-listbox>
-          </paper-dropdown-menu>
+        <ha-select
+          label="Einheit-Position"
+          .value="${this._config.unit_position}"
+          .configValue="${"unit_position"}"
+          @selected="${this._selectChanged}"
+          @closed="${(e) => e.stopPropagation()}"
+        >
+          <mwc-list-item value="left">Links</mwc-list-item>
+          <mwc-list-item value="right">Rechts</mwc-list-item>
+        </ha-select>
 
-          <paper-dropdown-menu
-            label="Vertikale Ausrichtung"
-            @value-changed="${this._valueChanged}"
-            .configValue="${"vertical_alignment"}"
-          >
-            <paper-listbox
-              slot="dropdown-content"
-              .selected="${this._vertical_alignment === 'stack' ? 0 : 1}"
-            >
-              <paper-item value="stack">Gestapelt</paper-item>
-              <paper-item value="inline">Inline</paper-item>
-            </paper-listbox>
-          </paper-dropdown-menu>
-        </div>
+        <ha-select
+          label="Vertikale Ausrichtung"
+          .value="${this._config.vertical_alignment}"
+          .configValue="${"vertical_alignment"}"
+          @selected="${this._selectChanged}"
+          @closed="${(e) => e.stopPropagation()}"
+        >
+          <mwc-list-item value="stack">Gestapelt</mwc-list-item>
+          <mwc-list-item value="inline">Inline</mwc-list-item>
+        </ha-select>
 
         <h3>Entitäten</h3>
         
         ${entities.map((entity, index) => {
           const entityId = typeof entity === 'string' ? entity : entity.entity;
           const entityName = typeof entity === 'string' ? entityId : (entity.name || entityId);
+          const isExpanded = this._selectedEntity === index;
           
           return html`
             <div class="entity-row">
               <div class="entity-header" @click="${() => this._toggleEntity(index)}">
-                <span>${entityName}</span>
+                <span>${entityName || 'Neue Entität'}</span>
                 <div class="entity-controls">
                   ${index > 0 ? html`
                     <ha-icon-button
                       .index="${index}"
                       @click="${this._moveEntityUp}"
-                      .path="${"M7.41,15.41L12,10.83L16.59,15.41L18,14L12,8L6,14L7.41,15.41Z"}"
-                    ></ha-icon-button>
+                    >
+                      <ha-icon icon="mdi:arrow-up"></ha-icon>
+                    </ha-icon-button>
                   ` : ''}
                   ${index < entities.length - 1 ? html`
                     <ha-icon-button
                       .index="${index}"
                       @click="${this._moveEntityDown}"
-                      .path="${"M7.41,8.58L12,13.17L16.59,8.58L18,10L12,16L6,10L7.41,8.58Z"}"
-                    ></ha-icon-button>
+                    >
+                      <ha-icon icon="mdi:arrow-down"></ha-icon>
+                    </ha-icon-button>
                   ` : ''}
                   <ha-icon-button
                     .index="${index}"
                     @click="${this._removeEntity}"
-                    .path="${"M19,4H15.5L14.5,3H9.5L8.5,4H5V6H19M6,19A2,2 0 0,0 8,21H16A2,2 0 0,0 18,19V7H6V19Z"}"
-                  ></ha-icon-button>
+                  >
+                    <ha-icon icon="mdi:delete"></ha-icon>
+                  </ha-icon-button>
                 </div>
               </div>
               
-              ${this._selectedEntity === index ? html`
+              ${isExpanded ? html`
                 <div class="entity-editor">
                   <ha-entity-picker
                     .hass="${this.hass}"
@@ -701,76 +640,114 @@ class StripCardEditor extends LitElement {
                     allow-custom-entity
                   ></ha-entity-picker>
 
-                  <paper-input
+                  <ha-textfield
                     label="Name (optional)"
                     .value="${entity.name || ''}"
                     .index="${index}"
                     .configValue="${"name"}"
-                    @value-changed="${this._entityPropertyChanged}"
-                  ></paper-input>
+                    @input="${this._entityPropertyChanged}"
+                  ></ha-textfield>
 
-                  <paper-input
+                  <ha-textfield
                     label="Icon (optional, z.B. mdi:home)"
                     .value="${entity.icon || ''}"
                     .index="${index}"
                     .configValue="${"icon"}"
-                    @value-changed="${this._entityPropertyChanged}"
-                  ></paper-input>
+                    @input="${this._entityPropertyChanged}"
+                  ></ha-textfield>
 
-                  <paper-input
+                  <ha-textfield
                     label="Attribut (optional)"
                     .value="${entity.attribute || ''}"
                     .index="${index}"
                     .configValue="${"attribute"}"
-                    @value-changed="${this._entityPropertyChanged}"
-                  ></paper-input>
+                    @input="${this._entityPropertyChanged}"
+                  ></ha-textfield>
 
-                  <paper-input
+                  <ha-textfield
                     label="Einheit (optional)"
                     .value="${entity.unit || ''}"
                     .index="${index}"
                     .configValue="${"unit"}"
-                    @value-changed="${this._entityPropertyChanged}"
-                  ></paper-input>
+                    @input="${this._entityPropertyChanged}"
+                  ></ha-textfield>
 
-                  <paper-input
-                    label="Value Template (optional)"
+                  <ha-textfield
+                    label="Value Template (optional, z.B. {{ states('sensor.temp') }})"
                     .value="${entity.value_template || ''}"
                     .index="${index}"
                     .configValue="${"value_template"}"
-                    @value-changed="${this._entityPropertyChanged}"
-                  ></paper-input>
+                    @input="${this._entityPropertyChanged}"
+                  ></ha-textfield>
 
-                  <paper-input
+                  <ha-textfield
+                    label="Visible If Template (optional)"
+                    .value="${entity.visible_if || ''}"
+                    .index="${index}"
+                    .configValue="${"visible_if"}"
+                    @input="${this._entityPropertyChanged}"
+                  ></ha-textfield>
+
+                  <ha-textfield
                     label="Namen-Farbe (optional)"
                     .value="${entity.name_color || ''}"
                     .index="${index}"
                     .configValue="${"name_color"}"
-                    @value-changed="${this._entityPropertyChanged}"
-                  ></paper-input>
+                    @input="${this._entityPropertyChanged}"
+                  ></ha-textfield>
 
-                  <paper-input
+                  <ha-textfield
                     label="Wert-Farbe (optional)"
                     .value="${entity.value_color || ''}"
                     .index="${index}"
                     .configValue="${"value_color"}"
-                    @value-changed="${this._entityPropertyChanged}"
-                  ></paper-input>
+                    @input="${this._entityPropertyChanged}"
+                  ></ha-textfield>
 
-                  <paper-input
+                  <ha-textfield
+                    label="Einheit-Farbe (optional)"
+                    .value="${entity.unit_color || ''}"
+                    .index="${index}"
+                    .configValue="${"unit_color"}"
+                    @input="${this._entityPropertyChanged}"
+                  ></ha-textfield>
+
+                  <ha-textfield
+                    label="Icon-Farbe (optional)"
+                    .value="${entity.icon_color || ''}"
+                    .index="${index}"
+                    .configValue="${"icon_color"}"
+                    @input="${this._entityPropertyChanged}"
+                  ></ha-textfield>
+
+                  <ha-textfield
                     label="Service (optional, z.B. light.turn_on)"
                     .value="${entity.service || ''}"
                     .index="${index}"
                     .configValue="${"service"}"
-                    @value-changed="${this._entityPropertyChanged}"
-                  ></paper-input>
+                    @input="${this._entityPropertyChanged}"
+                  ></ha-textfield>
+
+                  <ha-select
+                    label="Einheit-Position (überschreibt global)"
+                    .value="${entity.unit_position || ''}"
+                    .index="${index}"
+                    .configValue="${"unit_position"}"
+                    @selected="${this._entitySelectChanged}"
+                    @closed="${(e) => e.stopPropagation()}"
+                  >
+                    <mwc-list-item value="">Standard</mwc-list-item>
+                    <mwc-list-item value="left">Links</mwc-list-item>
+                    <mwc-list-item value="right">Rechts</mwc-list-item>
+                  </ha-select>
 
                   <ha-formfield label="Icon anzeigen (überschreibt global)">
                     <ha-switch
-                      .checked="${entity.show_icon !== undefined ? entity.show_icon : this._show_icon}"
+                      .checked="${entity.show_icon !== undefined ? entity.show_icon : false}"
+                      .indeterminate="${entity.show_icon === undefined}"
                       .index="${index}"
                       .configValue="${"show_icon"}"
-                      @change="${this._entityPropertyChanged}"
+                      @change="${this._entitySwitchChanged}"
                     ></ha-switch>
                   </ha-formfield>
                 </div>
@@ -779,7 +756,7 @@ class StripCardEditor extends LitElement {
           `;
         })}
 
-        <mwc-button @click="${this._addEntity}">
+        <mwc-button raised @click="${this._addEntity}">
           Entität hinzufügen
         </mwc-button>
       </div>
@@ -849,11 +826,41 @@ class StripCardEditor extends LitElement {
   _entityPropertyChanged(ev) {
     const index = ev.currentTarget.index;
     const configValue = ev.currentTarget.configValue;
-    let value = ev.detail ? ev.detail.value : ev.currentTarget.value;
+    const value = ev.currentTarget.value;
+
+    const entities = [...this._config.entities];
     
-    if (ev.currentTarget.type === 'checkbox' || ev.target.tagName === 'HA-SWITCH') {
-      value = ev.currentTarget.checked || ev.target.checked;
+    if (typeof entities[index] === 'string') {
+      entities[index] = { entity: entities[index], [configValue]: value };
+    } else {
+      entities[index] = { ...entities[index], [configValue]: value };
     }
+    
+    this._config = { ...this._config, entities };
+    this._configChanged();
+  }
+
+  _entitySelectChanged(ev) {
+    const index = ev.currentTarget.index;
+    const configValue = ev.currentTarget.configValue;
+    const value = ev.currentTarget.value;
+
+    const entities = [...this._config.entities];
+    
+    if (typeof entities[index] === 'string') {
+      entities[index] = { entity: entities[index], [configValue]: value };
+    } else {
+      entities[index] = { ...entities[index], [configValue]: value };
+    }
+    
+    this._config = { ...this._config, entities };
+    this._configChanged();
+  }
+
+  _entitySwitchChanged(ev) {
+    const index = ev.currentTarget.index;
+    const configValue = ev.currentTarget.configValue;
+    const value = ev.currentTarget.checked;
 
     const entities = [...this._config.entities];
     
@@ -872,26 +879,57 @@ class StripCardEditor extends LitElement {
       return;
     }
     
-    const target = ev.currentTarget || ev.target;
+    const target = ev.currentTarget;
     const configValue = target.configValue;
-    
+    const value = target.value;
+
     if (!configValue) {
       return;
     }
 
-    let value;
-    
-    if (target.type === 'checkbox' || target.tagName === 'HA-SWITCH') {
-      value = target.checked;
-    } else if (target.tagName === 'PAPER-DROPDOWN-MENU') {
-      const listbox = target.querySelector('paper-listbox');
-      const selectedItem = listbox.selectedItem;
-      value = selectedItem ? selectedItem.getAttribute('value') : null;
-    } else {
-      value = ev.detail ? ev.detail.value : target.value;
+    if (this._config[configValue] === value) {
+      return;
     }
 
-    if (this._config[configValue] === value) {
+    this._config = {
+      ...this._config,
+      [configValue]: value,
+    };
+
+    this._configChanged();
+  }
+
+  _switchChanged(ev) {
+    if (!this._config || !this.hass) {
+      return;
+    }
+    
+    const target = ev.currentTarget;
+    const configValue = target.configValue;
+    const value = target.checked;
+
+    if (!configValue) {
+      return;
+    }
+
+    this._config = {
+      ...this._config,
+      [configValue]: value,
+    };
+
+    this._configChanged();
+  }
+
+  _selectChanged(ev) {
+    if (!this._config || !this.hass) {
+      return;
+    }
+    
+    const target = ev.currentTarget;
+    const configValue = target.configValue;
+    const value = target.value;
+
+    if (!configValue) {
       return;
     }
 
@@ -919,45 +957,41 @@ class StripCardEditor extends LitElement {
       }
       
       h3 {
-        margin: 16px 0 8px 0;
+        margin: 20px 0 12px 0;
         font-weight: 500;
+        font-size: 16px;
       }
       
-      paper-input,
-      paper-dropdown-menu {
+      ha-textfield,
+      ha-select {
         width: 100%;
-        margin-bottom: 8px;
+        margin-bottom: 12px;
+        display: block;
       }
       
       ha-formfield {
         display: block;
-        margin: 8px 0;
-      }
-      
-      .side-by-side {
-        display: flex;
-        gap: 8px;
-      }
-      
-      .side-by-side > * {
-        flex: 1;
+        margin: 12px 0;
+        padding: 8px 0;
       }
       
       .entity-row {
         border: 1px solid var(--divider-color);
-        border-radius: 4px;
-        margin: 8px 0;
+        border-radius: 8px;
+        margin: 12px 0;
         overflow: hidden;
+        background: var(--card-background-color);
       }
       
       .entity-header {
         display: flex;
         justify-content: space-between;
         align-items: center;
-        padding: 12px;
+        padding: 12px 16px;
         background: var(--secondary-background-color);
         cursor: pointer;
         user-select: none;
+        font-weight: 500;
       }
       
       .entity-header:hover {
@@ -970,12 +1004,17 @@ class StripCardEditor extends LitElement {
       }
       
       .entity-editor {
-        padding: 12px;
+        padding: 16px;
         border-top: 1px solid var(--divider-color);
       }
       
       mwc-button {
         margin-top: 16px;
+        width: 100%;
+      }
+
+      ha-icon {
+        color: var(--primary-text-color);
       }
     `;
   }
