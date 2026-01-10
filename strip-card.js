@@ -3,7 +3,7 @@ const html = LitElement.prototype.html;
 const css = LitElement.prototype.css;
 
 console.info(
-  `%c STRIP-CARD %c Loaded - Version 1.8.2 (Fixes) `,
+  `%c STRIP-CARD %c Loaded - Version 1.9.0 (Chips Style) `,
   "color: orange; font-weight: bold; background: black",
   "color: white; font-weight: bold; background: dimgray"
 );
@@ -149,7 +149,7 @@ class StripCard extends LitElement {
     const fadingClass = this._config.fading ? 'has-fading' : '';
     const verticalClass = this._config.vertical_scroll ? 'has-vertical-scroll' : '';
     const verticalAlignmentClass = this._config.vertical_alignment === 'inline' ? 'has-inline-vertical-alignment' : '';
-    const badgeClass = this._config.badge_style ? 'has-badge-style' : '';
+    const chipsClass = this._config.badge_style ? 'has-chips-style' : '';
     const animationIteration = this._config.continuous_scroll ? 'infinite' : '1';
     
     let transparentStyle = '';
@@ -180,7 +180,7 @@ class StripCard extends LitElement {
 
     let content = renderedEntities;
 
-    if (this._config.continuous_scroll && !this._config.badge_style) {
+    if (this._config.continuous_scroll) {
       const containerWidth = this.getBoundingClientRect().width || 400;
       const divisor = (renderedEntities.length * 100) || 100; 
       const minCopies = Math.ceil(containerWidth / divisor) + 2;
@@ -193,7 +193,7 @@ class StripCard extends LitElement {
     
     return html`
       <ha-card .header="${this._config.title}" style="${cardStyles}">
-        <div class="ticker-wrap ${this._config.pause_on_hover ? 'pausable' : ''} ${fadingClass} ${verticalClass} ${badgeClass}">
+        <div class="ticker-wrap ${this._config.pause_on_hover ? 'pausable' : ''} ${fadingClass} ${verticalClass} ${chipsClass}">
           <div class="ticker-move ${verticalAlignmentClass}" style="animation-duration: ${duration}s; animation-iteration-count: ${animationIteration};">
             ${content}
           </div>
@@ -255,19 +255,18 @@ class StripCard extends LitElement {
     if (this._config.badge_style) {
       return html`
         <div
-          class="badge-item"
+          class="chip-item"
           @click=${() => this._handleTap(entityConfig)}
           title="${titleText}"
         >
-          ${customIcon
-            ? html`<ha-icon class="badge-icon" .icon=${customIcon} style="color: ${iconColor};"></ha-icon>`
-            : html`<state-badge class="badge-icon" .hass=${this.hass} .stateObj=${stateObj}></state-badge>`
-          }
-          <div class="badge-content">
-            <span class="badge-name" style="color: ${nameColor};">${name}</span>
-            <div class="badge-value-row">
-              ${unit_position === 'left' ? html`${unitPart}${valuePart}` : html`${valuePart}${unitPart}`}
-            </div>
+          ${showIcon || customIcon
+            ? customIcon
+              ? html`<ha-icon class="chip-icon" .icon=${customIcon} style="color: ${iconColor};"></ha-icon>`
+              : html`<state-badge class="chip-icon" .hass=${this.hass} .stateObj=${stateObj}></state-badge>`
+            : ''}
+          <span class="chip-name" style="color: ${nameColor};">${name}</span>
+          <div class="chip-value">
+            ${unit_position === 'left' ? html`${unitPart}${valuePart}` : html`${valuePart}${unitPart}`}
           </div>
         </div>
       `;
@@ -324,8 +323,8 @@ class StripCard extends LitElement {
         height: var(--strip-card-height, auto);
         overflow: hidden;
       }
-      .ticker-wrap.has-badge-style {
-        padding: 16px 8px;
+      .ticker-wrap.has-chips-style {
+        padding: 8px 0;
         min-height: auto;
       }
       .ticker-wrap.has-fading {
@@ -356,10 +355,6 @@ class StripCard extends LitElement {
           rgba(0, 0, 0, 0) 100%
         );
       }
-      .ticker-wrap.has-badge-style.has-fading {
-        -webkit-mask-image: none;
-        mask-image: none;
-      }
       .ticker-wrap.pausable:hover .ticker-move {
         animation-play-state: paused;
       }
@@ -371,14 +366,6 @@ class StripCard extends LitElement {
         animation-name: ticker;
         animation-timing-function: linear;
         animation-iteration-count: infinite;
-      }
-      .ticker-wrap.has-badge-style .ticker-move {
-        display: flex;
-        flex-wrap: wrap;
-        justify-content: center;
-        gap: 12px;
-        animation: none;
-        width: 100%;
       }
       .ticker-move.has-inline-vertical-alignment {
         display: block;
@@ -418,48 +405,38 @@ class StripCard extends LitElement {
         display: inline-flex;
         margin: 0.5rem 1rem;
       }
-      .badge-item {
-        display: flex;
-        flex-direction: column;
+      .chip-item {
+        display: inline-flex;
         align-items: center;
-        min-width: 80px;
-        padding: 12px;
-        cursor: pointer;
-        border-radius: 12px;
+        gap: 6px;
+        padding: 6px 12px;
+        margin-right: 8px;
         background: var(--ha-card-background, var(--card-background-color));
+        border-radius: 18px;
+        cursor: pointer;
+        font-size: 13px;
+        white-space: nowrap;
         transition: background 0.2s;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
       }
-      .badge-item:hover {
+      .chip-item:hover {
         background: var(--secondary-background-color);
       }
-      .badge-icon {
-        --mdc-icon-size: 40px;
-        width: 40px;
-        height: 40px;
-        margin-bottom: 8px;
+      .chip-icon {
+        --mdc-icon-size: 18px;
+        width: 18px;
+        height: 18px;
+        flex-shrink: 0;
       }
-      .badge-content {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        text-align: center;
-        width: 100%;
-      }
-      .badge-name {
-        font-size: 12px;
+      .chip-name {
         font-weight: 500;
-        margin-bottom: 4px;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        white-space: nowrap;
-        max-width: 100%;
+        flex-shrink: 0;
       }
-      .badge-value-row {
+      .chip-value {
         display: flex;
         align-items: baseline;
         gap: 0.2em;
-        font-size: var(--strip-card-font-size, 14px);
-        font-weight: bold;
+        font-weight: 600;
       }
       .icon {
         margin-right: 0.5em;
@@ -472,8 +449,8 @@ class StripCard extends LitElement {
       .ticker-item .unit + .value {
         margin-left: 0.2em;
       }
-      .badge-value-row .value,
-      .badge-value-row .unit {
+      .chip-value .value,
+      .chip-value .unit {
         line-height: 1;
       }
       .error {
@@ -708,7 +685,7 @@ class StripCardEditor extends LitElement {
   _renderOptionsTab() {
     return html`
       <div class="tab-panel">
-        <ha-formfield label="Badge-Stil (wie HA Badges)">
+        <ha-formfield label="Chips-Stil (kompakte Darstellung)">
           <ha-switch
             .checked="${this._config.badge_style}"
             .configValue="${"badge_style"}"
@@ -729,7 +706,6 @@ class StripCardEditor extends LitElement {
             .checked="${this._config.pause_on_hover}"
             .configValue="${"pause_on_hover"}"
             @change="${this._switchChanged}"
-            .disabled="${this._config.badge_style}"
           ></ha-switch>
         </ha-formfield>
 
@@ -738,7 +714,6 @@ class StripCardEditor extends LitElement {
             .checked="${this._config.fading}"
             .configValue="${"fading"}"
             @change="${this._switchChanged}"
-            .disabled="${this._config.badge_style}"
           ></ha-switch>
         </ha-formfield>
 
@@ -747,7 +722,6 @@ class StripCardEditor extends LitElement {
             .checked="${this._config.vertical_scroll}"
             .configValue="${"vertical_scroll"}"
             @change="${this._switchChanged}"
-            .disabled="${this._config.badge_style}"
           ></ha-switch>
         </ha-formfield>
 
@@ -756,7 +730,6 @@ class StripCardEditor extends LitElement {
             .checked="${this._config.continuous_scroll}"
             .configValue="${"continuous_scroll"}"
             @change="${this._switchChanged}"
-            .disabled="${this._config.badge_style}"
           ></ha-switch>
         </ha-formfield>
 
@@ -785,7 +758,6 @@ class StripCardEditor extends LitElement {
           .configValue="${"vertical_alignment"}"
           @selected="${this._selectChanged}"
           @closed="${(e) => e.stopPropagation()}"
-          .disabled="${this._config.badge_style}"
         >
           <mwc-list-item value="stack">Gestapelt</mwc-list-item>
           <mwc-list-item value="inline">Inline</mwc-list-item>
