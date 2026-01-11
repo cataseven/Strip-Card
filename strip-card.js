@@ -3,7 +3,7 @@ const html = LitElement.prototype.html;
 const css = LitElement.prototype.css;
 
 console.info(
-  `%c STRIP-CARD %c v2.4.7 `,
+  `%c STRIP-CARD %c v2.4.8 `,
   "color: orange; font-weight: bold; background: black",
   "color: white; font-weight: bold; background: dimgray"
 );
@@ -80,9 +80,28 @@ class StripCard extends LitElement {
     return 1;
   }
 
+  connectedCallback() {
+    super.connectedCallback();
+    this._resizeObserver = new ResizeObserver(() => {
+      if (!this._config.continuous_scroll) {
+        this._setupReturnAnimation();
+      }
+    });
+  }
+
+  disconnectedCallback() {
+    super.disconnectedCallback();
+    if (this._resizeObserver) {
+      this._resizeObserver.disconnect();
+    }
+  }
+
   firstUpdated() {
     if (!this._config.continuous_scroll) {
       this._setupReturnAnimation();
+    }
+    if (this._resizeObserver) {
+      this._resizeObserver.observe(this);
     }
   }
 
@@ -491,8 +510,11 @@ class StripCard extends LitElement {
         -webkit-mask-image: linear-gradient(to bottom, transparent 0%, black 10%, black 90%, transparent 100%);
         mask-image: linear-gradient(to bottom, transparent 0%, black 10%, black 90%, transparent 100%);
       }
+      .ticker-wrap.pausable .ticker-move {
+        animation-play-state: running;
+      }
       .ticker-wrap.pausable:hover .ticker-move {
-        animation-play-state: paused;
+        animation-play-state: paused !important;
       }
       .ticker-move {
         display: inline-block;
@@ -755,7 +777,9 @@ class StripCardEditor extends LitElement {
       <div class="tab-panel">
         <ha-formfield label="Chips-Stil"><ha-switch .checked="${this._config.badge_style}" .configValue="${"badge_style"}" @change="${this._switchChanged}"></ha-switch></ha-formfield>
         <ha-formfield label="Icons anzeigen (Standard)"><ha-switch .checked="${this._config.show_icon}" .configValue="${"show_icon"}" @change="${this._switchChanged}"></ha-switch></ha-formfield>
-        <ha-formfield label="Fading"><ha-switch .checked="${this._config.fading}" .configValue="${"fading"}" @change="${this._switchChanged}"></ha-switch></ha-formfield>
+        ${this._config.continuous_scroll ? html`
+          <ha-formfield label="Fading"><ha-switch .checked="${this._config.fading}" .configValue="${"fading"}" @change="${this._switchChanged}"></ha-switch></ha-formfield>
+        ` : ''}
         <ha-formfield label="Transparent"><ha-switch .checked="${this._config.transparent}" .configValue="${"transparent"}" @change="${this._switchChanged}"></ha-switch></ha-formfield>
         ${!this._config.badge_style ? html`
           <ha-textfield label="Trennzeichen" .value="${this._config.separator}" .configValue="${"separator"}" @input="${this._valueChanged}"></ha-textfield>
