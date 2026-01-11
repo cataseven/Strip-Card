@@ -101,15 +101,18 @@ class StripCard extends LitElement {
   }
 
   firstUpdated() {
-    this._updateFullWidthDimensions();
-    this._checkAndUpdateScroll();
+    // Warte bis DOM vollständig gerendert ist
+    setTimeout(() => {
+      this._updateFullWidthDimensions();
+      this._checkAndUpdateScroll();
+    }, 0);
+    
     if (this._resizeObserver) {
       const wrapElement = this.shadowRoot.querySelector('.ticker-wrap');
       if (wrapElement) {
         this._resizeObserver.observe(wrapElement);
       }
       
-      // Observe parent container for width changes
       const container = this.closest('hui-view, .view, hui-sections-view');
       if (container) {
         this._resizeObserver.observe(container);
@@ -1183,7 +1186,7 @@ class StripCardEditor extends LitElement {
       entity[configValue] = value;
     }
     
-    entities[index] = entity;
+    entities[entityIndex] = entity;
     this._config = { ...this._config, entities };
     this._configChanged();
     this.requestUpdate();
