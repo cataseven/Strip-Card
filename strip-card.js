@@ -50,6 +50,8 @@ class StripCard extends LitElement {
     }
     this._config = {
       title: "",
+      title_font_size: "16px",
+      title_alignment: "left",
       title_left_icon: "",
       title_left_action: "",
       title_right_icon: "",
@@ -206,6 +208,8 @@ class StripCard extends LitElement {
       --strip-card-content-color: ${this._config.content_color};
       --strip-card-label-color: ${this._config.label_color};
       --strip-card-chip-background: ${this._config.chip_background};
+      --strip-card-title-font-size: ${this._config.title_font_size};
+      --strip-card-title-alignment: ${this._config.title_alignment};
       ${cardWidthStyle}
       ${transparentStyle} 
     `;
@@ -355,6 +359,8 @@ class StripCard extends LitElement {
       }
       .title-text {
         flex: 1;
+        font-size: var(--strip-card-title-font-size, 16px);
+        text-align: var(--strip-card-title-alignment, left);
       }
       .title-text p {
         margin: 0;
@@ -581,6 +587,8 @@ class StripCardEditor extends LitElement {
   setConfig(config) {
     this._config = {
       title: "",
+      title_font_size: "16px",
+      title_alignment: "left",
       title_left_icon: "",
       title_left_action: "",
       title_right_icon: "",
@@ -679,6 +687,26 @@ class StripCardEditor extends LitElement {
         </div>
 
         ${this._config.title ? html`
+          <ha-textfield
+            label="Titel Schriftgröße"
+            .value="${this._config.title_font_size}"
+            .configValue="${"title_font_size"}"
+            @input="${this._valueChanged}"
+            helper-text="z.B: 16px, 1.5em, 20px"
+          ></ha-textfield>
+
+          <ha-select
+            label="Titel Ausrichtung"
+            .value="${this._config.title_alignment}"
+            .configValue="${"title_alignment"}"
+            @selected="${this._selectChanged}"
+            @closed="${(e) => e.stopPropagation()}"
+          >
+            <mwc-list-item value="left">Links</mwc-list-item>
+            <mwc-list-item value="center">Zentriert</mwc-list-item>
+            <mwc-list-item value="right">Rechts</mwc-list-item>
+          </ha-select>
+
           <div class="section-divider">Linkes Icon</div>
 
           <ha-textfield
