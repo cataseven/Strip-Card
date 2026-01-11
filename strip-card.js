@@ -3,7 +3,7 @@ const html = LitElement.prototype.html;
 const css = LitElement.prototype.css;
 
 console.info(
-  `%c STRIP-CARD %c v2.4.3 `,
+  `%c STRIP-CARD %c v2.4.4 `,
   "color: orange; font-weight: bold; background: black",
   "color: white; font-weight: bold; background: dimgray"
 );
@@ -102,14 +102,13 @@ class StripCard extends LitElement {
     const contentWidth = moveElement.scrollWidth;
     
     if (contentWidth <= wrapWidth) {
-      // Content fits, no animation needed
       moveElement.style.animation = 'none';
       return;
     }
     
     const scrollDistance = contentWidth - wrapWidth;
-    const duration = this.evaluateTemplate(this._config.duration, this.hass);
-    const pauseDuration = this.evaluateTemplate(this._config.pause_duration, this.hass);
+    const duration = parseFloat(this.evaluateTemplate(this._config.duration, this.hass));
+    const pauseDuration = parseFloat(this.evaluateTemplate(this._config.pause_duration, this.hass));
     
     this._injectReturnAnimation(scrollDistance, duration, pauseDuration, this._config.vertical_scroll);
   }
@@ -121,7 +120,6 @@ class StripCard extends LitElement {
       const oldHass = changedProps.get('hass');
       if (!oldHass) return true;
       
-      // Check entity states
       const hasEntityChanges = this._config.entities.some(entityConfig => {
         const entityId = typeof entityConfig === "string" ? entityConfig : entityConfig.entity;
         if (!entityId) return false;
@@ -134,7 +132,6 @@ class StripCard extends LitElement {
                JSON.stringify(oldState.attributes) !== JSON.stringify(newState.attributes);
       });
       
-      // Check visibility condition entities
       const hasVisibilityChanges = this._config.entities.some(entityConfig => {
         if (!entityConfig.visibility || !Array.isArray(entityConfig.visibility)) return false;
         
@@ -239,10 +236,13 @@ class StripCard extends LitElement {
   }
 
   _injectReturnAnimation(scrollDistance, duration, pauseDuration, isVertical) {
-    const totalDuration = duration * 2 + pauseDuration * 2;
-    const scrollPercent = (duration / totalDuration * 100).toFixed(2);
-    const firstPausePercent = ((duration + pauseDuration) / totalDuration * 100).toFixed(2);
-    const returnPercent = ((duration * 2 + pauseDuration) / totalDuration * 100).toFixed(2);
+    // Total animation: scroll + pause + return + pause
+    const totalDuration = duration + pauseDuration + duration + pauseDuration;
+    
+    // Calculate keyframe percentages
+    const afterScrollPercent = (duration / totalDuration * 100).toFixed(2);
+    const afterFirstPausePercent = ((duration + pauseDuration) / totalDuration * 100).toFixed(2);
+    const afterReturnPercent = ((duration + pauseDuration + duration) / totalDuration * 100).toFixed(2);
     
     const animationName = `ticker-return-${isVertical ? 'v' : 'h'}-${Date.now()}`;
     const transform = isVertical ? 'translateY' : 'translateX';
@@ -259,9 +259,9 @@ class StripCard extends LitElement {
     styleElement.textContent = `
       @keyframes ${animationName} {
         0% { transform: ${transform}(0); }
-        ${scrollPercent}% { transform: ${transform}(-${scrollDistance}px); }
-        ${firstPausePercent}% { transform: ${transform}(-${scrollDistance}px); }
-        ${returnPercent}% { transform: ${transform}(0); }
+        ${afterScrollPercent}% { transform: ${transform}(-${scrollDistance}px); }
+        ${afterFirstPausePercent}% { transform: ${transform}(-${scrollDistance}px); }
+        ${afterReturnPercent}% { transform: ${transform}(0); }
         100% { transform: ${transform}(0); }
       }
     `;
@@ -735,10 +735,10 @@ class StripCardEditor extends LitElement {
   _renderScrollTab() {
     return html`
       <div class="tab-panel">
-        <ha-textfield label="Scroll-Dauer (Sekunden)" type="number" .value="${this._config.duration}" .configValue="${"duration"}" @input="${this._valueChanged}"></ha-textfield>
+        <ha-textfield label="Scroll-Dauer (Sekunden)" type="number" min="1" .value="${this._config.duration}" .configValue="${"duration"}" @input="${this._valueChanged}"></ha-textfield>
         <ha-formfield label="Kontinuierliches Scrollen"><ha-switch .checked="${this._config.continuous_scroll}" .configValue="${"continuous_scroll"}" @change="${this._switchChanged}"></ha-switch></ha-formfield>
         ${!this._config.continuous_scroll ? html`
-          <ha-textfield label="Pause-Dauer (Sekunden)" type="number" .value="${this._config.pause_duration}" .configValue="${"pause_duration"}" @input="${this._valueChanged}" helper-text="Pause am Ende des Scrollens"></ha-textfield>
+          <ha-textfield label="Pause-Dauer (Sekunden)" type="number" min="0" step="0.5" .value="${this._config.pause_duration}" .configValue="${"pause_duration"}" @input="${this._valueChanged}" helper-text="Pause am Ende vor Rückwärtsfahrt"></ha-textfield>
         ` : ''}
         <ha-formfield label="Bei Hover pausieren"><ha-switch .checked="${this._config.pause_on_hover}" .configValue="${"pause_on_hover"}" @change="${this._switchChanged}"></ha-switch></ha-formfield>
         <ha-formfield label="Vertikales Scrollen"><ha-switch .checked="${this._config.vertical_scroll}" .configValue="${"vertical_scroll"}" @change="${this._switchChanged}"></ha-switch></ha-formfield>
@@ -808,7 +808,13 @@ class StripCardEditor extends LitElement {
               ${isExpanded ? html`
                 <div class="entity-editor">
                   <ha-textfield label="Name (für Editor)" .value="${entityObj.name || ''}" .entityIndex="${index}" .configValue="${"name"}" @input="${this._entityPropertyChanged}" helper-text="Anzeigename in der Entitätenliste"></ha-textfield>
-                  <ha-entity-picker .hass="${this.hass}" .value="${entityId}" .entityIndex="${index}" @value-changed="${this._entityChanged}" allow-custom-entity label="Entität"></ha-entity-picker>
+                  <ha-entity-picker 
+                    .hass="${this.hass}" 
+                    .value="${entityId}" 
+                    .configValue="${'entity'}"
+                    @value-changed="${(e) => this._entityPickerChanged(e, index)}" 
+                    allow-custom-entity
+                  ></ha-entity-picker>
                   <ha-textfield label="Content (Template)" .value="${entityObj.content || ''}" .entityIndex="${index}" .configValue="${"content"}" @input="${this._entityPropertyChanged}" helper-text="z.B: {{ states('sensor.temp') }} °C"></ha-textfield>
                   <ha-textfield label="Label (Template)" .value="${entityObj.label || ''}" .entityIndex="${index}" .configValue="${"label"}" @input="${this._entityPropertyChanged}" helper-text="Chips: oben, Normal: rechts"></ha-textfield>
                   <ha-textfield label="Icon (optional)" .value="${entityObj.icon || ''}" .entityIndex="${index}" .configValue="${"icon"}" @input="${this._entityPropertyChanged}"></ha-textfield>
@@ -864,11 +870,8 @@ class StripCardEditor extends LitElement {
           <ha-entity-picker 
             .hass="${this.hass}" 
             .value="${condition.entity || ''}" 
-            .entityIndex="${entityIndex}"
-            .condIndex="${condIndex}"
-            @value-changed="${this._visibilityEntityChanged}" 
+            @value-changed="${(e) => this._visibilityPickerChanged(e, entityIndex, condIndex)}" 
             allow-custom-entity
-            label="Entität"
           ></ha-entity-picker>
           <ha-textfield 
             label="Status (state)" 
@@ -919,9 +922,19 @@ class StripCardEditor extends LitElement {
     this._configChanged();
   }
 
-  _visibilityEntityChanged(ev) {
-    const entityIndex = ev.currentTarget.entityIndex;
-    const condIndex = ev.currentTarget.condIndex;
+  _entityPickerChanged(ev, index) {
+    if (!ev.detail.value) return;
+    const entities = [...this._config.entities];
+    entities[index] = typeof entities[index] === 'string' 
+      ? { entity: ev.detail.value } 
+      : { ...entities[index], entity: ev.detail.value };
+    this._config = { ...this._config, entities };
+    this._configChanged();
+    this.requestUpdate();
+  }
+
+  _visibilityPickerChanged(ev, entityIndex, condIndex) {
+    if (!ev.detail.value) return;
     const entities = [...this._config.entities];
     const entity = { ...entities[entityIndex] };
     
@@ -947,7 +960,6 @@ class StripCardEditor extends LitElement {
     entity.visibility = [...entity.visibility];
     entity.visibility[condIndex] = { ...entity.visibility[condIndex], [configValue]: value };
     
-    // Remove empty state/state_not fields
     if (configValue === 'state' && !value) delete entity.visibility[condIndex].state;
     if (configValue === 'state_not' && !value) delete entity.visibility[condIndex].state_not;
     
@@ -1003,17 +1015,6 @@ class StripCardEditor extends LitElement {
     if (this._selectedEntity === index) this._selectedEntity = index + 1;
     else if (this._selectedEntity === index + 1) this._selectedEntity = index;
     this._configChanged();
-  }
-
-  _entityChanged(ev) {
-    const index = ev.currentTarget.entityIndex;
-    const entities = [...this._config.entities];
-    entities[index] = typeof entities[index] === 'string' 
-      ? { entity: ev.detail.value } 
-      : { ...entities[index], entity: ev.detail.value };
-    this._config = { ...this._config, entities };
-    this._configChanged();
-    this.requestUpdate();
   }
 
   _entityPropertyChanged(ev) {
@@ -1169,11 +1170,16 @@ class StripCardEditor extends LitElement {
         border-bottom: 1px solid var(--divider-color);
       }
       ha-textfield,
-      ha-select,
+      ha-select {
+        width: 100%;
+        margin-bottom: 12px;
+        display: block;
+      }
       ha-entity-picker {
         width: 100%;
         margin-bottom: 12px;
         display: block;
+        --ha-entity-picker-width: 100%;
       }
       ha-formfield {
         display: block;
