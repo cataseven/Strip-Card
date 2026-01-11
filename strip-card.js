@@ -3,7 +3,7 @@ const html = LitElement.prototype.html;
 const css = LitElement.prototype.css;
 
 console.info(
-  `%c STRIP-CARD %c v2.4.5 `,
+  `%c STRIP-CARD %c v2.4.6 `,
   "color: orange; font-weight: bold; background: black",
   "color: white; font-weight: bold; background: dimgray"
 );
@@ -106,7 +106,6 @@ class StripCard extends LitElement {
       return;
     }
     
-    // Only scroll exactly the overflow amount
     const scrollDistance = Math.max(0, contentWidth - wrapWidth);
     const duration = parseFloat(this.evaluateTemplate(this._config.duration, this.hass));
     const pauseDuration = parseFloat(this.evaluateTemplate(this._config.pause_duration, this.hass));
@@ -630,17 +629,6 @@ class StripCardEditor extends LitElement {
     super();
     this._currentTab = 'general';
     this._selectedEntity = null;
-    this._loadEntityPicker();
-  }
-
-  async _loadEntityPicker() {
-    if (customElements.get('ha-entity-picker')) return;
-    
-    try {
-      await customElements.whenDefined('hui-entity-picker-row');
-    } catch (e) {
-      console.warn('Could not load entity picker:', e);
-    }
   }
 
   setConfig(config) {
@@ -820,12 +808,14 @@ class StripCardEditor extends LitElement {
                   <ha-textfield label="Name (für Editor)" .value="${entityObj.name || ''}" .entityIndex="${index}" .configValue="${"name"}" @input="${this._entityPropertyChanged}" helper-text="Anzeigename in der Entitätenliste"></ha-textfield>
                   
                   <label class="input-label">Entität</label>
-                  <ha-entity-picker 
-                    .hass="${this.hass}" 
-                    .value="${entityId}" 
-                    @value-changed="${(e) => this._entityPickerChanged(e, index)}" 
-                    allow-custom-entity
-                  ></ha-entity-picker>
+                  <ha-combo-box
+                    .hass="${this.hass}"
+                    .value="${entityId}"
+                    .label="Entität wählen"
+                    .items="${this._getEntityList()}"
+                    @value-changed="${(e) => this._entityComboChanged(e, index)}"
+                    allow-custom-value
+                  ></ha-combo-box>
                   
                   <ha-textfield label="Content (Template)" .value="${entityObj.content || ''}" .entityIndex="${index}" .configValue="${"content"}" @input="${this._entityPropertyChanged}" helper-text="z.B: {{ states('sensor.temp') }} °C"></ha-textfield>
                   <ha-textfield label="Label (Template)" .value="${entityObj.label || ''}" .entityIndex="${index}" .configValue="${"label"}" @input="${this._entityPropertyChanged}" helper-text="Chips: oben, Normal: rechts"></ha-textfield>
@@ -864,6 +854,25 @@ class StripCardEditor extends LitElement {
     `;
   }
 
+  _getEntityList() {
+    if (!this.hass) return [];
+    return Object.keys(this.hass.states).map(eid => ({
+      label: this.hass.states[eid].attributes.friendly_name || eid,
+      value: eid
+    }));
+  }
+
+  _entityComboChanged(ev, index) {
+    if (!ev.detail.value) return;
+    const entities = [...this._config.entities];
+    entities[index] = typeof entities[index] === 'string' 
+      ? { entity: ev.detail.value } 
+      : { ...entities[index], entity: ev.detail.value };
+    this._config = { ...this._config, entities };
+    this._configChanged();
+    this.requestUpdate();
+  }
+
   _renderVisibilityConditions(entityObj, entityIndex) {
     const visibility = entityObj.visibility || [];
     if (visibility.length === 0) {
@@ -880,12 +889,14 @@ class StripCardEditor extends LitElement {
             </ha-icon-button>
           </div>
           <label class="input-label">Entität für Bedingung</label>
-          <ha-entity-picker 
-            .hass="${this.hass}" 
-            .value="${condition.entity || ''}" 
-            @value-changed="${(e) => this._visibilityPickerChanged(e, entityIndex, condIndex)}" 
-            allow-custom-entity
-          ></ha-entity-picker>
+          <ha-combo-box
+            .hass="${this.hass}"
+            .value="${condition.entity || ''}"
+            .label="Entität wählen"
+            .items="${this._getEntityList()}"
+            @value-changed="${(e) => this._visibilityComboChanged(e, entityIndex, condIndex)}"
+            allow-custom-value
+          ></ha-combo-box>
           <ha-textfield 
             label="Status (state)" 
             .value="${condition.state || ''}" 
@@ -909,6 +920,20 @@ class StripCardEditor extends LitElement {
     `;
   }
 
+  _visibilityComboChanged(ev, entityIndex, condIndex) {
+    if (!ev.detail.value) return;
+    const entities = [...this._config.entities];
+    const entity = { ...entities[entityIndex] };
+    
+    if (!entity.visibility) return;
+    entity.visibility = [...entity.visibility];
+    entity.visibility[condIndex] = { ...entity.visibility[condIndex], entity: ev.detail.value };
+    
+    entities[entityIndex] = entity;
+    this._config = { ...this._config, entities };
+    this._configChanged();
+  }
+
   _addVisibilityCondition(entityIndex) {
     const entities = [...this._config.entities];
     const entity = typeof entities[entityIndex] === 'string' ? { entity: entities[entityIndex] } : { ...entities[entityIndex] };
@@ -929,31 +954,6 @@ class StripCardEditor extends LitElement {
       entity.visibility = entity.visibility.filter((_, i) => i !== condIndex);
       if (entity.visibility.length === 0) delete entity.visibility;
     }
-    
-    entities[entityIndex] = entity;
-    this._config = { ...this._config, entities };
-    this._configChanged();
-  }
-
-  _entityPickerChanged(ev, index) {
-    if (!ev.detail.value) return;
-    const entities = [...this._config.entities];
-    entities[index] = typeof entities[index] === 'string' 
-      ? { entity: ev.detail.value } 
-      : { ...entities[index], entity: ev.detail.value };
-    this._config = { ...this._config, entities };
-    this._configChanged();
-    this.requestUpdate();
-  }
-
-  _visibilityPickerChanged(ev, entityIndex, condIndex) {
-    if (!ev.detail.value) return;
-    const entities = [...this._config.entities];
-    const entity = { ...entities[entityIndex] };
-    
-    if (!entity.visibility) return;
-    entity.visibility = [...entity.visibility];
-    entity.visibility[condIndex] = { ...entity.visibility[condIndex], entity: ev.detail.value };
     
     entities[entityIndex] = entity;
     this._config = { ...this._config, entities };
@@ -1184,15 +1184,11 @@ class StripCardEditor extends LitElement {
         border-bottom: 1px solid var(--divider-color);
       }
       ha-textfield,
-      ha-select {
+      ha-select,
+      ha-combo-box {
         width: 100%;
         margin-bottom: 12px;
         display: block;
-      }
-      ha-entity-picker {
-        width: 100%;
-        display: block;
-        margin-bottom: 16px;
       }
       ha-formfield {
         display: block;
