@@ -3,7 +3,7 @@ const html = LitElement.prototype.html;
 const css = LitElement.prototype.css;
 
 console.info(
-  `%c STRIP-CARD %c v2.5.1 `,
+  `%c STRIP-CARD %c v2.5.2 `,
   "color: orange; font-weight: bold; background: black",
   "color: white; font-weight: bold; background: dimgray"
 );
@@ -67,6 +67,7 @@ class StripCard extends LitElement {
       border_radius: "0px",
       card_height: "auto",
       card_width: "100%",
+      full_width: false,
       fading: false,
       vertical_scroll: false,
       vertical_alignment: 'stack',
@@ -322,8 +323,6 @@ class StripCard extends LitElement {
 
     const duration = this.evaluateTemplate(this._config.duration, this.hass);
     
-    const isCustomWidth = this._config.card_width && this._config.card_width !== '100%';
-    
     const cardStyles = `
       --strip-card-font-size: ${this._config.font_size};
       --strip-card-border-radius: ${this._config.border_radius};
@@ -334,8 +333,6 @@ class StripCard extends LitElement {
       --strip-card-title-font-size: ${this._config.title_font_size};
       --strip-card-title-alignment: ${this._config.title_alignment};
       --strip-card-title-icon-spacing: ${this._config.title_icon_spacing};
-      ${this._config.card_width ? `--strip-card-width: ${this._config.card_width};` : ''}
-      ${isCustomWidth ? `--strip-card-custom-width: true;` : ''}
       ${this._config.transparent ? `
         --ha-card-background: transparent;
         --card-background-color: transparent;
@@ -384,35 +381,48 @@ class StripCard extends LitElement {
     const headerAlignment = this._config.title_alignment === 'center' ? 'center' : 
                            this._config.title_alignment === 'right' ? 'flex-end' : 'flex-start';
     
+    const containerClasses = [
+      this._config.full_width && 'full-width-container'
+    ].filter(Boolean).join(' ');
+    
+    const cardClasses = [
+      this._config.card_width !== '100%' && !this._config.full_width && 'custom-width'
+    ].filter(Boolean).join(' ');
+    
+    const cardWidthStyle = this._config.full_width ? 'width: 100%;' : 
+                          this._config.card_width !== '100%' ? `width: ${this._config.card_width};` : '';
+    
     return html`
-      <ha-card style="${cardStyles}">
-        ${this._config.title ? html`
-          <div class="card-header" style="justify-content: ${headerAlignment};">
-            ${this._config.title_left_icon ? html`
-              <ha-icon 
-                class="title-icon left"
-                .icon=${this._config.title_left_icon}
-                @click=${() => this._handleIconClick(this._config.title_left_action)}
-                style="--mdc-icon-size: ${this._config.title_left_icon_size}; cursor: ${this._config.title_left_action ? 'pointer' : 'default'};"
-              ></ha-icon>
-            ` : ''}
-            <ha-markdown class="title-text" .content="${this._config.title}" breaks></ha-markdown>
-            ${this._config.title_right_icon ? html`
-              <ha-icon 
-                class="title-icon right"
-                .icon=${this._config.title_right_icon}
-                @click=${() => this._handleIconClick(this._config.title_right_action)}
-                style="--mdc-icon-size: ${this._config.title_right_icon_size}; cursor: ${this._config.title_right_action ? 'pointer' : 'default'};"
-              ></ha-icon>
-            ` : ''}
+      <div class="strip-card-container ${containerClasses}">
+        <ha-card class="${cardClasses}" style="${cardStyles} ${cardWidthStyle}">
+          ${this._config.title ? html`
+            <div class="card-header" style="justify-content: ${headerAlignment};">
+              ${this._config.title_left_icon ? html`
+                <ha-icon 
+                  class="title-icon left"
+                  .icon=${this._config.title_left_icon}
+                  @click=${() => this._handleIconClick(this._config.title_left_action)}
+                  style="--mdc-icon-size: ${this._config.title_left_icon_size}; cursor: ${this._config.title_left_action ? 'pointer' : 'default'};"
+                ></ha-icon>
+              ` : ''}
+              <ha-markdown class="title-text" .content="${this._config.title}" breaks></ha-markdown>
+              ${this._config.title_right_icon ? html`
+                <ha-icon 
+                  class="title-icon right"
+                  .icon=${this._config.title_right_icon}
+                  @click=${() => this._handleIconClick(this._config.title_right_action)}
+                  style="--mdc-icon-size: ${this._config.title_right_icon_size}; cursor: ${this._config.title_right_action ? 'pointer' : 'default'};"
+                ></ha-icon>
+              ` : ''}
+            </div>
+          ` : ''}
+          <div class="ticker-wrap ${wrapClasses}">
+            <div class="ticker-move ${moveClasses}" style="${animationStyle}">
+              ${content}
+            </div>
           </div>
-        ` : ''}
-        <div class="ticker-wrap ${wrapClasses}">
-          <div class="ticker-move ${moveClasses}" style="${animationStyle}">
-            ${content}
-          </div>
-        </div>
-      </ha-card>
+        </ha-card>
+      </div>
     `;
   }
 
@@ -476,18 +486,27 @@ class StripCard extends LitElement {
         display: block;
         position: relative;
       }
+      .strip-card-container {
+        display: flex;
+        justify-content: center;
+        width: 100%;
+      }
+      .strip-card-container.full-width-container {
+        justify-content: stretch;
+      }
+      .strip-card-container.full-width-container ha-card {
+        width: 100% !important;
+      }
       ha-card {
         overflow: hidden;
         border-radius: var(--strip-card-border-radius, 0px);
         height: var(--strip-card-height, auto);
-        width: var(--strip-card-width, 100%);
         display: flex;
         flex-direction: column;
         position: relative;
       }
-      ha-card[style*="--strip-card-custom-width"] {
-        left: 50%;
-        transform: translateX(-50%);
+      ha-card.custom-width {
+        flex-shrink: 0;
       }
       .card-header {
         padding: 16px;
@@ -714,6 +733,7 @@ class StripCardEditor extends LitElement {
       border_radius: "0px",
       card_height: "auto",
       card_width: "100%",
+      full_width: false,
       fading: false,
       vertical_scroll: false,
       vertical_alignment: 'stack',
@@ -832,7 +852,11 @@ class StripCardEditor extends LitElement {
           <ha-textfield label="Rahmenradius" .value="${this._config.border_radius}" .configValue="${"border_radius"}" @input="${this._valueChanged}"></ha-textfield>
         ` : ''}
         <ha-textfield label="Kartenhöhe" .value="${this._config.card_height}" .configValue="${"card_height"}" @input="${this._valueChanged}"></ha-textfield>
-        <ha-textfield label="Kartenbreite" .value="${this._config.card_width}" .configValue="${"card_width"}" @input="${this._valueChanged}"></ha-textfield>
+        <div class="section-divider">Breite</div>
+        <ha-formfield label="Volle Breite (empfohlen für Header)"><ha-switch .checked="${this._config.full_width}" .configValue="${"full_width"}" @change="${this._switchChanged}"></ha-switch></ha-formfield>
+        ${!this._config.full_width ? html`
+          <ha-textfield label="Kartenbreite" .value="${this._config.card_width}" .configValue="${"card_width"}" @input="${this._valueChanged}" helper-text="z.B: 100%, 200%, 500px"></ha-textfield>
+        ` : ''}
       </div>
     `;
   }
