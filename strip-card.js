@@ -3,7 +3,7 @@ const html = LitElement.prototype.html;
 const css = LitElement.prototype.css;
 
 console.info(
-  `%c STRIP-CARD %c v2.4.8 `,
+  `%c STRIP-CARD %c v2.4.9 `,
   "color: orange; font-weight: bold; background: black",
   "color: white; font-weight: bold; background: dimgray"
 );
@@ -50,9 +50,11 @@ class StripCard extends LitElement {
       title_alignment: "left",
       title_left_icon: "",
       title_left_icon_size: "24px",
+      title_left_icon_spacing: "12px",
       title_left_action: "",
       title_right_icon: "",
       title_right_icon_size: "24px",
+      title_right_icon_spacing: "12px",
       title_right_action: "",
       duration: 20,
       pause_duration: 2,
@@ -303,6 +305,8 @@ class StripCard extends LitElement {
       --strip-card-chip-background: ${this._config.chip_background};
       --strip-card-title-font-size: ${this._config.title_font_size};
       --strip-card-title-alignment: ${this._config.title_alignment};
+      --strip-card-title-left-icon-spacing: ${this._config.title_left_icon_spacing};
+      --strip-card-title-right-icon-spacing: ${this._config.title_right_icon_spacing};
       ${this._config.card_width ? `--strip-card-width: ${this._config.card_width};` : ''}
       ${this._config.transparent ? `
         --ha-card-background: transparent;
@@ -460,7 +464,7 @@ class StripCard extends LitElement {
         display: flex;
         align-items: center;
         justify-content: space-between;
-        gap: 12px;
+        gap: 0;
       }
       .title-text {
         flex: 1;
@@ -480,9 +484,11 @@ class StripCard extends LitElement {
       }
       .title-icon.left {
         order: -1;
+        margin-right: var(--strip-card-title-left-icon-spacing, 12px);
       }
       .title-icon.right {
         order: 1;
+        margin-left: var(--strip-card-title-right-icon-spacing, 12px);
       }
       .ticker-wrap {
         flex: 1;
@@ -660,9 +666,11 @@ class StripCardEditor extends LitElement {
       title_alignment: "left",
       title_left_icon: "",
       title_left_icon_size: "24px",
+      title_left_icon_spacing: "12px",
       title_left_action: "",
       title_right_icon: "",
       title_right_icon_size: "24px",
+      title_right_icon_spacing: "12px",
       title_right_action: "",
       duration: 20,
       pause_duration: 2,
@@ -734,12 +742,14 @@ class StripCardEditor extends LitElement {
           <ha-textfield label="Icon links" .value="${this._config.title_left_icon || ''}" .configValue="${"title_left_icon"}" @input="${this._valueChanged}"></ha-textfield>
           ${this._config.title_left_icon ? html`
             <ha-textfield label="Icon-Größe links" .value="${this._config.title_left_icon_size}" .configValue="${"title_left_icon_size"}" @input="${this._valueChanged}" helper-text="z.B: 24px, 1.5em, 32px"></ha-textfield>
+            <ha-textfield label="Abstand zum Text links" .value="${this._config.title_left_icon_spacing}" .configValue="${"title_left_icon_spacing"}" @input="${this._valueChanged}" helper-text="z.B: 12px, 0.5em, 16px"></ha-textfield>
             <ha-textfield label="Aktion links" .value="${this._config.title_left_action || ''}" .configValue="${"title_left_action"}" @input="${this._valueChanged}" helper-text="Entity-ID oder /pfad"></ha-textfield>
           ` : ''}
           <div class="section-divider">Rechtes Icon</div>
           <ha-textfield label="Icon rechts" .value="${this._config.title_right_icon || ''}" .configValue="${"title_right_icon"}" @input="${this._valueChanged}"></ha-textfield>
           ${this._config.title_right_icon ? html`
             <ha-textfield label="Icon-Größe rechts" .value="${this._config.title_right_icon_size}" .configValue="${"title_right_icon_size"}" @input="${this._valueChanged}" helper-text="z.B: 24px, 1.5em, 32px"></ha-textfield>
+            <ha-textfield label="Abstand zum Text rechts" .value="${this._config.title_right_icon_spacing}" .configValue="${"title_right_icon_spacing"}" @input="${this._valueChanged}" helper-text="z.B: 12px, 0.5em, 16px"></ha-textfield>
             <ha-textfield label="Aktion rechts" .value="${this._config.title_right_action || ''}" .configValue="${"title_right_action"}" @input="${this._valueChanged}" helper-text="Entity-ID oder /pfad"></ha-textfield>
           ` : ''}
         ` : ''}
