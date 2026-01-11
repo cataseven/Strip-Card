@@ -3,7 +3,7 @@ const html = LitElement.prototype.html;
 const css = LitElement.prototype.css;
 
 console.info(
-  `%c STRIP-CARD %c v2.5.3 `,
+  `%c STRIP-CARD %c v2.5.4 `,
   "color: orange; font-weight: bold; background: black",
   "color: white; font-weight: bold; background: dimgray"
 );
@@ -15,6 +15,12 @@ window.customCards.push({
   description: "A card that shows entities on a scrolling strip.",
   preview: true,
 });
+
+// Konstanten
+const DEBOUNCE_DELAY = 150;
+const EXTRA_COPIES_FOR_SEAMLESS_SCROLL = 2;
+const MIN_CONTAINER_WIDTH_FALLBACK = 400;
+const ANIMATION_STYLE_ID = 'strip-card-return-animation';
 
 class StripCard extends LitElement {
   static get properties() {
@@ -38,6 +44,14 @@ class StripCard extends LitElement {
 
   static getConfigElement() {
     return document.createElement("strip-card-editor");
+  }
+
+  constructor() {
+    super();
+    this._animationCache = null;
+    this._templateCache = new Map();
+    this._debounceTimer = null;
+    this._lastEntityStates = new Map();
   }
 
   setConfig(config) {
@@ -77,6 +91,8 @@ class StripCard extends LitElement {
       badge_style: false,
       ...config,
     };
+    this._templateCache.clear();
+    this._animationCache = null;
   }
 
   getCardSize() {
@@ -86,10 +102,7 @@ class StripCard extends LitElement {
   connectedCallback() {
     super.connectedCallback();
     this._resizeObserver = new ResizeObserver(() => {
-      requestAnimationFrame(() => {
-        this._updateFullWidthDimensions();
-        this._checkAndUpdateScroll();
-      });
+      this._debouncedResize();
     });
   }
 
@@ -98,10 +111,24 @@ class StripCard extends LitElement {
     if (this._resizeObserver) {
       this._resizeObserver.disconnect();
     }
+    if (this._debounceTimer) {
+      clearTimeout(this._debounceTimer);
+    }
+  }
+
+  _debouncedResize() {
+    if (this._debounceTimer) {
+      clearTimeout(this._debounceTimer);
+    }
+    this._debounceTimer = setTimeout(() => {
+      requestAnimationFrame(() => {
+        this._updateFullWidthDimensions();
+        this._checkAndUpdateScroll();
+      });
+    }, DEBOUNCE_DELAY);
   }
 
   firstUpdated() {
-    // Warte bis DOM vollständig gerendert ist
     setTimeout(() => {
       this._updateFullWidthDimensions();
       this._checkAndUpdateScroll();
@@ -123,6 +150,7 @@ class StripCard extends LitElement {
   updated(changedProps) {
     if (changedProps.has('_config')) {
       this._updateFullWidthDimensions();
+      this._animationCache = null;
       requestAnimationFrame(() => this._checkAndUpdateScroll());
     }
   }
@@ -140,7 +168,6 @@ class StripCard extends LitElement {
       const containerRect = container.getBoundingClientRect();
       const leftOffset = rect.left - containerRect.left;
       
-      // Setze direkt auf wrapper statt this
       wrapper.style.setProperty('--full-width-container-width', `${containerWidth}px`);
       wrapper.style.setProperty('--full-width-left-offset', `${leftOffset}px`);
     }
@@ -158,6 +185,7 @@ class StripCard extends LitElement {
     if (this._config.disable_scroll_if_fits && contentFits) {
       moveElement.style.animation = 'none';
       moveElement.style.transform = 'none';
+      this._animationCache = null;
       return;
     }
 
@@ -179,7 +207,6 @@ class StripCard extends LitElement {
     const wrapWidth = wrapElement.offsetWidth;
     const contentWidth = moveElement.scrollWidth;
     
-    // Only stop animation if content fits AND disable_scroll_if_fits is enabled
     if (this._config.disable_scroll_if_fits && contentWidth <= wrapWidth) {
       moveElement.style.animation = 'none';
       moveElement.style.transform = 'none';
@@ -190,6 +217,13 @@ class StripCard extends LitElement {
     const duration = parseFloat(this.evaluateTemplate(this._config.duration, this.hass));
     const pauseDuration = parseFloat(this.evaluateTemplate(this._config.pause_duration, this.hass));
     
+    // Cache-Check
+    const cacheKey = `${scrollDistance}-${duration}-${pauseDuration}-${this._config.vertical_scroll}`;
+    if (this._animationCache === cacheKey) {
+      return;
+    }
+    
+    this._animationCache = cacheKey;
     this._injectReturnAnimation(scrollDistance, duration, pauseDuration, this._config.vertical_scroll);
   }
 
@@ -200,6 +234,7 @@ class StripCard extends LitElement {
       const oldHass = changedProps.get('hass');
       if (!oldHass) return true;
       
+      // Optimiert: Direkte State-Vergleiche ohne JSON.stringify
       const hasEntityChanges = this._config.entities.some(entityConfig => {
         const entityId = typeof entityConfig === "string" ? entityConfig : entityConfig.entity;
         if (!entityId) return false;
@@ -208,9 +243,19 @@ class StripCard extends LitElement {
         const newState = this.hass.states[entityId];
         
         if (!oldState || !newState) return true;
-        return oldState.state !== newState.state || 
-               JSON.stringify(oldState.attributes) !== JSON.stringify(newState.attributes);
+        if (oldState.state !== newState.state) return true;
+        
+        // Vergleiche nur relevante Attribute
+        const relevantAttrs = ['friendly_name', 'icon', 'unit_of_measurement'];
+        return relevantAttrs.some(attr => 
+          oldState.attributes[attr] !== newState.attributes[attr]
+        );
       });
+      
+      if (hasEntityChanges) {
+        this._templateCache.clear();
+        return true;
+      }
       
       const hasVisibilityChanges = this._config.entities.some(entityConfig => {
         if (!entityConfig.visibility || !Array.isArray(entityConfig.visibility)) return false;
@@ -227,7 +272,7 @@ class StripCard extends LitElement {
         });
       });
       
-      return hasEntityChanges || hasVisibilityChanges;
+      return hasVisibilityChanges;
     }
     
     return true;
@@ -303,48 +348,47 @@ class StripCard extends LitElement {
   evaluateTemplate(template, hass) {
     if (!template || typeof template !== 'string' || !template.includes("{{")) return template;
 
+    // Cache-Check
+    const cacheKey = `${template}-${hass.states ? Object.keys(hass.states).length : 0}`;
+    if (this._templateCache.has(cacheKey)) {
+      return this._templateCache.get(cacheKey);
+    }
+
     try {
       const expression = template.match(/{{(.*?)}}/s)[1];
       const states = (entityId) => hass.states[entityId]?.state || 'unknown';
       const state_attr = (entityId, attr) => hass.states[entityId]?.attributes[attr] ?? null;
       const func = new Function("states", "state_attr", `"use strict"; return (${expression.trim()});`);
-      return func(states, state_attr);
+      const result = func(states, state_attr);
+      
+      this._templateCache.set(cacheKey, result);
+      return result;
     } catch (e) {
-      console.warn("Template evaluation failed:", e, template);
-      return template;
+      console.warn("Strip-Card: Template evaluation failed:", e.message);
+      // Fallback: Zeige Template-String ohne {{}}
+      const fallback = template.replace(/{{.*?}}/g, '').trim() || 'Error';
+      return fallback;
     }
   }
 
   _injectReturnAnimation(scrollDistance, duration, pauseDuration, isVertical) {
     const totalDuration = duration + pauseDuration + duration + pauseDuration;
     
-    // Berechne die Prozentsätze für die Animation-Keyframes
-    // Phase 1: Vorwärts scrollen (0% bis afterScrollPercent)
     const afterScrollPercent = (duration / totalDuration * 100).toFixed(2);
-    // Phase 2: Pause am Ende (afterScrollPercent bis afterFirstPausePercent)
     const afterFirstPausePercent = ((duration + pauseDuration) / totalDuration * 100).toFixed(2);
-    // Phase 3: Rückwärts scrollen (afterFirstPausePercent bis afterReturnPercent)
     const afterReturnPercent = ((duration + pauseDuration + duration) / totalDuration * 100).toFixed(2);
-    // Phase 4: Pause am Anfang (afterReturnPercent bis 100%)
     
     const animationName = `ticker-return-${isVertical ? 'v' : 'h'}-${Date.now()}`;
     const transform = isVertical ? 'translateY' : 'translateX';
     
-    const styleId = 'strip-card-return-animation';
-    let styleElement = this.shadowRoot.getElementById(styleId);
+    let styleElement = this.shadowRoot.getElementById(ANIMATION_STYLE_ID);
     
     if (!styleElement) {
       styleElement = document.createElement('style');
-      styleElement.id = styleId;
+      styleElement.id = ANIMATION_STYLE_ID;
       this.shadowRoot.appendChild(styleElement);
     }
     
-    // Korrigierte Animation: 
-    // - Start und Ende bei transform(0) für Pause am Anfang
-    // - Scroll nach rechts/unten zu -scrollDistance
-    // - Pause am Ende
-    // - Scroll zurück zu 0
-    // - Pause am Anfang
     styleElement.textContent = `
       @keyframes ${animationName} {
         0% { 
@@ -404,9 +448,9 @@ class StripCard extends LitElement {
     let content = renderedEntities;
 
     if (this._config.continuous_scroll && !this._config.disable_scroll_if_fits) {
-      const containerWidth = this.getBoundingClientRect().width || 400;
+      const containerWidth = this.getBoundingClientRect().width || MIN_CONTAINER_WIDTH_FALLBACK;
       const divisor = (renderedEntities.length * 100) || 100;
-      const minCopies = Math.ceil(containerWidth / divisor) + 2;
+      const minCopies = Math.ceil(containerWidth / divisor) + EXTRA_COPIES_FOR_SEAMLESS_SCROLL;
       const copies = Math.max(minCopies, 2);
       content = [];
       for (let i = 0; i < copies; i++) {
@@ -985,7 +1029,7 @@ class StripCardEditor extends LitElement {
                   <ha-textfield label="Content-Farbe (optional)" .value="${entityObj.content_color || ''}" .entityIndex="${index}" .configValue="${"content_color"}" @input="${this._entityPropertyChanged}" helper-text="Überschreibt globale Content-Farbe"></ha-textfield>
                   
                   <div class="section-divider">Tap Action</div>
-                  <ha-select label="Aktion" .value="${entityObj.tap_action?.action || 'more-info'}" .entityIndex="${index}" .configValue="${"tap_action.action"}" @selected="${this._entitySelectChanged}" @closed="${(e) => e.stopPropagation()}">
+                  <ha-select label="Aktion" .value="${entityObj.tap_action?.action || 'more-info'}" .entityIndex="${index}" .configValue="${"tap_action.action"}" @selected="${this._entityConfigChanged}" @closed="${(e) => e.stopPropagation()}">
                     <mwc-list-item value="more-info">More Info</mwc-list-item>
                     <mwc-list-item value="toggle">Toggle</mwc-list-item>
                     <mwc-list-item value="navigate">Navigate</mwc-list-item>
@@ -1172,27 +1216,8 @@ class StripCardEditor extends LitElement {
     this._configChanged();
   }
 
-  _entityPropertyChanged(ev) {
-    const index = ev.currentTarget.entityIndex;
-    const configValue = ev.currentTarget.configValue;
-    const value = ev.currentTarget.value;
-    const entities = [...this._config.entities];
-    const entity = typeof entities[index] === 'string' ? { entity: entities[index] } : { ...entities[index] };
-    
-    if (configValue.includes('.')) {
-      const [parent, child] = configValue.split('.');
-      if (!entity[parent]) entity[parent] = {};
-      entity[parent][child] = value;
-    } else {
-      entity[configValue] = value;
-    }
-    
-    entities[index] = entity;
-    this._config = { ...this._config, entities };
-    this._configChanged();
-  }
-
-  _entitySelectChanged(ev) {
+  // Zusammengefasste Funktion für Entity-Config-Änderungen
+  _entityConfigChanged(ev) {
     const index = ev.currentTarget.entityIndex;
     const configValue = ev.currentTarget.configValue;
     const value = ev.currentTarget.value;
@@ -1211,6 +1236,10 @@ class StripCardEditor extends LitElement {
     this._config = { ...this._config, entities };
     this._configChanged();
     this.requestUpdate();
+  }
+
+  _entityPropertyChanged(ev) {
+    this._entityConfigChanged(ev);
   }
 
   _valueChanged(ev) {
