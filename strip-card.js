@@ -244,7 +244,7 @@ class StripCard extends LitElement {
                 style="cursor: ${this._config.title_left_action ? 'pointer' : 'default'};"
               ></ha-icon>
             ` : ''}
-            <span class="title-text">${this._config.title}</span>
+            <ha-markdown class="title-text" .content="${this._config.title}" breaks></ha-markdown>
             ${this._config.title_right_icon ? html`
               <ha-icon 
                 class="title-icon right"
@@ -355,6 +355,9 @@ class StripCard extends LitElement {
       }
       .title-text {
         flex: 1;
+      }
+      .title-text p {
+        margin: 0;
       }
       .title-icon {
         --mdc-icon-size: 24px;
@@ -666,10 +669,11 @@ class StripCardEditor extends LitElement {
     return html`
       <div class="tab-panel">
         <ha-textfield
-          label="Titel (optional)"
+          label="Titel (optional, Markdown unterstützt)"
           .value="${this._config.title || ''}"
           .configValue="${"title"}"
           @input="${this._valueChanged}"
+          helper-text="z.B: **Fett** oder [Link](https://example.com)"
         ></ha-textfield>
 
         ${this._config.title ? html`
