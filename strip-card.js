@@ -291,8 +291,12 @@ class StripCard extends LitElement {
       showIcon = this.evaluateTemplate(showIcon, this.hass);
     }
 
-    // Get color
-    const color = entityConfig.color ? this.evaluateTemplate(entityConfig.color, this.hass) : null;
+    // Get color (nur für Icons)
+    const iconColor = entityConfig.color ? this.evaluateTemplate(entityConfig.color, this.hass) : null;
+
+    // Separate Farben für Label und Content
+    const labelColor = entityConfig.label_color ? this.evaluateTemplate(entityConfig.label_color, this.hass) : 'var(--strip-card-label-color)';
+    const contentColor = entityConfig.content_color ? this.evaluateTemplate(entityConfig.content_color, this.hass) : 'var(--strip-card-content-color)';
 
     if (this._config.badge_style) {
       return html`
@@ -301,10 +305,10 @@ class StripCard extends LitElement {
           @click=${() => this._handleTap(entityConfig)}
           title="${content}${label ? ' - ' + label : ''}"
         >
-          ${showIcon ? html`<ha-icon class="chip-icon" .icon=${showIcon} style="${color ? `color: ${color};` : ''}"></ha-icon>` : ''}
+          ${showIcon ? html`<ha-icon class="chip-icon" .icon=${showIcon} style="${iconColor ? `color: ${iconColor};` : ''}"></ha-icon>` : ''}
           <div class="chip-text">
-            ${label ? html`<span class="chip-label" style="${color ? `color: ${color};` : ''}">${label}</span>` : ''}
-            <span class="chip-content" style="${color ? `color: ${color};` : ''}">${content}</span>
+            ${label ? html`<span class="chip-label" style="color: ${labelColor};">${label}</span>` : ''}
+            <span class="chip-content" style="color: ${contentColor};">${content}</span>
           </div>
         </div>
       `;
@@ -316,9 +320,9 @@ class StripCard extends LitElement {
         @click=${() => this._handleTap(entityConfig)}
         title="${content}${label ? ' - ' + label : ''}"
       >
-        ${showIcon ? html`<ha-icon class="icon" .icon=${showIcon} style="${color ? `color: ${color};` : ''}"></ha-icon>` : ''}
-        <span class="content" style="${color ? `color: ${color};` : ''}">${content}</span>
-        ${label ? html`<span class="label" style="${color ? `color: ${color};` : ''}">${label}</span>` : ''}
+        ${showIcon ? html`<ha-icon class="icon" .icon=${showIcon} style="${iconColor ? `color: ${iconColor};` : ''}"></ha-icon>` : ''}
+        <span class="content" style="color: ${contentColor};">${content}</span>
+        ${label ? html`<span class="label" style="color: ${labelColor};">${label}</span>` : ''}
         <span class="separator">${this._config.separator}</span>
       </div>
     `;
@@ -466,11 +470,11 @@ class StripCard extends LitElement {
         display: inline-flex;
         align-items: center;
         gap: 8px;
-        padding: 6px 12px;
+        padding: 4px 10px;
         margin-right: 8px;
-        min-height: 36px;
+        min-height: 28px;
         background: var(--strip-card-chip-background);
-        border-radius: 18px;
+        border-radius: 14px;
         cursor: pointer;
         font-size: 13px;
         white-space: nowrap;
@@ -953,13 +957,33 @@ class StripCardEditor extends LitElement {
                     @input="${this._entityPropertyChanged}"
                   ></ha-textfield>
 
+                  <div class="section-divider">Farben</div>
+
                   <ha-textfield
-                    label="Farbe (optional)"
+                    label="Icon-Farbe (optional)"
                     .value="${entityObj.color || ''}"
                     .entityIndex="${index}"
                     .configValue="${"color"}"
                     @input="${this._entityPropertyChanged}"
-                    helper-text="Überschreibt globale Farben"
+                    helper-text="Farbe nur für Icon"
+                  ></ha-textfield>
+
+                  <ha-textfield
+                    label="Label-Farbe (optional)"
+                    .value="${entityObj.label_color || ''}"
+                    .entityIndex="${index}"
+                    .configValue="${"label_color"}"
+                    @input="${this._entityPropertyChanged}"
+                    helper-text="Überschreibt globale Label-Farbe"
+                  ></ha-textfield>
+
+                  <ha-textfield
+                    label="Content-Farbe (optional)"
+                    .value="${entityObj.content_color || ''}"
+                    .entityIndex="${index}"
+                    .configValue="${"content_color"}"
+                    @input="${this._entityPropertyChanged}"
+                    helper-text="Überschreibt globale Content-Farbe"
                   ></ha-textfield>
 
                   <div class="section-divider">Tap Action</div>
