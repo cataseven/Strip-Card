@@ -85,7 +85,7 @@ class StripCard extends LitElement {
   connectedCallback() {
     super.connectedCallback();
     this._resizeObserver = new ResizeObserver(() => {
-      this._checkAndUpdateScroll();
+      requestAnimationFrame(() => this._checkAndUpdateScroll());
     });
   }
 
@@ -99,7 +99,10 @@ class StripCard extends LitElement {
   firstUpdated() {
     this._checkAndUpdateScroll();
     if (this._resizeObserver) {
-      this._resizeObserver.observe(this);
+      const wrapElement = this.shadowRoot.querySelector('.ticker-wrap');
+      if (wrapElement) {
+        this._resizeObserver.observe(wrapElement);
+      }
     }
   }
 
