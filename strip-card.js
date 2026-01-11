@@ -3,7 +3,7 @@ const html = LitElement.prototype.html;
 const css = LitElement.prototype.css;
 
 console.info(
-  `%c STRIP-CARD %c v2.4.0 `,
+  `%c STRIP-CARD %c v2.4.1 `,
   "color: orange; font-weight: bold; background: black",
   "color: white; font-weight: bold; background: dimgray"
 );
@@ -87,7 +87,8 @@ class StripCard extends LitElement {
       const oldHass = changedProps.get('hass');
       if (!oldHass) return true;
       
-      return this._config.entities.some(entityConfig => {
+      // Check entity states
+      const hasEntityChanges = this._config.entities.some(entityConfig => {
         const entityId = typeof entityConfig === "string" ? entityConfig : entityConfig.entity;
         if (!entityId) return false;
         
@@ -98,6 +99,24 @@ class StripCard extends LitElement {
         return oldState.state !== newState.state || 
                JSON.stringify(oldState.attributes) !== JSON.stringify(newState.attributes);
       });
+      
+      // Check visibility condition entities
+      const hasVisibilityChanges = this._config.entities.some(entityConfig => {
+        if (!entityConfig.visibility || !Array.isArray(entityConfig.visibility)) return false;
+        
+        return entityConfig.visibility.some(condition => {
+          if (condition.condition === 'state' && condition.entity) {
+            const oldState = oldHass.states[condition.entity];
+            const newState = this.hass.states[condition.entity];
+            
+            if (!oldState || !newState) return true;
+            return oldState.state !== newState.state;
+          }
+          return false;
+        });
+      });
+      
+      return hasEntityChanges || hasVisibilityChanges;
     }
     
     return true;
@@ -112,10 +131,10 @@ class StripCard extends LitElement {
         const stateObj = this.hass.states[entity];
         if (!stateObj) return false;
         
-        if (condition.state !== undefined) {
+        if (condition.state !== undefined && condition.state !== '') {
           return stateObj.state === condition.state;
         }
-        if (condition.state_not !== undefined) {
+        if (condition.state_not !== undefined && condition.state_not !== '') {
           return stateObj.state !== condition.state_not;
         }
       }
@@ -200,8 +219,6 @@ class StripCard extends LitElement {
       --strip-card-chip-background: ${this._config.chip_background};
       --strip-card-title-font-size: ${this._config.title_font_size};
       --strip-card-title-alignment: ${this._config.title_alignment};
-      --strip-card-duration: ${duration}s;
-      --strip-card-pause-duration: ${pauseDuration}s;
       ${this._config.card_width ? `--strip-card-width: ${this._config.card_width};` : ''}
       ${this._config.transparent ? `
         --ha-card-background: transparent;
@@ -243,13 +260,25 @@ class StripCard extends LitElement {
       !this._config.continuous_scroll && (this._config.vertical_scroll ? 'return-vertical' : 'return-horizontal')
     ].filter(Boolean).join(' ');
     
-    const animationName = this._config.continuous_scroll 
-      ? (this._config.vertical_scroll ? 'ticker' : 'ticker')
-      : (this._config.vertical_scroll ? 'ticker-return-vertical' : 'ticker-return-horizontal');
-    
-    const animationDuration = this._config.continuous_scroll 
-      ? `${duration}s`
-      : `calc(${duration}s * 2 + ${pauseDuration}s * 2)`;
+    let animationStyle;
+    if (this._config.continuous_scroll) {
+      const animationName = this._config.vertical_scroll ? 'ticker-vertical' : 'ticker';
+      animationStyle = `animation: ${animationName} ${duration}s linear infinite;`;
+    } else {
+      // Calculate percentages for return animation
+      const totalDuration = duration * 2 + pauseDuration * 2;
+      const scrollPercent = (duration / totalDuration * 100).toFixed(2);
+      const firstPausePercent = ((duration + pauseDuration) / totalDuration * 100).toFixed(2);
+      const returnPercent = ((duration * 2 + pauseDuration) / totalDuration * 100).toFixed(2);
+      
+      const animationName = this._config.vertical_scroll ? 'ticker-return-vertical' : 'ticker-return-horizontal';
+      animationStyle = `
+        animation: ${animationName} ${totalDuration}s linear infinite;
+        --scroll-percent: ${scrollPercent}%;
+        --first-pause-percent: ${firstPausePercent}%;
+        --return-percent: ${returnPercent}%;
+      `;
+    }
     
     return html`
       <ha-card style="${cardStyles}">
@@ -275,7 +304,7 @@ class StripCard extends LitElement {
           </div>
         ` : ''}
         <div class="ticker-wrap ${wrapClasses}">
-          <div class="ticker-move ${moveClasses}" style="animation: ${animationName} ${animationDuration} linear infinite;">
+          <div class="ticker-move ${moveClasses}" style="${animationStyle}">
             ${content}
           </div>
         </div>
@@ -525,33 +554,25 @@ class StripCard extends LitElement {
         font-weight: bold;
       }
       @keyframes ticker {
-        0% { transform: translate(0); }
-        100% { transform: translate(-50%); }
+        0% { transform: translateX(0); }
+        100% { transform: translateX(-50%); }
+      }
+      @keyframes ticker-vertical {
+        0% { transform: translateY(0); }
+        100% { transform: translateY(-50%); }
       }
       @keyframes ticker-return-horizontal {
         0% { transform: translateX(0); }
-        calc((var(--strip-card-duration) / (var(--strip-card-duration) * 2 + var(--strip-card-pause-duration) * 2)) * 100%) { 
-          transform: translateX(calc(-100% + 100vw)); 
-        }
-        calc(((var(--strip-card-duration) + var(--strip-card-pause-duration)) / (var(--strip-card-duration) * 2 + var(--strip-card-pause-duration) * 2)) * 100%) { 
-          transform: translateX(calc(-100% + 100vw)); 
-        }
-        calc(((var(--strip-card-duration) * 2 + var(--strip-card-pause-duration)) / (var(--strip-card-duration) * 2 + var(--strip-card-pause-duration) * 2)) * 100%) { 
-          transform: translateX(0); 
-        }
+        var(--scroll-percent) { transform: translateX(calc(-100% + 100vw)); }
+        var(--first-pause-percent) { transform: translateX(calc(-100% + 100vw)); }
+        var(--return-percent) { transform: translateX(0); }
         100% { transform: translateX(0); }
       }
       @keyframes ticker-return-vertical {
         0% { transform: translateY(0); }
-        calc((var(--strip-card-duration) / (var(--strip-card-duration) * 2 + var(--strip-card-pause-duration) * 2)) * 100%) { 
-          transform: translateY(calc(-100% + 100vh)); 
-        }
-        calc(((var(--strip-card-duration) + var(--strip-card-pause-duration)) / (var(--strip-card-duration) * 2 + var(--strip-card-pause-duration) * 2)) * 100%) { 
-          transform: translateY(calc(-100% + 100vh)); 
-        }
-        calc(((var(--strip-card-duration) * 2 + var(--strip-card-pause-duration)) / (var(--strip-card-duration) * 2 + var(--strip-card-pause-duration) * 2)) * 100%) { 
-          transform: translateY(0); 
-        }
+        var(--scroll-percent) { transform: translateY(calc(-100% + 100vh)); }
+        var(--first-pause-percent) { transform: translateY(calc(-100% + 100vh)); }
+        var(--return-percent) { transform: translateY(0); }
         100% { transform: translateY(0); }
       }
     `;
@@ -992,7 +1013,7 @@ class StripCardEditor extends LitElement {
       entity[configValue] = value;
     }
     
-    entities[index] = entity;
+    entities[entityIndex] = entity;
     this._config = { ...this._config, entities };
     this._configChanged();
     this.requestUpdate();
@@ -1002,7 +1023,7 @@ class StripCardEditor extends LitElement {
     if (!this._config || !this.hass) return;
     const configValue = ev.currentTarget.configValue;
     const value = ev.currentTarget.value;
-    if (!configValue || this.config[configValue] === value) return;
+    if (!configValue || this._config[configValue] === value) return;
     this._config = { ...this._config, [configValue]: value };
     this._configChanged();
   }
