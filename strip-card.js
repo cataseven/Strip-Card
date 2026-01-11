@@ -3,7 +3,7 @@ const html = LitElement.prototype.html;
 const css = LitElement.prototype.css;
 
 console.info(
-  `%c STRIP-CARD %c Loaded - Version 2.0.6 (Smart UI) `,
+  `%c STRIP-CARD %c v2.1.0 `,
   "color: orange; font-weight: bold; background: black",
   "color: white; font-weight: bold; background: dimgray"
 );
@@ -38,10 +38,6 @@ class StripCard extends LitElement {
 
   static getConfigElement() {
     return document.createElement("strip-card-editor");
-  }
-
-  constructor() {
-    super();
   }
 
   setConfig(config) {
@@ -84,26 +80,23 @@ class StripCard extends LitElement {
   }
 
   shouldUpdate(changedProps) {
-    if (changedProps.has('_config')) {
-      return true;
-    }
+    if (changedProps.has('_config')) return true;
     
     if (changedProps.has('hass')) {
       const oldHass = changedProps.get('hass');
       if (!oldHass) return true;
       
-      for (const entityConfig of this._config.entities) {
+      return this._config.entities.some(entityConfig => {
         const entityId = typeof entityConfig === "string" ? entityConfig : entityConfig.entity;
-        if (!entityId) continue;
+        if (!entityId) return false;
         
         const oldState = oldHass.states[entityId];
         const newState = this.hass.states[entityId];
         
         if (!oldState || !newState) return true;
-        if (oldState.state !== newState.state) return true;
-        if (JSON.stringify(oldState.attributes) !== JSON.stringify(newState.attributes)) return true;
-      }
-      return false;
+        return oldState.state !== newState.state || 
+               JSON.stringify(oldState.attributes) !== JSON.stringify(newState.attributes);
+      });
     }
     
     return true;
@@ -153,26 +146,16 @@ class StripCard extends LitElement {
       case 'toggle':
         this.hass.callService('homeassistant', 'toggle', { entity_id: entityId });
         break;
-      
-      case 'none':
-        break;
     }
   }
 
   evaluateTemplate(template, hass) {
-    if (!template || typeof template !== 'string') return template;
-    if (!template.includes("{{")) return template;
+    if (!template || typeof template !== 'string' || !template.includes("{{")) return template;
 
     try {
       const expression = template.match(/{{(.*?)}}/s)[1];
-      const states = (entityId) => {
-        const entity = hass.states[entityId];
-        return entity ? entity.state : 'unknown';
-      };
-      const state_attr = (entityId, attr) => {
-        const entity = hass.states[entityId];
-        return entity && entity.attributes[attr] !== undefined ? entity.attributes[attr] : null;
-      };
+      const states = (entityId) => hass.states[entityId]?.state || 'unknown';
+      const state_attr = (entityId, attr) => hass.states[entityId]?.attributes[attr] ?? null;
       const func = new Function("states", "state_attr", `"use strict"; return (${expression.trim()});`);
       return func(states, state_attr);
     } catch (e) {
@@ -185,24 +168,8 @@ class StripCard extends LitElement {
     if (!this._config || !this.hass) return html``;
 
     const duration = this.evaluateTemplate(this._config.duration, this.hass);
-    const cardWidthStyle = this._config.card_width ? `--strip-card-width: ${this._config.card_width};` : '';
-    const fadingClass = this._config.fading ? 'has-fading' : '';
-    const verticalClass = this._config.vertical_scroll ? 'has-vertical-scroll' : '';
-    const verticalAlignmentClass = this._config.vertical_alignment === 'inline' ? 'has-inline-vertical-alignment' : '';
-    const chipsClass = this._config.badge_style ? 'has-chips-style' : '';
     const animationIteration = this._config.continuous_scroll ? 'infinite' : '1';
     
-    let transparentStyle = '';
-    if (this._config.transparent) {
-        transparentStyle = `
-            --ha-card-background: transparent;
-            --card-background-color: transparent;
-            background: transparent;
-            box-shadow: none;
-            border: none;
-        `;
-    }
-
     const cardStyles = `
       --strip-card-font-size: ${this._config.font_size};
       --strip-card-border-radius: ${this._config.border_radius};
@@ -212,13 +179,18 @@ class StripCard extends LitElement {
       --strip-card-chip-background: ${this._config.chip_background};
       --strip-card-title-font-size: ${this._config.title_font_size};
       --strip-card-title-alignment: ${this._config.title_alignment};
-      ${cardWidthStyle}
-      ${transparentStyle} 
+      ${this._config.card_width ? `--strip-card-width: ${this._config.card_width};` : ''}
+      ${this._config.transparent ? `
+        --ha-card-background: transparent;
+        --card-background-color: transparent;
+        background: transparent;
+        box-shadow: none;
+        border: none;` : ''}
     `;
 
     const renderedEntities = this._config.entities
         .map((entityConfig) => this.renderEntity(entityConfig))
-        .filter(Boolean); 
+        .filter(Boolean);
     
     if (renderedEntities.length === 0) return html``;
 
@@ -226,14 +198,23 @@ class StripCard extends LitElement {
 
     if (this._config.continuous_scroll) {
       const containerWidth = this.getBoundingClientRect().width || 400;
-      const divisor = (renderedEntities.length * 100) || 100; 
+      const divisor = (renderedEntities.length * 100) || 100;
       const minCopies = Math.ceil(containerWidth / divisor) + 2;
-      const copies = minCopies > 2 ? minCopies : 2;
+      const copies = Math.max(minCopies, 2);
       content = [];
       for (let i = 0; i < copies; i++) {
         content.push(...renderedEntities);
       }
     }
+    
+    const wrapClasses = [
+      this._config.pause_on_hover && 'pausable',
+      this._config.fading && 'has-fading',
+      this._config.vertical_scroll && 'has-vertical-scroll',
+      this._config.badge_style && 'has-chips-style'
+    ].filter(Boolean).join(' ');
+    
+    const moveClasses = this._config.vertical_alignment === 'inline' ? 'has-inline-vertical-alignment' : '';
     
     return html`
       <ha-card style="${cardStyles}">
@@ -258,8 +239,8 @@ class StripCard extends LitElement {
             ` : ''}
           </div>
         ` : ''}
-        <div class="ticker-wrap ${this._config.pause_on_hover ? 'pausable' : ''} ${fadingClass} ${verticalClass} ${chipsClass}">
-          <div class="ticker-move ${verticalAlignmentClass}" style="animation-duration: ${duration}s; animation-iteration-count: ${animationIteration};">
+        <div class="ticker-wrap ${wrapClasses}">
+          <div class="ticker-move ${moveClasses}" style="animation-duration: ${duration}s; animation-iteration-count: ${animationIteration};">
             ${content}
           </div>
         </div>
@@ -269,35 +250,25 @@ class StripCard extends LitElement {
 
   renderEntity(entityConfig) {
     const entityId = typeof entityConfig === "string" ? entityConfig : entityConfig.entity;
-    
     const stateObj = this.hass.states[entityId];
+    
     if (!stateObj) {
       return html`<div class="ticker-item error">Unknown Entity: ${entityId}</div>`;
     }
 
-    // Evaluate content (main text)
-    let content = '';
-    if (entityConfig.content) {
-      content = this.evaluateTemplate(entityConfig.content, this.hass);
-    } else {
-      // Fallback to friendly_name + state
-      const name = stateObj.attributes.friendly_name || entityId;
-      content = `${name}: ${stateObj.state}`;
-    }
+    let content = entityConfig.content 
+      ? this.evaluateTemplate(entityConfig.content, this.hass)
+      : `${stateObj.attributes.friendly_name || entityId}: ${stateObj.state}`;
 
-    // Evaluate label (secondary text)
     const label = entityConfig.label ? this.evaluateTemplate(entityConfig.label, this.hass) : '';
+    
+    let showIcon = entityConfig.icon !== undefined 
+      ? entityConfig.icon 
+      : (this._config.show_icon ? stateObj.attributes.icon || 'mdi:eye' : null);
+    
+    if (showIcon) showIcon = this.evaluateTemplate(showIcon, this.hass);
 
-    // Get icon
-    let showIcon = entityConfig.icon !== undefined ? entityConfig.icon : (this._config.show_icon ? stateObj.attributes.icon || 'mdi:eye' : null);
-    if (showIcon) {
-      showIcon = this.evaluateTemplate(showIcon, this.hass);
-    }
-
-    // Get color (nur für Icons)
     const iconColor = entityConfig.color ? this.evaluateTemplate(entityConfig.color, this.hass) : null;
-
-    // Separate Farben für Label und Content
     const labelColor = entityConfig.label_color ? this.evaluateTemplate(entityConfig.label_color, this.hass) : 'var(--strip-card-label-color)';
     const contentColor = entityConfig.content_color ? this.evaluateTemplate(entityConfig.content_color, this.hass) : 'var(--strip-card-content-color)';
 
@@ -344,7 +315,6 @@ class StripCard extends LitElement {
         width: var(--strip-card-width, 100%);
         display: flex;
         flex-direction: column;
-        justify-content: flex-start;
         position: relative;
         left: 50%;
         transform: translateX(-50%);
@@ -382,66 +352,30 @@ class StripCard extends LitElement {
         order: 1;
       }
       .ticker-wrap {
-        flex-grow: 1;
+        flex: 1;
         display: flex;
         align-items: center;
         width: 100%;
         overflow: hidden;
-        background-color: var(--card-background-color, white); 
-        padding: 0;
-        box-sizing: border-box;
+        background-color: var(--card-background-color, white);
         position: relative;
         min-height: 50px;
       }
       .ticker-wrap.has-vertical-scroll {
         flex-direction: column;
         height: var(--strip-card-height, auto);
-        overflow: hidden;
       }
       .ticker-wrap.has-chips-style {
         padding: 8px 0;
         min-height: auto;
       }
       .ticker-wrap.has-fading {
-        position: relative;
-        padding: 0 20px;
-        -webkit-mask-image: linear-gradient(to right,
-          rgba(0, 0, 0, 0) 0%,
-          rgba(0, 0, 0, 1) 14%,
-          rgba(0, 0, 0, 1) 86%,
-          rgba(0, 0, 0, 0) 100%
-        );
-        mask-image: linear-gradient(to right,
-          rgba(0, 0, 0, 0) 0%,
-          rgba(0, 0, 0, 1) 14%,
-          rgba(0, 0, 0, 1) 86%,
-          rgba(0, 0, 0, 0) 100%
-        );
-        -webkit-mask-size: 100% 100%;
-        mask-size: 100% 100%;
-        -webkit-mask-repeat: no-repeat;
-        mask-repeat: no-repeat;
+        -webkit-mask-image: linear-gradient(to right, transparent 0%, black 10%, black 90%, transparent 100%);
+        mask-image: linear-gradient(to right, transparent 0%, black 10%, black 90%, transparent 100%);
       }
       .ticker-wrap.has-vertical-scroll.has-fading {
-        padding: 20px 0;
-        -webkit-mask-image: linear-gradient(to bottom,
-          rgba(0, 0, 0, 0) 0%,
-          rgba(0, 0, 0, 1) 14%,
-          rgba(0, 0, 0, 1) 86%,
-          rgba(0, 0, 0, 0) 100%
-        );
-        mask-image: linear-gradient(to bottom,
-          rgba(0, 0, 0, 0) 0%,
-          rgba(0, 0, 0, 1) 14%,
-          rgba(0, 0, 0, 1) 86%,
-          rgba(0, 0, 0, 0) 100%
-        );
-      }
-      .ticker-wrap.has-chips-style.has-fading {
-        padding: 8px 20px;
-      }
-      .ticker-wrap.has-vertical-scroll.has-chips-style.has-fading {
-        padding: 20px 0;
+        -webkit-mask-image: linear-gradient(to bottom, transparent 0%, black 10%, black 90%, transparent 100%);
+        mask-image: linear-gradient(to bottom, transparent 0%, black 10%, black 90%, transparent 100%);
       }
       .ticker-wrap.pausable:hover .ticker-move {
         animation-play-state: paused;
@@ -450,10 +384,8 @@ class StripCard extends LitElement {
         display: inline-block;
         white-space: nowrap;
         will-change: transform;
-        transform: translateZ(0);
         animation-name: ticker;
         animation-timing-function: linear;
-        animation-iteration-count: infinite;
       }
       .ticker-move.has-inline-vertical-alignment {
         display: block;
@@ -463,15 +395,12 @@ class StripCard extends LitElement {
       .ticker-wrap.has-vertical-scroll .ticker-move {
         white-space: normal;
         animation-name: vertical-ticker;
-        animation-direction: normal;
-        animation-fill-mode: forwards;
         display: block;
         height: max-content;
       }
       .ticker-item {
         display: inline-flex;
         align-items: center;
-        margin: 0;
         font-size: var(--strip-card-font-size, 14px);
         cursor: pointer;
       }
@@ -480,7 +409,6 @@ class StripCard extends LitElement {
         flex-direction: column;
         align-items: flex-start;
         padding: 0.5rem 1rem;
-        margin: 0;
       }
       .ticker-item .separator {
         margin: 0 1rem;
@@ -508,8 +436,6 @@ class StripCard extends LitElement {
         white-space: nowrap;
         transition: background 0.2s;
         box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
-        box-sizing: border-box;
-        vertical-align: middle;
       }
       .chip-item:hover {
         background: var(--secondary-background-color);
@@ -519,16 +445,12 @@ class StripCard extends LitElement {
         width: 16px;
         height: 16px;
         flex-shrink: 0;
-        display: flex;
-        align-items: center;
-        justify-content: center;
       }
       .chip-text {
         display: flex;
         flex-direction: column;
         gap: 1px;
         align-items: flex-start;
-        justify-content: center;
         line-height: 1;
       }
       .chip-item:not(.has-label) .chip-text {
@@ -581,7 +503,6 @@ class StripCard extends LitElement {
   }
 }
 
-// Visual Editor
 class StripCardEditor extends LitElement {
   static get properties() {
     return {
@@ -632,45 +553,17 @@ class StripCardEditor extends LitElement {
   }
 
   render() {
-    if (!this.hass || !this._config) {
-      return html``;
-    }
+    if (!this.hass || !this._config) return html``;
 
     return html`
       <div class="card-config">
         <div class="tabs">
-          <button 
-            class="tab ${this._currentTab === 'general' ? 'active' : ''}"
-            @click=${() => this._switchTab('general')}
-          >
-            Titel
-          </button>
-          <button 
-            class="tab ${this._currentTab === 'scroll' ? 'active' : ''}"
-            @click=${() => this._switchTab('scroll')}
-          >
-            Scroll
-          </button>
-          <button 
-            class="tab ${this._currentTab === 'style' ? 'active' : ''}"
-            @click=${() => this._switchTab('style')}
-          >
-            Stil
-          </button>
-          <button 
-            class="tab ${this._currentTab === 'colors' ? 'active' : ''}"
-            @click=${() => this._switchTab('colors')}
-          >
-            Farben
-          </button>
-          <button 
-            class="tab ${this._currentTab === 'entities' ? 'active' : ''}"
-            @click=${() => this._switchTab('entities')}
-          >
-            Entitäten (${this._config.entities.length})
-          </button>
+          <button class="tab ${this._currentTab === 'general' ? 'active' : ''}" @click=${() => this._switchTab('general')}>Titel</button>
+          <button class="tab ${this._currentTab === 'scroll' ? 'active' : ''}" @click=${() => this._switchTab('scroll')}>Scroll</button>
+          <button class="tab ${this._currentTab === 'style' ? 'active' : ''}" @click=${() => this._switchTab('style')}>Stil</button>
+          <button class="tab ${this._currentTab === 'colors' ? 'active' : ''}" @click=${() => this._switchTab('colors')}>Farben</button>
+          <button class="tab ${this._currentTab === 'entities' ? 'active' : ''}" @click=${() => this._switchTab('entities')}>Entitäten (${this._config.entities.length})</button>
         </div>
-
         <div class="tab-content">
           ${this._currentTab === 'general' ? this._renderGeneralTab() : ''}
           ${this._currentTab === 'scroll' ? this._renderScrollTab() : ''}
@@ -692,89 +585,27 @@ class StripCardEditor extends LitElement {
       <div class="tab-panel">
         <div class="input-group">
           <label class="input-label">Titel (Markdown unterstützt)</label>
-          <textarea
-            class="title-textarea"
-            .value="${this._config.title || ''}"
-            @input="${this._titleChanged}"
-            rows="4"
-            placeholder="z.B: **Fett**, *Kursiv* oder [Link](url)"
-          >${this._config.title || ''}</textarea>
+          <textarea class="title-textarea" .value="${this._config.title || ''}" @input="${this._titleChanged}" rows="4" placeholder="z.B: **Fett**, *Kursiv* oder [Link](url)">${this._config.title || ''}</textarea>
           <div class="helper-text">z.B: **Fett**, *Kursiv* oder [Link](url)</div>
         </div>
-
         ${this._config.title ? html`
-          <ha-textfield
-            label="Titel Schriftgröße"
-            .value="${this._config.title_font_size}"
-            .configValue="${"title_font_size"}"
-            @input="${this._valueChanged}"
-            helper-text="z.B: 16px, 1.5em, 20px"
-          ></ha-textfield>
-
-          <ha-select
-            label="Titel Ausrichtung"
-            .value="${this._config.title_alignment}"
-            .configValue="${"title_alignment"}"
-            @selected="${this._selectChanged}"
-            @closed="${(e) => e.stopPropagation()}"
-          >
+          <ha-textfield label="Titel Schriftgröße" .value="${this._config.title_font_size}" .configValue="${"title_font_size"}" @input="${this._valueChanged}" helper-text="z.B: 16px, 1.5em, 20px"></ha-textfield>
+          <ha-select label="Titel Ausrichtung" .value="${this._config.title_alignment}" .configValue="${"title_alignment"}" @selected="${this._selectChanged}" @closed="${(e) => e.stopPropagation()}">
             <mwc-list-item value="left">Links</mwc-list-item>
             <mwc-list-item value="center">Zentriert</mwc-list-item>
             <mwc-list-item value="right">Rechts</mwc-list-item>
           </ha-select>
-
           <div class="section-divider">Linkes Icon</div>
-
-          <ha-textfield
-            label="Icon links"
-            .value="${this._config.title_left_icon || ''}"
-            .configValue="${"title_left_icon"}"
-            @input="${this._valueChanged}"
-          ></ha-textfield>
-
+          <ha-textfield label="Icon links" .value="${this._config.title_left_icon || ''}" .configValue="${"title_left_icon"}" @input="${this._valueChanged}"></ha-textfield>
           ${this._config.title_left_icon ? html`
-            <ha-textfield
-              label="Icon-Größe links"
-              .value="${this._config.title_left_icon_size}"
-              .configValue="${"title_left_icon_size"}"
-              @input="${this._valueChanged}"
-              helper-text="z.B: 24px, 1.5em, 32px"
-            ></ha-textfield>
-
-            <ha-textfield
-              label="Aktion links"
-              .value="${this._config.title_left_action || ''}"
-              .configValue="${"title_left_action"}"
-              @input="${this._valueChanged}"
-              helper-text="Entity-ID oder /pfad"
-            ></ha-textfield>
+            <ha-textfield label="Icon-Größe links" .value="${this._config.title_left_icon_size}" .configValue="${"title_left_icon_size"}" @input="${this._valueChanged}" helper-text="z.B: 24px, 1.5em, 32px"></ha-textfield>
+            <ha-textfield label="Aktion links" .value="${this._config.title_left_action || ''}" .configValue="${"title_left_action"}" @input="${this._valueChanged}" helper-text="Entity-ID oder /pfad"></ha-textfield>
           ` : ''}
-
           <div class="section-divider">Rechtes Icon</div>
-
-          <ha-textfield
-            label="Icon rechts"
-            .value="${this._config.title_right_icon || ''}"
-            .configValue="${"title_right_icon"}"
-            @input="${this._valueChanged}"
-          ></ha-textfield>
-
+          <ha-textfield label="Icon rechts" .value="${this._config.title_right_icon || ''}" .configValue="${"title_right_icon"}" @input="${this._valueChanged}"></ha-textfield>
           ${this._config.title_right_icon ? html`
-            <ha-textfield
-              label="Icon-Größe rechts"
-              .value="${this._config.title_right_icon_size}"
-              .configValue="${"title_right_icon_size"}"
-              @input="${this._valueChanged}"
-              helper-text="z.B: 24px, 1.5em, 32px"
-            ></ha-textfield>
-
-            <ha-textfield
-              label="Aktion rechts"
-              .value="${this._config.title_right_action || ''}"
-              .configValue="${"title_right_action"}"
-              @input="${this._valueChanged}"
-              helper-text="Entity-ID oder /pfad"
-            ></ha-textfield>
+            <ha-textfield label="Icon-Größe rechts" .value="${this._config.title_right_icon_size}" .configValue="${"title_right_icon_size"}" @input="${this._valueChanged}" helper-text="z.B: 24px, 1.5em, 32px"></ha-textfield>
+            <ha-textfield label="Aktion rechts" .value="${this._config.title_right_action || ''}" .configValue="${"title_right_action"}" @input="${this._valueChanged}" helper-text="Entity-ID oder /pfad"></ha-textfield>
           ` : ''}
         ` : ''}
       </div>
@@ -782,54 +613,19 @@ class StripCardEditor extends LitElement {
   }
 
   _titleChanged(ev) {
-    const value = ev.target.value;
-    this._config = { ...this._config, title: value };
+    this._config = { ...this._config, title: ev.target.value };
     this._configChanged();
   }
 
   _renderScrollTab() {
     return html`
       <div class="tab-panel">
-        <ha-textfield
-          label="Scroll-Dauer (Sekunden)"
-          type="number"
-          .value="${this._config.duration}"
-          .configValue="${"duration"}"
-          @input="${this._valueChanged}"
-        ></ha-textfield>
-
-        <ha-formfield label="Kontinuierliches Scrollen">
-          <ha-switch
-            .checked="${this._config.continuous_scroll}"
-            .configValue="${"continuous_scroll"}"
-            @change="${this._switchChanged}"
-          ></ha-switch>
-        </ha-formfield>
-
-        <ha-formfield label="Bei Hover pausieren">
-          <ha-switch
-            .checked="${this._config.pause_on_hover}"
-            .configValue="${"pause_on_hover"}"
-            @change="${this._switchChanged}"
-          ></ha-switch>
-        </ha-formfield>
-
-        <ha-formfield label="Vertikales Scrollen">
-          <ha-switch
-            .checked="${this._config.vertical_scroll}"
-            .configValue="${"vertical_scroll"}"
-            @change="${this._switchChanged}"
-          ></ha-switch>
-        </ha-formfield>
-
+        <ha-textfield label="Scroll-Dauer (Sekunden)" type="number" .value="${this._config.duration}" .configValue="${"duration"}" @input="${this._valueChanged}"></ha-textfield>
+        <ha-formfield label="Kontinuierliches Scrollen"><ha-switch .checked="${this._config.continuous_scroll}" .configValue="${"continuous_scroll"}" @change="${this._switchChanged}"></ha-switch></ha-formfield>
+        <ha-formfield label="Bei Hover pausieren"><ha-switch .checked="${this._config.pause_on_hover}" .configValue="${"pause_on_hover"}" @change="${this._switchChanged}"></ha-switch></ha-formfield>
+        <ha-formfield label="Vertikales Scrollen"><ha-switch .checked="${this._config.vertical_scroll}" .configValue="${"vertical_scroll"}" @change="${this._switchChanged}"></ha-switch></ha-formfield>
         ${this._config.vertical_scroll ? html`
-          <ha-select
-            label="Vertikale Ausrichtung"
-            .value="${this._config.vertical_alignment}"
-            .configValue="${"vertical_alignment"}"
-            @selected="${this._selectChanged}"
-            @closed="${(e) => e.stopPropagation()}"
-          >
+          <ha-select label="Vertikale Ausrichtung" .value="${this._config.vertical_alignment}" .configValue="${"vertical_alignment"}" @selected="${this._selectChanged}" @closed="${(e) => e.stopPropagation()}">
             <mwc-list-item value="stack">Gestapelt</mwc-list-item>
             <mwc-list-item value="inline">Inline</mwc-list-item>
           </ha-select>
@@ -841,76 +637,19 @@ class StripCardEditor extends LitElement {
   _renderStyleTab() {
     return html`
       <div class="tab-panel">
-        <ha-formfield label="Chips-Stil">
-          <ha-switch
-            .checked="${this._config.badge_style}"
-            .configValue="${"badge_style"}"
-            @change="${this._switchChanged}"
-          ></ha-switch>
-        </ha-formfield>
-
-        <ha-formfield label="Icons anzeigen (Standard)">
-          <ha-switch
-            .checked="${this._config.show_icon}"
-            .configValue="${"show_icon"}"
-            @change="${this._switchChanged}"
-          ></ha-switch>
-        </ha-formfield>
-
-        <ha-formfield label="Fading">
-          <ha-switch
-            .checked="${this._config.fading}"
-            .configValue="${"fading"}"
-            @change="${this._switchChanged}"
-          ></ha-switch>
-        </ha-formfield>
-
-        <ha-formfield label="Transparent">
-          <ha-switch
-            .checked="${this._config.transparent}"
-            .configValue="${"transparent"}"
-            @change="${this._switchChanged}"
-          ></ha-switch>
-        </ha-formfield>
-
+        <ha-formfield label="Chips-Stil"><ha-switch .checked="${this._config.badge_style}" .configValue="${"badge_style"}" @change="${this._switchChanged}"></ha-switch></ha-formfield>
+        <ha-formfield label="Icons anzeigen (Standard)"><ha-switch .checked="${this._config.show_icon}" .configValue="${"show_icon"}" @change="${this._switchChanged}"></ha-switch></ha-formfield>
+        <ha-formfield label="Fading"><ha-switch .checked="${this._config.fading}" .configValue="${"fading"}" @change="${this._switchChanged}"></ha-switch></ha-formfield>
+        <ha-formfield label="Transparent"><ha-switch .checked="${this._config.transparent}" .configValue="${"transparent"}" @change="${this._switchChanged}"></ha-switch></ha-formfield>
         ${!this._config.badge_style ? html`
-          <ha-textfield
-            label="Trennzeichen"
-            .value="${this._config.separator}"
-            .configValue="${"separator"}"
-            @input="${this._valueChanged}"
-          ></ha-textfield>
-
-          <ha-textfield
-            label="Schriftgröße"
-            .value="${this._config.font_size}"
-            .configValue="${"font_size"}"
-            @input="${this._valueChanged}"
-          ></ha-textfield>
+          <ha-textfield label="Trennzeichen" .value="${this._config.separator}" .configValue="${"separator"}" @input="${this._valueChanged}"></ha-textfield>
+          <ha-textfield label="Schriftgröße" .value="${this._config.font_size}" .configValue="${"font_size"}" @input="${this._valueChanged}"></ha-textfield>
         ` : ''}
-
         ${!this._config.transparent ? html`
-          <ha-textfield
-            label="Rahmenradius"
-            .value="${this._config.border_radius}"
-            .configValue="${"border_radius"}"
-            @input="${this._valueChanged}"
-          ></ha-textfield>
+          <ha-textfield label="Rahmenradius" .value="${this._config.border_radius}" .configValue="${"border_radius"}" @input="${this._valueChanged}"></ha-textfield>
         ` : ''}
-
-        <ha-textfield
-          label="Kartenhöhe"
-          .value="${this._config.card_height}"
-          .configValue="${"card_height"}"
-          @input="${this._valueChanged}"
-        ></ha-textfield>
-
-        <ha-textfield
-          label="Kartenbreite"
-          .value="${this._config.card_width}"
-          .configValue="${"card_width"}"
-          @input="${this._valueChanged}"
-        ></ha-textfield>
+        <ha-textfield label="Kartenhöhe" .value="${this._config.card_height}" .configValue="${"card_height"}" @input="${this._valueChanged}"></ha-textfield>
+        <ha-textfield label="Kartenbreite" .value="${this._config.card_width}" .configValue="${"card_width"}" @input="${this._valueChanged}"></ha-textfield>
       </div>
     `;
   }
@@ -918,29 +657,10 @@ class StripCardEditor extends LitElement {
   _renderColorsTab() {
     return html`
       <div class="tab-panel">
-        <ha-textfield
-          label="Content-Farbe"
-          .value="${this._config.content_color}"
-          .configValue="${"content_color"}"
-          @input="${this._valueChanged}"
-          helper-text="Haupttext-Farbe"
-        ></ha-textfield>
-
-        <ha-textfield
-          label="Label-Farbe"
-          .value="${this._config.label_color}"
-          .configValue="${"label_color"}"
-          @input="${this._valueChanged}"
-          helper-text="Sekundärtext-Farbe"
-        ></ha-textfield>
-
+        <ha-textfield label="Content-Farbe" .value="${this._config.content_color}" .configValue="${"content_color"}" @input="${this._valueChanged}" helper-text="Haupttext-Farbe"></ha-textfield>
+        <ha-textfield label="Label-Farbe" .value="${this._config.label_color}" .configValue="${"label_color"}" @input="${this._valueChanged}" helper-text="Sekundärtext-Farbe"></ha-textfield>
         ${this._config.badge_style ? html`
-          <ha-textfield
-            label="Chip-Hintergrund"
-            .value="${this._config.chip_background}"
-            .configValue="${"chip_background"}"
-            @input="${this._valueChanged}"
-          ></ha-textfield>
+          <ha-textfield label="Chip-Hintergrund" .value="${this._config.chip_background}" .configValue="${"chip_background"}" @input="${this._valueChanged}"></ha-textfield>
         ` : ''}
       </div>
     `;
@@ -948,15 +668,9 @@ class StripCardEditor extends LitElement {
 
   _renderEntitiesTab() {
     const entities = this._config.entities || [];
-
     return html`
       <div class="tab-panel">
-        ${entities.length === 0 ? html`
-          <div class="no-entities">
-            <p>Keine Entitäten konfiguriert.</p>
-          </div>
-        ` : ''}
-        
+        ${entities.length === 0 ? html`<div class="no-entities"><p>Keine Entitäten konfiguriert.</p></div>` : ''}
         ${entities.map((entity, index) => {
           const entityObj = typeof entity === 'string' ? { entity: entity } : entity;
           const entityId = entityObj.entity || '';
@@ -968,156 +682,50 @@ class StripCardEditor extends LitElement {
               <div class="entity-header">
                 <span @click="${() => this._toggleEntity(index)}">${entityName}</span>
                 <div class="entity-controls">
-                  ${index > 0 ? html`
-                    <ha-icon-button @click="${() => this._moveEntityUp(index)}">
-                      <ha-icon icon="mdi:arrow-up"></ha-icon>
-                    </ha-icon-button>
-                  ` : ''}
-                  ${index < entities.length - 1 ? html`
-                    <ha-icon-button @click="${() => this._moveEntityDown(index)}">
-                      <ha-icon icon="mdi:arrow-down"></ha-icon>
-                    </ha-icon-button>
-                  ` : ''}
-                  <ha-icon-button @click="${() => this._removeEntity(index)}">
-                    <ha-icon icon="mdi:delete"></ha-icon>
-                  </ha-icon-button>
+                  ${index > 0 ? html`<ha-icon-button @click="${() => this._moveEntityUp(index)}"><ha-icon icon="mdi:arrow-up"></ha-icon></ha-icon-button>` : ''}
+                  ${index < entities.length - 1 ? html`<ha-icon-button @click="${() => this._moveEntityDown(index)}"><ha-icon icon="mdi:arrow-down"></ha-icon></ha-icon-button>` : ''}
+                  <ha-icon-button @click="${() => this._removeEntity(index)}"><ha-icon icon="mdi:delete"></ha-icon></ha-icon-button>
                 </div>
               </div>
-              
               ${isExpanded ? html`
                 <div class="entity-editor">
-                  <ha-entity-picker
-                    .hass="${this.hass}"
-                    .value="${entityId}"
-                    .entityIndex="${index}"
-                    @value-changed="${this._entityChanged}"
-                    allow-custom-entity
-                  ></ha-entity-picker>
-
-                  <ha-textfield
-                    label="Content (Template)"
-                    .value="${entityObj.content || ''}"
-                    .entityIndex="${index}"
-                    .configValue="${"content"}"
-                    @input="${this._entityPropertyChanged}"
-                    helper-text="z.B: {{ states('sensor.temp') }} °C"
-                  ></ha-textfield>
-
-                  <ha-textfield
-                    label="Label (Template)"
-                    .value="${entityObj.label || ''}"
-                    .entityIndex="${index}"
-                    .configValue="${"label"}"
-                    @input="${this._entityPropertyChanged}"
-                    helper-text="Chips: oben, Normal: rechts"
-                  ></ha-textfield>
-
-                  <ha-textfield
-                    label="Icon (optional)"
-                    .value="${entityObj.icon || ''}"
-                    .entityIndex="${index}"
-                    .configValue="${"icon"}"
-                    @input="${this._entityPropertyChanged}"
-                  ></ha-textfield>
-
+                  <ha-entity-picker .hass="${this.hass}" .value="${entityId}" .entityIndex="${index}" @value-changed="${this._entityChanged}" allow-custom-entity></ha-entity-picker>
+                  <ha-textfield label="Content (Template)" .value="${entityObj.content || ''}" .entityIndex="${index}" .configValue="${"content"}" @input="${this._entityPropertyChanged}" helper-text="z.B: {{ states('sensor.temp') }} °C"></ha-textfield>
+                  <ha-textfield label="Label (Template)" .value="${entityObj.label || ''}" .entityIndex="${index}" .configValue="${"label"}" @input="${this._entityPropertyChanged}" helper-text="Chips: oben, Normal: rechts"></ha-textfield>
+                  <ha-textfield label="Icon (optional)" .value="${entityObj.icon || ''}" .entityIndex="${index}" .configValue="${"icon"}" @input="${this._entityPropertyChanged}"></ha-textfield>
                   <div class="section-divider">Farben</div>
-
-                  <ha-textfield
-                    label="Icon-Farbe (optional)"
-                    .value="${entityObj.color || ''}"
-                    .entityIndex="${index}"
-                    .configValue="${"color"}"
-                    @input="${this._entityPropertyChanged}"
-                    helper-text="Farbe nur für Icon"
-                  ></ha-textfield>
-
-                  <ha-textfield
-                    label="Label-Farbe (optional)"
-                    .value="${entityObj.label_color || ''}"
-                    .entityIndex="${index}"
-                    .configValue="${"label_color"}"
-                    @input="${this._entityPropertyChanged}"
-                    helper-text="Überschreibt globale Label-Farbe"
-                  ></ha-textfield>
-
-                  <ha-textfield
-                    label="Content-Farbe (optional)"
-                    .value="${entityObj.content_color || ''}"
-                    .entityIndex="${index}"
-                    .configValue="${"content_color"}"
-                    @input="${this._entityPropertyChanged}"
-                    helper-text="Überschreibt globale Content-Farbe"
-                  ></ha-textfield>
-
+                  <ha-textfield label="Icon-Farbe (optional)" .value="${entityObj.color || ''}" .entityIndex="${index}" .configValue="${"color"}" @input="${this._entityPropertyChanged}" helper-text="Farbe nur für Icon"></ha-textfield>
+                  <ha-textfield label="Label-Farbe (optional)" .value="${entityObj.label_color || ''}" .entityIndex="${index}" .configValue="${"label_color"}" @input="${this._entityPropertyChanged}" helper-text="Überschreibt globale Label-Farbe"></ha-textfield>
+                  <ha-textfield label="Content-Farbe (optional)" .value="${entityObj.content_color || ''}" .entityIndex="${index}" .configValue="${"content_color"}" @input="${this._entityPropertyChanged}" helper-text="Überschreibt globale Content-Farbe"></ha-textfield>
                   <div class="section-divider">Tap Action</div>
-
-                  <ha-select
-                    label="Aktion"
-                    .value="${entityObj.tap_action?.action || 'more-info'}"
-                    .entityIndex="${index}"
-                    .configValue="${"tap_action.action"}"
-                    @selected="${this._entitySelectChanged}"
-                    @closed="${(e) => e.stopPropagation()}"
-                  >
+                  <ha-select label="Aktion" .value="${entityObj.tap_action?.action || 'more-info'}" .entityIndex="${index}" .configValue="${"tap_action.action"}" @selected="${this._entitySelectChanged}" @closed="${(e) => e.stopPropagation()}">
                     <mwc-list-item value="more-info">More Info</mwc-list-item>
                     <mwc-list-item value="toggle">Toggle</mwc-list-item>
                     <mwc-list-item value="navigate">Navigate</mwc-list-item>
                     <mwc-list-item value="call-service">Call Service</mwc-list-item>
                     <mwc-list-item value="none">Keine</mwc-list-item>
                   </ha-select>
-
                   ${entityObj.tap_action?.action === 'navigate' ? html`
-                    <ha-textfield
-                      label="Navigation Path"
-                      .value="${entityObj.tap_action?.navigation_path || ''}"
-                      .entityIndex="${index}"
-                      .configValue="${"tap_action.navigation_path"}"
-                      @input="${this._entityPropertyChanged}"
-                      helper-text="z.B: /lovelace/home"
-                    ></ha-textfield>
+                    <ha-textfield label="Navigation Path" .value="${entityObj.tap_action?.navigation_path || ''}" .entityIndex="${index}" .configValue="${"tap_action.navigation_path"}" @input="${this._entityPropertyChanged}" helper-text="z.B: /lovelace/home"></ha-textfield>
                   ` : ''}
-
                   ${entityObj.tap_action?.action === 'call-service' ? html`
-                    <ha-textfield
-                      label="Service"
-                      .value="${entityObj.tap_action?.service || ''}"
-                      .entityIndex="${index}"
-                      .configValue="${"tap_action.service"}"
-                      @input="${this._entityPropertyChanged}"
-                      helper-text="z.B: light.turn_on"
-                    ></ha-textfield>
+                    <ha-textfield label="Service" .value="${entityObj.tap_action?.service || ''}" .entityIndex="${index}" .configValue="${"tap_action.service"}" @input="${this._entityPropertyChanged}" helper-text="z.B: light.turn_on"></ha-textfield>
                   ` : ''}
                 </div>
               ` : ''}
             </div>
           `;
         })}
-
-        <mwc-button raised @click="${this._addEntity}">
-          Entität hinzufügen
-        </mwc-button>
+        <mwc-button raised @click="${this._addEntity}">Entität hinzufügen</mwc-button>
       </div>
     `;
   }
 
   _getEntityDisplayName(entity, entityId) {
-    if (typeof entity === 'string') {
-      return entityId || 'Neue Entität';
-    }
-    
-    if (entity.content) {
-      return entity.content.substring(0, 30) + (entity.content.length > 30 ? '...' : '');
-    }
-    
-    if (entityId && this.hass && this.hass.states[entityId]) {
-      return this.hass.states[entityId].attributes.friendly_name || entityId;
-    }
-    
-    if (entityId) {
-      return entityId;
-    }
-    
-    return 'Neue Entität';
+    if (typeof entity === 'string') return entityId || 'Neue Entität';
+    if (entity.content) return entity.content.substring(0, 30) + (entity.content.length > 30 ? '...' : '');
+    if (entityId && this.hass?.states[entityId]) return this.hass.states[entityId].attributes.friendly_name || entityId;
+    return entityId || 'Neue Entität';
   }
 
   _toggleEntity(index) {
@@ -1126,8 +734,7 @@ class StripCardEditor extends LitElement {
   }
 
   _addEntity() {
-    const entities = [...this._config.entities];
-    entities.push({ entity: '', content: '' });
+    const entities = [...this._config.entities, { entity: '', content: '' }];
     this._config = { ...this._config, entities };
     this._selectedEntity = entities.length - 1;
     this._configChanged();
@@ -1137,11 +744,8 @@ class StripCardEditor extends LitElement {
     const entities = [...this._config.entities];
     entities.splice(index, 1);
     this._config = { ...this._config, entities };
-    if (this._selectedEntity === index) {
-      this._selectedEntity = null;
-    } else if (this._selectedEntity > index) {
-      this._selectedEntity--;
-    }
+    if (this._selectedEntity === index) this._selectedEntity = null;
+    else if (this._selectedEntity > index) this._selectedEntity--;
     this._configChanged();
   }
 
@@ -1150,11 +754,8 @@ class StripCardEditor extends LitElement {
     const entities = [...this._config.entities];
     [entities[index - 1], entities[index]] = [entities[index], entities[index - 1]];
     this._config = { ...this._config, entities };
-    if (this._selectedEntity === index) {
-      this._selectedEntity = index - 1;
-    } else if (this._selectedEntity === index - 1) {
-      this._selectedEntity = index;
-    }
+    if (this._selectedEntity === index) this._selectedEntity = index - 1;
+    else if (this._selectedEntity === index - 1) this._selectedEntity = index;
     this._configChanged();
   }
 
@@ -1163,25 +764,17 @@ class StripCardEditor extends LitElement {
     if (index >= entities.length - 1) return;
     [entities[index], entities[index + 1]] = [entities[index + 1], entities[index]];
     this._config = { ...this._config, entities };
-    if (this._selectedEntity === index) {
-      this._selectedEntity = index + 1;
-    } else if (this._selectedEntity === index + 1) {
-      this._selectedEntity = index;
-    }
+    if (this._selectedEntity === index) this._selectedEntity = index + 1;
+    else if (this._selectedEntity === index + 1) this._selectedEntity = index;
     this._configChanged();
   }
 
   _entityChanged(ev) {
     const index = ev.currentTarget.entityIndex;
-    const newEntityId = ev.detail.value;
     const entities = [...this._config.entities];
-    
-    if (typeof entities[index] === 'string') {
-      entities[index] = { entity: newEntityId };
-    } else {
-      entities[index] = { ...entities[index], entity: newEntityId };
-    }
-    
+    entities[index] = typeof entities[index] === 'string' 
+      ? { entity: ev.detail.value } 
+      : { ...entities[index], entity: ev.detail.value };
     this._config = { ...this._config, entities };
     this._configChanged();
     this.requestUpdate();
@@ -1191,11 +784,9 @@ class StripCardEditor extends LitElement {
     const index = ev.currentTarget.entityIndex;
     const configValue = ev.currentTarget.configValue;
     const value = ev.currentTarget.value;
-
     const entities = [...this._config.entities];
     const entity = typeof entities[index] === 'string' ? { entity: entities[index] } : { ...entities[index] };
     
-    // Handle nested properties like tap_action.action
     if (configValue.includes('.')) {
       const [parent, child] = configValue.split('.');
       if (!entity[parent]) entity[parent] = {};
@@ -1213,11 +804,9 @@ class StripCardEditor extends LitElement {
     const index = ev.currentTarget.entityIndex;
     const configValue = ev.currentTarget.configValue;
     const value = ev.currentTarget.value;
-
     const entities = [...this._config.entities];
     const entity = typeof entities[index] === 'string' ? { entity: entities[index] } : { ...entities[index] };
     
-    // Handle nested properties
     if (configValue.includes('.')) {
       const [parent, child] = configValue.split('.');
       if (!entity[parent]) entity[parent] = {};
@@ -1234,210 +823,61 @@ class StripCardEditor extends LitElement {
 
   _valueChanged(ev) {
     if (!this._config || !this.hass) return;
-    
-    const target = ev.currentTarget;
-    const configValue = target.configValue;
-    const value = target.value;
-
-    if (!configValue) return;
-    if (this._config[configValue] === value) return;
-
+    const configValue = ev.currentTarget.configValue;
+    const value = ev.currentTarget.value;
+    if (!configValue || this._config[configValue] === value) return;
     this._config = { ...this._config, [configValue]: value };
     this._configChanged();
   }
 
   _switchChanged(ev) {
     if (!this._config || !this.hass) return;
-    
-    const target = ev.currentTarget;
-    const configValue = target.configValue;
-    const value = target.checked;
-
+    const configValue = ev.currentTarget.configValue;
     if (!configValue) return;
-
-    this._config = { ...this._config, [configValue]: value };
+    this._config = { ...this._config, [configValue]: ev.currentTarget.checked };
     this._configChanged();
   }
 
   _selectChanged(ev) {
     if (!this._config || !this.hass) return;
-    
-    const target = ev.currentTarget;
-    const configValue = target.configValue;
-    const value = target.value;
-
+    const configValue = ev.currentTarget.configValue;
     if (!configValue) return;
-
-    this._config = { ...this._config, [configValue]: value };
+    this._config = { ...this._config, [configValue]: ev.currentTarget.value };
     this._configChanged();
   }
 
   _configChanged() {
-    const event = new Event("config-changed", {
-      bubbles: true,
-      composed: true,
-    });
+    const event = new Event("config-changed", { bubbles: true, composed: true });
     event.detail = { config: this._config };
     this.dispatchEvent(event);
   }
 
   static get styles() {
     return css`
-      .card-config {
-        display: flex;
-        flex-direction: column;
-      }
-      
-      .tabs {
-        display: flex;
-        flex-wrap: nowrap;
-        border-bottom: 2px solid var(--divider-color);
-        background: var(--card-background-color);
-        overflow: hidden;
-      }
-
-      .tab {
-        padding: 12px 16px;
-        background: none;
-        border: none;
-        border-bottom: 2px solid transparent;
-        margin-bottom: -2px;
-        cursor: pointer;
-        font-size: 14px;
-        color: var(--primary-text-color);
-        transition: all 0.2s;
-        white-space: nowrap;
-        flex-shrink: 0;
-      }
-
-      .tab:hover {
-        background: var(--secondary-background-color);
-      }
-
-      .tab.active {
-        border-bottom-color: var(--primary-color);
-        color: var(--primary-color);
-        font-weight: 500;
-      }
-
-      .tab-content {
-        flex: 1;
-        overflow-y: auto;
-      }
-
-      .tab-panel {
-        padding: 16px;
-      }
-      
-      .input-group {
-        margin-bottom: 16px;
-      }
-
-      .input-label {
-        display: block;
-        font-size: 14px;
-        font-weight: 500;
-        color: var(--primary-text-color);
-        margin-bottom: 8px;
-      }
-
-      .title-textarea {
-        width: 100%;
-        padding: 12px;
-        font-family: inherit;
-        font-size: 14px;
-        color: var(--primary-text-color);
-        background: var(--secondary-background-color);
-        border: 1px solid var(--divider-color);
-        border-radius: 4px;
-        resize: vertical;
-        box-sizing: border-box;
-      }
-
-      .title-textarea:focus {
-        outline: none;
-        border-color: var(--primary-color);
-      }
-
-      .helper-text {
-        font-size: 12px;
-        color: var(--secondary-text-color);
-        margin-top: 4px;
-      }
-      
-      .section-divider {
-        font-weight: 500;
-        font-size: 14px;
-        color: var(--primary-color);
-        margin: 20px 0 12px 0;
-        padding-bottom: 8px;
-        border-bottom: 1px solid var(--divider-color);
-      }
-      
-      ha-textfield,
-      ha-select {
-        width: 100%;
-        margin-bottom: 12px;
-        display: block;
-      }
-      
-      ha-formfield {
-        display: block;
-        margin: 12px 0;
-        padding: 8px 0;
-      }
-      
-      .no-entities {
-        text-align: center;
-        padding: 24px;
-        color: var(--secondary-text-color);
-      }
-      
-      .entity-row {
-        border: 1px solid var(--divider-color);
-        border-radius: 8px;
-        margin: 12px 0;
-        overflow: hidden;
-        background: var(--card-background-color);
-      }
-      
-      .entity-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        padding: 12px 16px;
-        background: var(--secondary-background-color);
-        user-select: none;
-        font-weight: 500;
-      }
-
-      .entity-header span {
-        flex: 1;
-        cursor: pointer;
-      }
-      
-      .entity-header:hover span {
-        color: var(--primary-color);
-      }
-      
-      .entity-controls {
-        display: flex;
-        gap: 4px;
-      }
-      
-      .entity-editor {
-        padding: 16px;
-        border-top: 1px solid var(--divider-color);
-      }
-      
-      mwc-button {
-        margin-top: 16px;
-        width: 100%;
-      }
-
-      ha-icon {
-        color: var(--primary-text-color);
-      }
+      .card-config { display: flex; flex-direction: column; }
+      .tabs { display: flex; border-bottom: 2px solid var(--divider-color); background: var(--card-background-color); overflow-x: auto; }
+      .tab { padding: 12px 16px; background: none; border: none; border-bottom: 2px solid transparent; margin-bottom: -2px; cursor: pointer; font-size: 14px; color: var(--primary-text-color); transition: all 0.2s; white-space: nowrap; flex-shrink: 0; }
+      .tab:hover { background: var(--secondary-background-color); }
+      .tab.active { border-bottom-color: var(--primary-color); color: var(--primary-color); font-weight: 500; }
+      .tab-content { flex: 1; overflow-y: auto; }
+      .tab-panel { padding: 16px; }
+      .input-group { margin-bottom: 16px; }
+      .input-label { display: block; font-size: 14px; font-weight: 500; color: var(--primary-text-color); margin-bottom: 8px; }
+      .title-textarea { width: 100%; padding: 12px; font-family: inherit; font-size: 14px; color: var(--primary-text-color); background: var(--secondary-background-color); border: 1px solid var(--divider-color); border-radius: 4px; resize: vertical; box-sizing: border-box; }
+      .title-textarea:focus { outline: none; border-color: var(--primary-color); }
+      .helper-text { font-size: 12px; color: var(--secondary-text-color); margin-top: 4px; }
+      .section-divider { font-weight: 500; font-size: 14px; color: var(--primary-color); margin: 20px 0 12px 0; padding-bottom: 8px; border-bottom: 1px solid var(--divider-color); }
+      ha-textfield, ha-select { width: 100%; margin-bottom: 12px; display: block; }
+      ha-formfield { display: block; margin: 12px 0; padding: 8px 0; }
+      .no-entities { text-align: center; padding: 24px; color: var(--secondary-text-color); }
+      .entity-row { border: 1px solid var(--divider-color); border-radius: 8px; margin: 12px 0; overflow: hidden; background: var(--card-background-color); }
+      .entity-header { display: flex; justify-content: space-between; align-items: center; padding: 12px 16px; background: var(--secondary-background-color); user-select: none; font-weight: 500; }
+      .entity-header span { flex: 1; cursor: pointer; }
+      .entity-header:hover span { color: var(--primary-color); }
+      .entity-controls { display: flex; gap: 4px; }
+      .entity-editor { padding: 16px; border-top: 1px solid var(--divider-color); }
+      mwc-button { margin-top: 16px; width: 100%; }
+      ha-icon { color: var(--primary-text-color); }
     `;
   }
 }
