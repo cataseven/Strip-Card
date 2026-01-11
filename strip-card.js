@@ -3,7 +3,7 @@ const html = LitElement.prototype.html;
 const css = LitElement.prototype.css;
 
 console.info(
-  `%c STRIP-CARD %c v2.1.0 `,
+  `%c STRIP-CARD %c v2.1.1 `,
   "color: orange; font-weight: bold; background: black",
   "color: white; font-weight: bold; background: dimgray"
 );
@@ -436,6 +436,8 @@ class StripCard extends LitElement {
         white-space: nowrap;
         transition: background 0.2s;
         box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+        box-sizing: border-box;
+        vertical-align: middle;
       }
       .chip-item:hover {
         background: var(--secondary-background-color);
@@ -445,12 +447,16 @@ class StripCard extends LitElement {
         width: 16px;
         height: 16px;
         flex-shrink: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
       }
       .chip-text {
         display: flex;
         flex-direction: column;
         gap: 1px;
         align-items: flex-start;
+        justify-content: center;
         line-height: 1;
       }
       .chip-item:not(.has-label) .chip-text {
@@ -854,30 +860,138 @@ class StripCardEditor extends LitElement {
 
   static get styles() {
     return css`
-      .card-config { display: flex; flex-direction: column; }
-      .tabs { display: flex; border-bottom: 2px solid var(--divider-color); background: var(--card-background-color); overflow-x: auto; }
-      .tab { padding: 12px 16px; background: none; border: none; border-bottom: 2px solid transparent; margin-bottom: -2px; cursor: pointer; font-size: 14px; color: var(--primary-text-color); transition: all 0.2s; white-space: nowrap; flex-shrink: 0; }
-      .tab:hover { background: var(--secondary-background-color); }
-      .tab.active { border-bottom-color: var(--primary-color); color: var(--primary-color); font-weight: 500; }
-      .tab-content { flex: 1; overflow-y: auto; }
-      .tab-panel { padding: 16px; }
-      .input-group { margin-bottom: 16px; }
-      .input-label { display: block; font-size: 14px; font-weight: 500; color: var(--primary-text-color); margin-bottom: 8px; }
-      .title-textarea { width: 100%; padding: 12px; font-family: inherit; font-size: 14px; color: var(--primary-text-color); background: var(--secondary-background-color); border: 1px solid var(--divider-color); border-radius: 4px; resize: vertical; box-sizing: border-box; }
-      .title-textarea:focus { outline: none; border-color: var(--primary-color); }
-      .helper-text { font-size: 12px; color: var(--secondary-text-color); margin-top: 4px; }
-      .section-divider { font-weight: 500; font-size: 14px; color: var(--primary-color); margin: 20px 0 12px 0; padding-bottom: 8px; border-bottom: 1px solid var(--divider-color); }
-      ha-textfield, ha-select { width: 100%; margin-bottom: 12px; display: block; }
-      ha-formfield { display: block; margin: 12px 0; padding: 8px 0; }
-      .no-entities { text-align: center; padding: 24px; color: var(--secondary-text-color); }
-      .entity-row { border: 1px solid var(--divider-color); border-radius: 8px; margin: 12px 0; overflow: hidden; background: var(--card-background-color); }
-      .entity-header { display: flex; justify-content: space-between; align-items: center; padding: 12px 16px; background: var(--secondary-background-color); user-select: none; font-weight: 500; }
-      .entity-header span { flex: 1; cursor: pointer; }
-      .entity-header:hover span { color: var(--primary-color); }
-      .entity-controls { display: flex; gap: 4px; }
-      .entity-editor { padding: 16px; border-top: 1px solid var(--divider-color); }
-      mwc-button { margin-top: 16px; width: 100%; }
-      ha-icon { color: var(--primary-text-color); }
+      .card-config {
+        display: flex;
+        flex-direction: column;
+      }
+      .tabs {
+        display: flex;
+        flex-wrap: nowrap;
+        border-bottom: 2px solid var(--divider-color);
+        background: var(--card-background-color);
+        overflow: hidden;
+      }
+      .tab {
+        padding: 12px 16px;
+        background: none;
+        border: none;
+        border-bottom: 2px solid transparent;
+        margin-bottom: -2px;
+        cursor: pointer;
+        font-size: 14px;
+        color: var(--primary-text-color);
+        transition: all 0.2s;
+        white-space: nowrap;
+        flex-shrink: 0;
+      }
+      .tab:hover {
+        background: var(--secondary-background-color);
+      }
+      .tab.active {
+        border-bottom-color: var(--primary-color);
+        color: var(--primary-color);
+        font-weight: 500;
+      }
+      .tab-content {
+        flex: 1;
+        overflow-y: auto;
+      }
+      .tab-panel {
+        padding: 16px;
+      }
+      .input-group {
+        margin-bottom: 16px;
+      }
+      .input-label {
+        display: block;
+        font-size: 14px;
+        font-weight: 500;
+        color: var(--primary-text-color);
+        margin-bottom: 8px;
+      }
+      .title-textarea {
+        width: 100%;
+        padding: 12px;
+        font-family: inherit;
+        font-size: 14px;
+        color: var(--primary-text-color);
+        background: var(--secondary-background-color);
+        border: 1px solid var(--divider-color);
+        border-radius: 4px;
+        resize: vertical;
+        box-sizing: border-box;
+      }
+      .title-textarea:focus {
+        outline: none;
+        border-color: var(--primary-color);
+      }
+      .helper-text {
+        font-size: 12px;
+        color: var(--secondary-text-color);
+        margin-top: 4px;
+      }
+      .section-divider {
+        font-weight: 500;
+        font-size: 14px;
+        color: var(--primary-color);
+        margin: 20px 0 12px 0;
+        padding-bottom: 8px;
+        border-bottom: 1px solid var(--divider-color);
+      }
+      ha-textfield,
+      ha-select {
+        width: 100%;
+        margin-bottom: 12px;
+        display: block;
+      }
+      ha-formfield {
+        display: block;
+        margin: 12px 0;
+        padding: 8px 0;
+      }
+      .no-entities {
+        text-align: center;
+        padding: 24px;
+        color: var(--secondary-text-color);
+      }
+      .entity-row {
+        border: 1px solid var(--divider-color);
+        border-radius: 8px;
+        margin: 12px 0;
+        overflow: hidden;
+        background: var(--card-background-color);
+      }
+      .entity-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 12px 16px;
+        background: var(--secondary-background-color);
+        user-select: none;
+        font-weight: 500;
+      }
+      .entity-header span {
+        flex: 1;
+        cursor: pointer;
+      }
+      .entity-header:hover span {
+        color: var(--primary-color);
+      }
+      .entity-controls {
+        display: flex;
+        gap: 4px;
+      }
+      .entity-editor {
+        padding: 16px;
+        border-top: 1px solid var(--divider-color);
+      }
+      mwc-button {
+        margin-top: 16px;
+        width: 100%;
+      }
+      ha-icon {
+        color: var(--primary-text-color);
+      }
     `;
   }
 }
