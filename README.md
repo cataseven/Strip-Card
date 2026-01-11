@@ -1,6 +1,6 @@
 # 🎯 Header and Badges Strip Card for Home Assistant
 
-**Version 3.0.0** - Modified Strip Card with Badge Support
+Modified Strip Card with Badge Mode
 
 **Specially designed to replace the Markdown card as a dynamic dashboard header!**
 
@@ -43,34 +43,24 @@ A modified version of the Strip Card that displays sensors, entities and Home As
 
 ### Step 1: Add a Header in Your Dashboard
 1. Edit your dashboard
-2. Click "Add Card"
-3. Search for and select **"Heading"** (or "Header")
-4. Click on **"Show Code Editor"** at the bottom
-5. Replace the existing code with:
+2. Click "Add Title" or modify the existing header card
+3. Click on **"Show Code Editor"** at the bottom
+4. Replace the existing code
+```yaml
+type: markdown
+text_only: true
+content: |-
+  # Hallo {{ user }} 
+  Füge hier deinen Text ein, Template-Variablen werden unterstützt ✨
+
+```
+5. with:
 
 ```yaml
 type: custom:header-and-badges-strip-card
-title: My Smart Home
-duration: 25
-show_icon: true
-border_radius: 12px
-card_height: 70px
-fading: true
-pause_on_hover: true
-entities:
-  - type: badge
-    entity: person.your_name
-  - type: badge
-    entity: sensor.outside_temperature
-  - entity: sensor.living_room_temperature
-    name: Living Room
-    icon: mdi:sofa
-  - entity: light.kitchen
-    name: Kitchen
-    show_icon: true
 ```
-
-6. Click "Save"
+6. Click "Show Visual Editor" and add at least one entity
+7. Click "Save"
 
 **This replaces the static Markdown header with a dynamic, scrolling information ticker!**
 
