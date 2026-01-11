@@ -510,7 +510,6 @@ class StripCard extends LitElement {
     return css`
       :host {
         display: block;
-        position: relative;
       }
       ha-card {
         overflow: hidden;
@@ -519,8 +518,6 @@ class StripCard extends LitElement {
         width: var(--strip-card-width, 100%);
         display: flex;
         flex-direction: column;
-        position: relative;
-        margin: 0 auto;
       }
       .card-header {
         padding: 16px;
@@ -553,11 +550,9 @@ class StripCard extends LitElement {
         flex: 1;
         display: flex;
         align-items: center;
-        justify-content: center;
         width: 100%;
         overflow: hidden;
         background-color: var(--card-background-color, white);
-        position: relative;
         min-height: 50px;
       }
       .ticker-wrap.has-vertical-scroll {
@@ -586,8 +581,6 @@ class StripCard extends LitElement {
         display: inline-block;
         white-space: nowrap;
         will-change: transform;
-        padding-left: 0;
-        transform: translateX(0);
       }
       .ticker-move.has-inline-vertical-alignment {
         display: block;
@@ -597,7 +590,6 @@ class StripCard extends LitElement {
         white-space: normal;
         display: block;
         height: max-content;
-        transform: translateY(0);
       }
       .ticker-item {
         display: inline-flex;
