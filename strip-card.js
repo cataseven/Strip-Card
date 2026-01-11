@@ -50,8 +50,6 @@ class StripCard extends LitElement {
     }
     this._config = {
       title: "",
-      title_alignment: 'left',
-      title_font_size: "16px",
       title_left_icon: "",
       title_left_action: "",
       title_right_icon: "",
@@ -205,7 +203,6 @@ class StripCard extends LitElement {
       --strip-card-font-size: ${this._config.font_size};
       --strip-card-border-radius: ${this._config.border_radius};
       --strip-card-height: ${this._config.card_height};
-      --strip-card-title-font-size: ${this._config.title_font_size};
       --strip-card-content-color: ${this._config.content_color};
       --strip-card-label-color: ${this._config.label_color};
       --strip-card-chip-background: ${this._config.chip_background};
@@ -235,7 +232,7 @@ class StripCard extends LitElement {
     return html`
       <ha-card style="${cardStyles}">
         ${this._config.title ? html`
-          <div class="card-header" style="text-align: ${this._config.title_alignment};">
+          <div class="card-header">
             ${this._config.title_left_icon ? html`
               <ha-icon 
                 class="title-icon left"
@@ -348,7 +345,7 @@ class StripCard extends LitElement {
       }
       .card-header {
         padding: 16px;
-        font-size: var(--strip-card-title-font-size, 16px);
+        font-size: 16px;
         font-weight: 400;
         color: var(--primary-text-color);
         display: flex;
@@ -584,8 +581,6 @@ class StripCardEditor extends LitElement {
   setConfig(config) {
     this._config = {
       title: "",
-      title_alignment: 'left',
-      title_font_size: "16px",
       title_left_icon: "",
       title_left_action: "",
       title_right_icon: "",
@@ -671,34 +666,16 @@ class StripCardEditor extends LitElement {
   _renderGeneralTab() {
     return html`
       <div class="tab-panel">
-        <ha-textfield
-          label="Titel (optional, Markdown unterstützt)"
+        <ha-textarea
+          label="Titel (Markdown unterstützt)"
           .value="${this._config.title || ''}"
           .configValue="${"title"}"
           @input="${this._valueChanged}"
-          helper-text="z.B: **Fett** oder [Link](https://example.com)"
-        ></ha-textfield>
+          rows="3"
+          helper-text="z.B: **Fett**, *Kursiv* oder [Link](url)"
+        ></ha-textarea>
 
         ${this._config.title ? html`
-          <ha-textfield
-            label="Titel-Schriftgröße"
-            .value="${this._config.title_font_size}"
-            .configValue="${"title_font_size"}"
-            @input="${this._valueChanged}"
-          ></ha-textfield>
-
-          <ha-select
-            label="Titel-Ausrichtung"
-            .value="${this._config.title_alignment}"
-            .configValue="${"title_alignment"}"
-            @selected="${this._selectChanged}"
-            @closed="${(e) => e.stopPropagation()}"
-          >
-            <mwc-list-item value="left">Linksbündig</mwc-list-item>
-            <mwc-list-item value="center">Zentriert</mwc-list-item>
-            <mwc-list-item value="right">Rechtsbündig</mwc-list-item>
-          </ha-select>
-
           <div class="section-divider">Linkes Icon</div>
 
           <ha-textfield
@@ -1293,6 +1270,7 @@ class StripCardEditor extends LitElement {
       }
       
       ha-textfield,
+      ha-textarea,
       ha-select {
         width: 100%;
         margin-bottom: 12px;
