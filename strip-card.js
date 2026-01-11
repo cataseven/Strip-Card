@@ -341,9 +341,7 @@ class StripCard extends LitElement {
         display: flex;
         flex-direction: column;
         justify-content: flex-start;
-        position: relative;
-        left: 50%;
-        transform: translateX(-50%);
+        margin: 0 auto;
       }
       .card-header {
         padding: 16px;
