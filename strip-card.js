@@ -3,7 +3,7 @@ const html = LitElement.prototype.html;
 const css = LitElement.prototype.css;
 
 console.info(
-  `%c STRIP-CARD %c Loaded - Version 2.0.4 (Smart UI) `,
+  `%c STRIP-CARD %c Loaded - Version 2.0.5 (Smart UI) `,
   "color: orange; font-weight: bold; background: black",
   "color: white; font-weight: bold; background: dimgray"
 );
@@ -53,8 +53,10 @@ class StripCard extends LitElement {
       title_font_size: "16px",
       title_alignment: "left",
       title_left_icon: "",
+      title_left_icon_size: "24px",
       title_left_action: "",
       title_right_icon: "",
+      title_right_icon_size: "24px",
       title_right_action: "",
       duration: 20,
       separator: "•",
@@ -242,7 +244,7 @@ class StripCard extends LitElement {
                 class="title-icon left"
                 .icon=${this._config.title_left_icon}
                 @click=${() => this._handleIconClick(this._config.title_left_action)}
-                style="cursor: ${this._config.title_left_action ? 'pointer' : 'default'};"
+                style="--mdc-icon-size: ${this._config.title_left_icon_size}; cursor: ${this._config.title_left_action ? 'pointer' : 'default'};"
               ></ha-icon>
             ` : ''}
             <ha-markdown class="title-text" .content="${this._config.title}" breaks></ha-markdown>
@@ -251,7 +253,7 @@ class StripCard extends LitElement {
                 class="title-icon right"
                 .icon=${this._config.title_right_icon}
                 @click=${() => this._handleIconClick(this._config.title_right_action)}
-                style="cursor: ${this._config.title_right_action ? 'pointer' : 'default'};"
+                style="--mdc-icon-size: ${this._config.title_right_icon_size}; cursor: ${this._config.title_right_action ? 'pointer' : 'default'};"
               ></ha-icon>
             ` : ''}
           </div>
@@ -366,7 +368,6 @@ class StripCard extends LitElement {
         margin: 0;
       }
       .title-icon {
-        --mdc-icon-size: 24px;
         flex-shrink: 0;
         color: var(--primary-text-color);
         transition: color 0.2s;
@@ -595,8 +596,10 @@ class StripCardEditor extends LitElement {
       title_font_size: "16px",
       title_alignment: "left",
       title_left_icon: "",
+      title_left_icon_size: "24px",
       title_left_action: "",
       title_right_icon: "",
+      title_right_icon_size: "24px",
       title_right_action: "",
       duration: 20,
       separator: "•",
@@ -723,6 +726,14 @@ class StripCardEditor extends LitElement {
 
           ${this._config.title_left_icon ? html`
             <ha-textfield
+              label="Icon-Größe links"
+              .value="${this._config.title_left_icon_size}"
+              .configValue="${"title_left_icon_size"}"
+              @input="${this._valueChanged}"
+              helper-text="z.B: 24px, 1.5em, 32px"
+            ></ha-textfield>
+
+            <ha-textfield
               label="Aktion links"
               .value="${this._config.title_left_action || ''}"
               .configValue="${"title_left_action"}"
@@ -741,6 +752,14 @@ class StripCardEditor extends LitElement {
           ></ha-textfield>
 
           ${this._config.title_right_icon ? html`
+            <ha-textfield
+              label="Icon-Größe rechts"
+              .value="${this._config.title_right_icon_size}"
+              .configValue="${"title_right_icon_size"}"
+              @input="${this._valueChanged}"
+              helper-text="z.B: 24px, 1.5em, 32px"
+            ></ha-textfield>
+
             <ha-textfield
               label="Aktion rechts"
               .value="${this._config.title_right_action || ''}"
