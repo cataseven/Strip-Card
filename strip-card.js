@@ -3,7 +3,7 @@ const html = LitElement.prototype.html;
 const css = LitElement.prototype.css;
 
 console.info(
-  `%c STRIP-CARD %c v2.5.0 `,
+  `%c STRIP-CARD %c v2.5.1 `,
   "color: orange; font-weight: bold; background: black",
   "color: white; font-weight: bold; background: dimgray"
 );
@@ -48,7 +48,7 @@ class StripCard extends LitElement {
       title: "",
       title_font_size: "16px",
       title_alignment: "left",
-      title_icon_spacing: "12px",
+      title_icon_spacing: "4px",
       title_left_icon: "",
       title_left_icon_size: "24px",
       title_left_action: "",
@@ -501,11 +501,11 @@ class StripCard extends LitElement {
       }
       .title-icon.left {
         order: -1;
-        margin-right: var(--strip-card-title-icon-spacing, 12px);
+        margin-right: var(--strip-card-title-icon-spacing, 4px);
       }
       .title-icon.right {
         order: 1;
-        margin-left: var(--strip-card-title-icon-spacing, 12px);
+        margin-left: var(--strip-card-title-icon-spacing, 4px);
       }
       .ticker-wrap {
         flex: 1;
@@ -681,7 +681,7 @@ class StripCardEditor extends LitElement {
       title: "",
       title_font_size: "16px",
       title_alignment: "left",
-      title_icon_spacing: "12px",
+      title_icon_spacing: "4px",
       title_left_icon: "",
       title_left_icon_size: "24px",
       title_left_action: "",
@@ -756,7 +756,7 @@ class StripCardEditor extends LitElement {
             <mwc-list-item value="right">Rechts</mwc-list-item>
           </ha-select>
           ${(this._config.title_left_icon || this._config.title_right_icon) ? html`
-            <ha-textfield label="Icon-Abstand zum Text" .value="${this._config.title_icon_spacing}" .configValue="${"title_icon_spacing"}" @input="${this._valueChanged}" helper-text="z.B: 12px, 0.5em, 16px"></ha-textfield>
+            <ha-textfield label="Icon-Abstand zum Text" .value="${this._config.title_icon_spacing}" .configValue="${"title_icon_spacing"}" @input="${this._valueChanged}" helper-text="Standard: 4px"></ha-textfield>
           ` : ''}
           <div class="section-divider">Linkes Icon</div>
           <ha-textfield label="Icon links" .value="${this._config.title_left_icon || ''}" .configValue="${"title_left_icon"}" @input="${this._valueChanged}"></ha-textfield>
