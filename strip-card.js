@@ -370,10 +370,13 @@ class StripCard extends LitElement {
       animationStyle = `animation: ${animationName} ${duration}s linear infinite;`;
     }
     
+    const headerAlignment = this._config.title_alignment === 'center' ? 'center' : 
+                           this._config.title_alignment === 'right' ? 'flex-end' : 'flex-start';
+    
     return html`
       <ha-card style="${cardStyles}">
         ${this._config.title ? html`
-          <div class="card-header">
+          <div class="card-header" style="justify-content: ${headerAlignment};">
             ${this._config.title_left_icon ? html`
               <ha-icon 
                 class="title-icon left"
@@ -480,13 +483,11 @@ class StripCard extends LitElement {
         color: var(--primary-text-color);
         display: flex;
         align-items: center;
-        justify-content: space-between;
         gap: 0;
       }
       .title-text {
-        flex: 1;
+        flex: 0 1 auto;
         font-size: var(--strip-card-title-font-size, 16px);
-        text-align: var(--strip-card-title-alignment, left);
       }
       .title-text p {
         margin: 0;
@@ -649,7 +650,7 @@ class StripCard extends LitElement {
         font-weight: bold;
       }
       @keyframes ticker {
-        0% { transform: translateX(0); }
+        0% { transform: translateX(0); };
         100% { transform: translateX(-50%); }
       }
       @keyframes ticker-vertical {
