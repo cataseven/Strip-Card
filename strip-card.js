@@ -332,6 +332,7 @@ class StripCard extends LitElement {
     return css`
       :host {
         display: block;
+        position: relative;
       }
       ha-card {
         overflow: hidden;
@@ -341,7 +342,9 @@ class StripCard extends LitElement {
         display: flex;
         flex-direction: column;
         justify-content: flex-start;
-        margin: 0 auto;
+        position: relative;
+        left: 50%;
+        transform: translateX(-50%);
       }
       .card-header {
         padding: 16px;
