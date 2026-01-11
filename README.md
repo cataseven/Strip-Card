@@ -1,10 +1,10 @@
 # 🎯 Header and Badges Strip Card for Home Assistant
 
-**Version 3.0.0** - Enhanced Strip Card with Badge Support
+**Version 3.0.0** - Modified Strip Card with Badge Support
 
 **Specially designed to replace the Markdown card as a dynamic dashboard header!**
 
-An enhanced version of the Strip Card that displays not only sensors and entities but also Home Assistant badges in a horizontally scrolling ticker format. Perfect for creating beautiful, information-rich dashboard headers.
+A modified version of the Strip Card that displays sensors, entities and Home Assistant badges in a horizontally scrolling ticker format.
 
 ---
 
@@ -291,8 +291,8 @@ Traditional Markdown cards used as headers are static and don't show real-time i
 ### Based On
 This project is based on the original **[Strip Card](https://github.com/cataseven/Strip-Card)** by **cataseven**.
 
-### Developed By
-**Robin Zimmermann** ([Spider19996](https://github.com/Spider19996))  
+### Modified By
+**Spider19996** ([Spider19996](https://github.com/Spider19996))  
 Version 3.0.0 - January 2026
 
 ### Support the Original Author
