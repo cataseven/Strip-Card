@@ -491,9 +491,7 @@ class StripCard extends LitElement {
         width: 100%;
       }
       .strip-card-wrapper.full-width-mode {
-        width: 100vw;
-        margin-left: calc(50% - 50vw);
-        margin-right: calc(50% - 50vw);
+        width: 100%;
       }
       .strip-card-wrapper.full-width-mode ha-card {
         width: 100% !important;
@@ -856,7 +854,7 @@ class StripCardEditor extends LitElement {
         ` : ''}
         <ha-textfield label="Kartenhöhe" .value="${this._config.card_height}" .configValue="${"card_height"}" @input="${this._valueChanged}"></ha-textfield>
         <div class="section-divider">Breite</div>
-        <ha-formfield label="Volle Viewport-Breite (für Header)"><ha-switch .checked="${this._config.full_width}" .configValue="${"full_width"}" @change="${this._switchChanged}"></ha-switch></ha-formfield>
+        <ha-formfield label="Volle Container-Breite (für Header)"><ha-switch .checked="${this._config.full_width}" .configValue="${"full_width"}" @change="${this._switchChanged}"></ha-switch></ha-formfield>
         ${!this._config.full_width ? html`
           <ha-textfield label="Kartenbreite" .value="${this._config.card_width}" .configValue="${"card_width"}" @input="${this._valueChanged}" helper-text="z.B: 100%, 200%, 500px"></ha-textfield>
         ` : ''}
