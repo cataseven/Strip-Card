@@ -3,7 +3,7 @@ const html = LitElement.prototype.html;
 const css = LitElement.prototype.css;
 
 console.info(
-  `%c STRIP-CARD %c v2.6.1 `,
+  `%c STRIP-CARD %c v2.7.0 `,
   "color: orange; font-weight: bold; background: black",
   "color: white; font-weight: bold; background: dimgray"
 );
@@ -529,7 +529,15 @@ class StripCardEditor extends LitElement {
         ${exp ? html`
           <div class="entity-edit">
             <ha-textfield label="Name (Editor)" .value="${obj.name || ''}" @input=${e => this._entityChange(i, 'name', e.target.value)} helper-text="Anzeigename"></ha-textfield>
-            <ha-textfield label="Entität" .value="${id}" @input=${e => this._entityChange(i, 'entity', e.target.value)} helper-text="${this._validateEntity(id)}"></ha-textfield>
+            
+            <ha-entity-picker
+              label="Entität"
+              .hass=${this.hass}
+              .value=${id}
+              @value-changed=${e => this._entityChange(i, 'entity', e.detail.value)}
+              allow-custom-entity
+            ></ha-entity-picker>
+            
             ${this._previewEntity(id)}
             <ha-textfield label="Content (Template)" .value="${obj.content || ''}" @input=${e => this._entityChange(i, 'content', e.target.value)} helper-text="{{ states('...') }}"></ha-textfield>
             <ha-textfield label="Label" .value="${obj.label || ''}" @input=${e => this._entityChange(i, 'label', e.target.value)}></ha-textfield>
@@ -553,7 +561,7 @@ class StripCardEditor extends LitElement {
             ` : ''}
             ${obj.tap_action?.action === 'call-service' ? html`
               <ha-textfield label="Service" .value="${obj.tap_action?.service || ''}" @input=${e => this._entityChange(i, 'tap_action.service', e.target.value)} helper-text="z.B: light.turn_on"></ha-textfield>
-              <ha-textfield label="Service Data (JSON)" .value="${JSON.stringify(obj.tap_action?.service_data || {})}" @input=${e => this._entityChangeJSON(i, 'tap_action.service_data', e.target.value)} helper-text='z.B: {"brightness": 255}'></ha-textfield>
+              <ha-textfield label="Service Data (JSON)" .value="${JSON.stringify(obj.tap_action?.service_data || {})}" @input=${e => this._entityChangeJSON(i, 'tap_action.service_data', e.target.value)} helper-text='{"brightness": 255}'></ha-textfield>
             ` : ''}
           </div>
         ` : ''}
@@ -572,7 +580,15 @@ class StripCardEditor extends LitElement {
             <span>Bedingung ${ci + 1}</span>
             <ha-icon-button @click=${() => this._removeVisibility(i, ci)}><ha-icon icon="mdi:delete"></ha-icon></ha-icon-button>
           </div>
-          <ha-textfield label="Entität" .value="${c.entity || ''}" @input=${e => this._visibilityChange(i, ci, 'entity', e.target.value)} helper-text="${this._validateEntity(c.entity)}"></ha-textfield>
+          
+          <ha-entity-picker
+            label="Entität"
+            .hass=${this.hass}
+            .value=${c.entity || ''}
+            @value-changed=${e => this._visibilityChange(i, ci, 'entity', e.detail.value)}
+            allow-custom-entity
+          ></ha-entity-picker>
+          
           <ha-textfield label="Status (state)" .value="${c.state || ''}" @input=${e => this._visibilityChange(i, ci, 'state', e.target.value)} helper-text="z.B: on, off, home"></ha-textfield>
           <ha-textfield label="Status nicht (state_not)" .value="${c.state_not || ''}" @input=${e => this._visibilityChange(i, ci, 'state_not', e.target.value)} helper-text="Optional"></ha-textfield>
         </div>
@@ -610,12 +626,6 @@ class StripCardEditor extends LitElement {
     if (key === 'state_not' && !val) delete e.visibility[ci].state_not;
     entities[i] = e;
     this._change('entities', entities);
-  }
-
-  _validateEntity(id) {
-    if (!id) return 'z.B: sensor.temp';
-    const s = this.hass?.states[id];
-    return s ? `✓ ${s.attributes.friendly_name || id}` : '⚠ Nicht gefunden';
   }
 
   _previewEntity(id) {
@@ -687,7 +697,7 @@ class StripCardEditor extends LitElement {
     textarea:focus { outline: none; border-color: var(--primary-color); }
     .help { font-size: 12px; color: var(--secondary-text-color); margin-top: 4px; display: block; }
     .divider { font-weight: 500; font-size: 14px; color: var(--primary-color); margin: 20px 0 12px; padding-bottom: 8px; border-bottom: 1px solid var(--divider-color); }
-    ha-textfield, ha-select { width: 100%; margin-bottom: 12px; display: block; }
+    ha-textfield, ha-select, ha-entity-picker { width: 100%; margin-bottom: 12px; display: block; }
     ha-formfield { display: block; margin: 12px 0; padding: 8px 0; }
     .empty { text-align: center; padding: 24px; color: var(--secondary-text-color); }
     .entity { border: 1px solid var(--divider-color); border-radius: 8px; margin: 12px 0; overflow: hidden; background: var(--card-background-color); }
