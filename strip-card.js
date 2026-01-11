@@ -666,14 +666,17 @@ class StripCardEditor extends LitElement {
   _renderGeneralTab() {
     return html`
       <div class="tab-panel">
-        <ha-textarea
-          label="Titel (Markdown unterstützt)"
-          .value="${this._config.title || ''}"
-          .configValue="${"title"}"
-          @input="${this._valueChanged}"
-          rows="3"
-          helper-text="z.B: **Fett**, *Kursiv* oder [Link](url)"
-        ></ha-textarea>
+        <div class="input-group">
+          <label class="input-label">Titel (Markdown unterstützt)</label>
+          <textarea
+            class="title-textarea"
+            .value="${this._config.title || ''}"
+            @input="${this._titleChanged}"
+            rows="4"
+            placeholder="z.B: **Fett**, *Kursiv* oder [Link](url)"
+          >${this._config.title || ''}</textarea>
+          <div class="helper-text">z.B: **Fett**, *Kursiv* oder [Link](url)</div>
+        </div>
 
         ${this._config.title ? html`
           <div class="section-divider">Linkes Icon</div>
@@ -716,6 +719,12 @@ class StripCardEditor extends LitElement {
         ` : ''}
       </div>
     `;
+  }
+
+  _titleChanged(ev) {
+    const value = ev.target.value;
+    this._config = { ...this._config, title: value };
+    this._configChanged();
   }
 
   _renderScrollTab() {
@@ -1260,6 +1269,42 @@ class StripCardEditor extends LitElement {
         padding: 16px;
       }
       
+      .input-group {
+        margin-bottom: 16px;
+      }
+
+      .input-label {
+        display: block;
+        font-size: 14px;
+        font-weight: 500;
+        color: var(--primary-text-color);
+        margin-bottom: 8px;
+      }
+
+      .title-textarea {
+        width: 100%;
+        padding: 12px;
+        font-family: inherit;
+        font-size: 14px;
+        color: var(--primary-text-color);
+        background: var(--secondary-background-color);
+        border: 1px solid var(--divider-color);
+        border-radius: 4px;
+        resize: vertical;
+        box-sizing: border-box;
+      }
+
+      .title-textarea:focus {
+        outline: none;
+        border-color: var(--primary-color);
+      }
+
+      .helper-text {
+        font-size: 12px;
+        color: var(--secondary-text-color);
+        margin-top: 4px;
+      }
+      
       .section-divider {
         font-weight: 500;
         font-size: 14px;
@@ -1270,7 +1315,6 @@ class StripCardEditor extends LitElement {
       }
       
       ha-textfield,
-      ha-textarea,
       ha-select {
         width: 100%;
         margin-bottom: 12px;
