@@ -3,7 +3,7 @@ const html = LitElement.prototype.html;
 const css = LitElement.prototype.css;
 
 console.info(
-  `%c STRIP-CARD %c v2.6.2 `,
+  `%c STRIP-CARD %c v2.4.8 `,
   "color: orange; font-weight: bold; background: black",
   "color: white; font-weight: bold; background: dimgray"
 );
@@ -54,7 +54,6 @@ class StripCard extends LitElement {
       title_right_icon: "",
       title_right_icon_size: "24px",
       title_right_action: "",
-      title_icon_gap: "12px",
       duration: 20,
       pause_duration: 2,
       separator: "•",
@@ -67,12 +66,10 @@ class StripCard extends LitElement {
       border_radius: "0px",
       card_height: "auto",
       card_width: "100%",
-      width_mode: "container",
       fading: false,
       vertical_scroll: false,
       vertical_alignment: 'stack',
       continuous_scroll: true,
-      auto_disable_scroll: false,
       transparent: false,
       badge_style: false,
       ...config,
@@ -89,7 +86,6 @@ class StripCard extends LitElement {
       if (!this._config.continuous_scroll) {
         this._setupReturnAnimation();
       }
-      this._applyFullWidthMode();
     });
   }
 
@@ -107,49 +103,11 @@ class StripCard extends LitElement {
     if (this._resizeObserver) {
       this._resizeObserver.observe(this);
     }
-    this._applyFullWidthMode();
   }
 
   updated(changedProps) {
-    if (changedProps.has('_config')) {
-      if (!this._config.continuous_scroll) {
-        requestAnimationFrame(() => this._setupReturnAnimation());
-      }
-      this._applyFullWidthMode();
-    }
-  }
-
-  _applyFullWidthMode() {
-    if (this._config.width_mode !== 'full') return;
-    
-    const findHuiView = (element) => {
-      let current = element;
-      
-      // Durchlaufe parent elements und springe über Shadow DOM Grenzen
-      while (current) {
-        if (current.tagName === 'HUI-VIEW') {
-          return current;
-        }
-        
-        // Shadow DOM: gehe zum host
-        if (current.parentNode) {
-          current = current.parentNode;
-        } else if (current.host) {
-          current = current.host;
-        } else {
-          break;
-        }
-      }
-      return null;
-    };
-    
-    const huiView = findHuiView(this);
-    if (huiView) {
-      const viewWidth = huiView.offsetWidth;
-      const card = this.shadowRoot.querySelector('ha-card');
-      if (card) {
-        card.style.setProperty('--strip-card-calculated-width', `${viewWidth}px`);
-      }
+    if (changedProps.has('_config') && !this._config.continuous_scroll) {
+      requestAnimationFrame(() => this._setupReturnAnimation());
     }
   }
 
@@ -331,33 +289,10 @@ class StripCard extends LitElement {
     }
   }
 
-  _shouldScroll() {
-    if (!this._config.auto_disable_scroll) return true;
-    
-    // Warte bis DOM bereit ist
-    const wrapElement = this.shadowRoot.querySelector('.ticker-wrap');
-    const moveElement = this.shadowRoot.querySelector('.ticker-move');
-    
-    if (!wrapElement || !moveElement) return true;
-    
-    const wrapWidth = wrapElement.offsetWidth;
-    const contentWidth = moveElement.scrollWidth;
-    
-    // Scrollen nur wenn Content breiter als Container
-    return contentWidth > wrapWidth;
-  }
-
   render() {
     if (!this._config || !this.hass) return html``;
 
     const duration = this.evaluateTemplate(this._config.duration, this.hass);
-    
-    let actualWidth = '100%';
-    if (this._config.width_mode === 'full') {
-      actualWidth = 'var(--strip-card-calculated-width, 100%)';
-    } else if (this._config.width_mode === 'custom') {
-      actualWidth = this._config.card_width || '100%';
-    }
     
     const cardStyles = `
       --strip-card-font-size: ${this._config.font_size};
@@ -368,8 +303,7 @@ class StripCard extends LitElement {
       --strip-card-chip-background: ${this._config.chip_background};
       --strip-card-title-font-size: ${this._config.title_font_size};
       --strip-card-title-alignment: ${this._config.title_alignment};
-      --strip-card-title-icon-gap: ${this._config.title_icon_gap};
-      --strip-card-width: ${actualWidth};
+      ${this._config.card_width ? `--strip-card-width: ${this._config.card_width};` : ''}
       ${this._config.transparent ? `
         --ha-card-background: transparent;
         --card-background-color: transparent;
@@ -387,10 +321,7 @@ class StripCard extends LitElement {
 
     let content = renderedEntities;
 
-    // Prüfe ob gescrollt werden soll
-    const shouldScroll = this._shouldScroll();
-
-    if (this._config.continuous_scroll && shouldScroll) {
+    if (this._config.continuous_scroll) {
       const containerWidth = this.getBoundingClientRect().width || 400;
       const divisor = (renderedEntities.length * 100) || 100;
       const minCopies = Math.ceil(containerWidth / divisor) + 2;
@@ -403,7 +334,7 @@ class StripCard extends LitElement {
     
     const wrapClasses = [
       this._config.pause_on_hover && 'pausable',
-      this._config.fading && this._config.continuous_scroll && shouldScroll && 'has-fading',
+      this._config.fading && this._config.continuous_scroll && 'has-fading',
       this._config.vertical_scroll && 'has-vertical-scroll',
       this._config.badge_style && 'has-chips-style'
     ].filter(Boolean).join(' ');
@@ -413,7 +344,7 @@ class StripCard extends LitElement {
     ].filter(Boolean).join(' ');
     
     let animationStyle = '';
-    if (this._config.continuous_scroll && shouldScroll) {
+    if (this._config.continuous_scroll) {
       const animationName = this._config.vertical_scroll ? 'ticker-vertical' : 'ticker';
       animationStyle = `animation: ${animationName} ${duration}s linear infinite;`;
     }
@@ -422,25 +353,23 @@ class StripCard extends LitElement {
       <ha-card style="${cardStyles}">
         ${this._config.title ? html`
           <div class="card-header">
-            <div class="title-content">
-              ${this._config.title_left_icon ? html`
-                <ha-icon 
-                  class="title-icon left"
-                  .icon=${this._config.title_left_icon}
-                  @click=${() => this._handleIconClick(this._config.title_left_action)}
-                  style="--mdc-icon-size: ${this._config.title_left_icon_size}; cursor: ${this._config.title_left_action ? 'pointer' : 'default'};"
-                ></ha-icon>
-              ` : ''}
-              <ha-markdown class="title-text" .content="${this._config.title}" breaks></ha-markdown>
-              ${this._config.title_right_icon ? html`
-                <ha-icon 
-                  class="title-icon right"
-                  .icon=${this._config.title_right_icon}
-                  @click=${() => this._handleIconClick(this._config.title_right_action)}
-                  style="--mdc-icon-size: ${this._config.title_right_icon_size}; cursor: ${this._config.title_right_action ? 'pointer' : 'default'};"
-                ></ha-icon>
-              ` : ''}
-            </div>
+            ${this._config.title_left_icon ? html`
+              <ha-icon 
+                class="title-icon left"
+                .icon=${this._config.title_left_icon}
+                @click=${() => this._handleIconClick(this._config.title_left_action)}
+                style="--mdc-icon-size: ${this._config.title_left_icon_size}; cursor: ${this._config.title_left_action ? 'pointer' : 'default'};"
+              ></ha-icon>
+            ` : ''}
+            <ha-markdown class="title-text" .content="${this._config.title}" breaks></ha-markdown>
+            ${this._config.title_right_icon ? html`
+              <ha-icon 
+                class="title-icon right"
+                .icon=${this._config.title_right_icon}
+                @click=${() => this._handleIconClick(this._config.title_right_action)}
+                style="--mdc-icon-size: ${this._config.title_right_icon_size}; cursor: ${this._config.title_right_action ? 'pointer' : 'default'};"
+              ></ha-icon>
+            ` : ''}
           </div>
         ` : ''}
         <div class="ticker-wrap ${wrapClasses}">
@@ -510,6 +439,7 @@ class StripCard extends LitElement {
     return css`
       :host {
         display: block;
+        position: relative;
       }
       ha-card {
         overflow: hidden;
@@ -518,6 +448,9 @@ class StripCard extends LitElement {
         width: var(--strip-card-width, 100%);
         display: flex;
         flex-direction: column;
+        position: relative;
+        left: 50%;
+        transform: translateX(-50%);
       }
       .card-header {
         padding: 16px;
@@ -525,15 +458,14 @@ class StripCard extends LitElement {
         font-weight: 400;
         color: var(--primary-text-color);
         display: flex;
-        justify-content: var(--strip-card-title-alignment, flex-start);
-      }
-      .title-content {
-        display: flex;
         align-items: center;
-        gap: var(--strip-card-title-icon-gap, 12px);
+        justify-content: space-between;
+        gap: 12px;
       }
       .title-text {
+        flex: 1;
         font-size: var(--strip-card-title-font-size, 16px);
+        text-align: var(--strip-card-title-alignment, left);
       }
       .title-text p {
         margin: 0;
@@ -546,6 +478,12 @@ class StripCard extends LitElement {
       .title-icon:hover {
         color: var(--primary-color);
       }
+      .title-icon.left {
+        order: -1;
+      }
+      .title-icon.right {
+        order: 1;
+      }
       .ticker-wrap {
         flex: 1;
         display: flex;
@@ -553,6 +491,7 @@ class StripCard extends LitElement {
         width: 100%;
         overflow: hidden;
         background-color: var(--card-background-color, white);
+        position: relative;
         min-height: 50px;
       }
       .ticker-wrap.has-vertical-scroll {
@@ -725,7 +664,6 @@ class StripCardEditor extends LitElement {
       title_right_icon: "",
       title_right_icon_size: "24px",
       title_right_action: "",
-      title_icon_gap: "12px",
       duration: 20,
       pause_duration: 2,
       separator: "•",
@@ -738,12 +676,10 @@ class StripCardEditor extends LitElement {
       border_radius: "0px",
       card_height: "auto",
       card_width: "100%",
-      width_mode: "container",
       fading: false,
       vertical_scroll: false,
       vertical_alignment: 'stack',
       continuous_scroll: true,
-      auto_disable_scroll: false,
       transparent: false,
       badge_style: false,
       ...config,
@@ -794,9 +730,6 @@ class StripCardEditor extends LitElement {
             <mwc-list-item value="center">Zentriert</mwc-list-item>
             <mwc-list-item value="right">Rechts</mwc-list-item>
           </ha-select>
-          ${(this._config.title_left_icon || this._config.title_right_icon) ? html`
-            <ha-textfield label="Icon-Abstand" .value="${this._config.title_icon_gap}" .configValue="${"title_icon_gap"}" @input="${this._valueChanged}" helper-text="Abstand zwischen Icons und Titel"></ha-textfield>
-          ` : ''}
           <div class="section-divider">Linkes Icon</div>
           <ha-textfield label="Icon links" .value="${this._config.title_left_icon || ''}" .configValue="${"title_left_icon"}" @input="${this._valueChanged}"></ha-textfield>
           ${this._config.title_left_icon ? html`
@@ -827,7 +760,6 @@ class StripCardEditor extends LitElement {
         ${!this._config.continuous_scroll ? html`
           <ha-textfield label="Pause-Dauer (Sekunden)" type="number" min="0" step="0.5" .value="${this._config.pause_duration}" .configValue="${"pause_duration"}" @input="${this._valueChanged}" helper-text="Pause am Ende vor Rückwärtsfahrt"></ha-textfield>
         ` : ''}
-        <ha-formfield label="Auto-Deaktivieren bei Platz"><ha-switch .checked="${this._config.auto_disable_scroll}" .configValue="${"auto_disable_scroll"}" @change="${this._switchChanged}"></ha-switch></ha-formfield>
         <ha-formfield label="Bei Hover pausieren"><ha-switch .checked="${this._config.pause_on_hover}" .configValue="${"pause_on_hover"}" @change="${this._switchChanged}"></ha-switch></ha-formfield>
         <ha-formfield label="Vertikales Scrollen"><ha-switch .checked="${this._config.vertical_scroll}" .configValue="${"vertical_scroll"}" @change="${this._switchChanged}"></ha-switch></ha-formfield>
         ${this._config.vertical_scroll ? html`
@@ -855,17 +787,9 @@ class StripCardEditor extends LitElement {
         ` : ''}
         ${!this._config.transparent ? html`
           <ha-textfield label="Rahmenradius" .value="${this._config.border_radius}" .configValue="${"border_radius"}" @input="${this._valueChanged}"></ha-textfield>
-        ` : ''}        <ha-textfield label="Kartenhöhe" .value="${this._config.card_height}" .configValue="${"card_height"}" @input="${this._valueChanged}"></ha-textfield>
-        
-        <div class="section-divider">Kartenbreite</div>
-        <ha-select label="Breitenmodus" .value="${this._config.width_mode || 'container'}" .configValue="${"width_mode"}" @selected="${this._selectChanged}" @closed="${(e) => e.stopPropagation()}">
-          <mwc-list-item value="container">Container-Breite</mwc-list-item>
-          <mwc-list-item value="full">Volle View-Breite</mwc-list-item>
-          <mwc-list-item value="custom">Benutzerdefiniert</mwc-list-item>
-        </ha-select>
-        ${this._config.width_mode === 'custom' ? html`
-          <ha-textfield label="Breite" .value="${this._config.card_width}" .configValue="${"card_width"}" @input="${this._valueChanged}" helper-text="z.B: 100%, 800px, 50vw"></ha-textfield>
         ` : ''}
+        <ha-textfield label="Kartenhöhe" .value="${this._config.card_height}" .configValue="${"card_height"}" @input="${this._valueChanged}"></ha-textfield>
+        <ha-textfield label="Kartenbreite" .value="${this._config.card_width}" .configValue="${"card_width"}" @input="${this._valueChanged}"></ha-textfield>
       </div>
     `;
   }
