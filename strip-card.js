@@ -3,7 +3,7 @@ const html = LitElement.prototype.html;
 const css = LitElement.prototype.css;
 
 console.info(
-  `%c STRIP-CARD %c v2.4.4 `,
+  `%c STRIP-CARD %c v2.4.5 `,
   "color: orange; font-weight: bold; background: black",
   "color: white; font-weight: bold; background: dimgray"
 );
@@ -106,7 +106,8 @@ class StripCard extends LitElement {
       return;
     }
     
-    const scrollDistance = contentWidth - wrapWidth;
+    // Only scroll exactly the overflow amount
+    const scrollDistance = Math.max(0, contentWidth - wrapWidth);
     const duration = parseFloat(this.evaluateTemplate(this._config.duration, this.hass));
     const pauseDuration = parseFloat(this.evaluateTemplate(this._config.pause_duration, this.hass));
     
@@ -236,10 +237,8 @@ class StripCard extends LitElement {
   }
 
   _injectReturnAnimation(scrollDistance, duration, pauseDuration, isVertical) {
-    // Total animation: scroll + pause + return + pause
     const totalDuration = duration + pauseDuration + duration + pauseDuration;
     
-    // Calculate keyframe percentages
     const afterScrollPercent = (duration / totalDuration * 100).toFixed(2);
     const afterFirstPausePercent = ((duration + pauseDuration) / totalDuration * 100).toFixed(2);
     const afterReturnPercent = ((duration + pauseDuration + duration) / totalDuration * 100).toFixed(2);
@@ -317,7 +316,7 @@ class StripCard extends LitElement {
     
     const wrapClasses = [
       this._config.pause_on_hover && 'pausable',
-      this._config.fading && 'has-fading',
+      this._config.fading && this._config.continuous_scroll && 'has-fading',
       this._config.vertical_scroll && 'has-vertical-scroll',
       this._config.badge_style && 'has-chips-style'
     ].filter(Boolean).join(' ');
@@ -631,6 +630,17 @@ class StripCardEditor extends LitElement {
     super();
     this._currentTab = 'general';
     this._selectedEntity = null;
+    this._loadEntityPicker();
+  }
+
+  async _loadEntityPicker() {
+    if (customElements.get('ha-entity-picker')) return;
+    
+    try {
+      await customElements.whenDefined('hui-entity-picker-row');
+    } catch (e) {
+      console.warn('Could not load entity picker:', e);
+    }
   }
 
   setConfig(config) {
@@ -808,13 +818,15 @@ class StripCardEditor extends LitElement {
               ${isExpanded ? html`
                 <div class="entity-editor">
                   <ha-textfield label="Name (für Editor)" .value="${entityObj.name || ''}" .entityIndex="${index}" .configValue="${"name"}" @input="${this._entityPropertyChanged}" helper-text="Anzeigename in der Entitätenliste"></ha-textfield>
+                  
+                  <label class="input-label">Entität</label>
                   <ha-entity-picker 
                     .hass="${this.hass}" 
                     .value="${entityId}" 
-                    .configValue="${'entity'}"
                     @value-changed="${(e) => this._entityPickerChanged(e, index)}" 
                     allow-custom-entity
                   ></ha-entity-picker>
+                  
                   <ha-textfield label="Content (Template)" .value="${entityObj.content || ''}" .entityIndex="${index}" .configValue="${"content"}" @input="${this._entityPropertyChanged}" helper-text="z.B: {{ states('sensor.temp') }} °C"></ha-textfield>
                   <ha-textfield label="Label (Template)" .value="${entityObj.label || ''}" .entityIndex="${index}" .configValue="${"label"}" @input="${this._entityPropertyChanged}" helper-text="Chips: oben, Normal: rechts"></ha-textfield>
                   <ha-textfield label="Icon (optional)" .value="${entityObj.icon || ''}" .entityIndex="${index}" .configValue="${"icon"}" @input="${this._entityPropertyChanged}"></ha-textfield>
@@ -867,6 +879,7 @@ class StripCardEditor extends LitElement {
               <ha-icon icon="mdi:delete"></ha-icon>
             </ha-icon-button>
           </div>
+          <label class="input-label">Entität für Bedingung</label>
           <ha-entity-picker 
             .hass="${this.hass}" 
             .value="${condition.entity || ''}" 
@@ -1135,10 +1148,11 @@ class StripCardEditor extends LitElement {
       }
       .input-label {
         display: block;
-        font-size: 14px;
+        font-size: 12px;
         font-weight: 500;
-        color: var(--primary-text-color);
-        margin-bottom: 8px;
+        color: var(--secondary-text-color);
+        margin-bottom: 4px;
+        margin-top: 8px;
       }
       .title-textarea {
         width: 100%;
@@ -1177,9 +1191,8 @@ class StripCardEditor extends LitElement {
       }
       ha-entity-picker {
         width: 100%;
-        margin-bottom: 12px;
         display: block;
-        --ha-entity-picker-width: 100%;
+        margin-bottom: 16px;
       }
       ha-formfield {
         display: block;
