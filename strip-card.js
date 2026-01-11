@@ -3,7 +3,7 @@ const html = LitElement.prototype.html;
 const css = LitElement.prototype.css;
 
 console.info(
-  `%c STRIP-CARD %c v2.4.2 `,
+  `%c STRIP-CARD %c v2.4.3 `,
   "color: orange; font-weight: bold; background: black",
   "color: white; font-weight: bold; background: dimgray"
 );
@@ -78,6 +78,40 @@ class StripCard extends LitElement {
 
   getCardSize() {
     return 1;
+  }
+
+  firstUpdated() {
+    if (!this._config.continuous_scroll) {
+      this._setupReturnAnimation();
+    }
+  }
+
+  updated(changedProps) {
+    if (changedProps.has('_config') && !this._config.continuous_scroll) {
+      requestAnimationFrame(() => this._setupReturnAnimation());
+    }
+  }
+
+  _setupReturnAnimation() {
+    const wrapElement = this.shadowRoot.querySelector('.ticker-wrap');
+    const moveElement = this.shadowRoot.querySelector('.ticker-move');
+    
+    if (!wrapElement || !moveElement) return;
+    
+    const wrapWidth = wrapElement.offsetWidth;
+    const contentWidth = moveElement.scrollWidth;
+    
+    if (contentWidth <= wrapWidth) {
+      // Content fits, no animation needed
+      moveElement.style.animation = 'none';
+      return;
+    }
+    
+    const scrollDistance = contentWidth - wrapWidth;
+    const duration = this.evaluateTemplate(this._config.duration, this.hass);
+    const pauseDuration = this.evaluateTemplate(this._config.pause_duration, this.hass);
+    
+    this._injectReturnAnimation(scrollDistance, duration, pauseDuration, this._config.vertical_scroll);
   }
 
   shouldUpdate(changedProps) {
@@ -204,17 +238,16 @@ class StripCard extends LitElement {
     }
   }
 
-  _injectReturnAnimation(duration, pauseDuration, isVertical) {
+  _injectReturnAnimation(scrollDistance, duration, pauseDuration, isVertical) {
     const totalDuration = duration * 2 + pauseDuration * 2;
     const scrollPercent = (duration / totalDuration * 100).toFixed(2);
     const firstPausePercent = ((duration + pauseDuration) / totalDuration * 100).toFixed(2);
     const returnPercent = ((duration * 2 + pauseDuration) / totalDuration * 100).toFixed(2);
     
-    const animationName = isVertical ? 'ticker-return-vertical-dynamic' : 'ticker-return-horizontal-dynamic';
+    const animationName = `ticker-return-${isVertical ? 'v' : 'h'}-${Date.now()}`;
     const transform = isVertical ? 'translateY' : 'translateX';
-    const viewportSize = isVertical ? '100vh' : '100vw';
     
-    const styleId = `strip-card-return-animation-${isVertical ? 'v' : 'h'}`;
+    const styleId = 'strip-card-return-animation';
     let styleElement = this.shadowRoot.getElementById(styleId);
     
     if (!styleElement) {
@@ -226,21 +259,23 @@ class StripCard extends LitElement {
     styleElement.textContent = `
       @keyframes ${animationName} {
         0% { transform: ${transform}(0); }
-        ${scrollPercent}% { transform: ${transform}(calc(-100% + ${viewportSize})); }
-        ${firstPausePercent}% { transform: ${transform}(calc(-100% + ${viewportSize})); }
+        ${scrollPercent}% { transform: ${transform}(-${scrollDistance}px); }
+        ${firstPausePercent}% { transform: ${transform}(-${scrollDistance}px); }
         ${returnPercent}% { transform: ${transform}(0); }
         100% { transform: ${transform}(0); }
       }
     `;
     
-    return { animationName, totalDuration };
+    const moveElement = this.shadowRoot.querySelector('.ticker-move');
+    if (moveElement) {
+      moveElement.style.animation = `${animationName} ${totalDuration}s linear infinite`;
+    }
   }
 
   render() {
     if (!this._config || !this.hass) return html``;
 
     const duration = this.evaluateTemplate(this._config.duration, this.hass);
-    const pauseDuration = this.evaluateTemplate(this._config.pause_duration, this.hass);
     
     const cardStyles = `
       --strip-card-font-size: ${this._config.font_size};
@@ -288,17 +323,13 @@ class StripCard extends LitElement {
     ].filter(Boolean).join(' ');
     
     const moveClasses = [
-      this._config.vertical_alignment === 'inline' && 'has-inline-vertical-alignment',
-      !this._config.continuous_scroll && 'has-return-animation'
+      this._config.vertical_alignment === 'inline' && 'has-inline-vertical-alignment'
     ].filter(Boolean).join(' ');
     
-    let animationStyle;
+    let animationStyle = '';
     if (this._config.continuous_scroll) {
       const animationName = this._config.vertical_scroll ? 'ticker-vertical' : 'ticker';
       animationStyle = `animation: ${animationName} ${duration}s linear infinite;`;
-    } else {
-      const { animationName, totalDuration } = this._injectReturnAnimation(duration, pauseDuration, this._config.vertical_scroll);
-      animationStyle = `animation: ${animationName} ${totalDuration}s linear infinite;`;
     }
     
     return html`
@@ -634,13 +665,6 @@ class StripCardEditor extends LitElement {
       ...config,
       entities: config.entities || []
     };
-  }
-
-  firstUpdated() {
-    // Ensure entity picker is loaded
-    if (!customElements.get('ha-entity-picker')) {
-      import('https://unpkg.com/home-assistant-js-websocket@8.2.0/dist/haws.js').catch(() => {});
-    }
   }
 
   render() {
