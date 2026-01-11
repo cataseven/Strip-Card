@@ -3,7 +3,7 @@ const html = LitElement.prototype.html;
 const css = LitElement.prototype.css;
 
 console.info(
-  `%c STRIP-CARD %c v2.6.1 `,
+  `%c STRIP-CARD %c v2.6.2 `,
   "color: orange; font-weight: bold; background: black",
   "color: white; font-weight: bold; background: dimgray"
 );
@@ -426,23 +426,25 @@ class StripCard extends LitElement {
       <ha-card class="${cardClasses}" style="${cardStyles}">
         ${this._config.title ? html`
           <div class="card-header">
-            ${this._config.title_left_icon ? html`
-              <ha-icon 
-                class="title-icon left"
-                .icon=${this._config.title_left_icon}
-                @click=${() => this._handleIconClick(this._config.title_left_action)}
-                style="--mdc-icon-size: ${this._config.title_left_icon_size}; cursor: ${this._config.title_left_action ? 'pointer' : 'default'};"
-              ></ha-icon>
-            ` : ''}
-            <ha-markdown class="title-text" .content="${this._config.title}" breaks></ha-markdown>
-            ${this._config.title_right_icon ? html`
-              <ha-icon 
-                class="title-icon right"
-                .icon=${this._config.title_right_icon}
-                @click=${() => this._handleIconClick(this._config.title_right_action)}
-                style="--mdc-icon-size: ${this._config.title_right_icon_size}; cursor: ${this._config.title_right_action ? 'pointer' : 'default'};"
-              ></ha-icon>
-            ` : ''}
+            <div class="title-content">
+              ${this._config.title_left_icon ? html`
+                <ha-icon 
+                  class="title-icon left"
+                  .icon=${this._config.title_left_icon}
+                  @click=${() => this._handleIconClick(this._config.title_left_action)}
+                  style="--mdc-icon-size: ${this._config.title_left_icon_size}; cursor: ${this._config.title_left_action ? 'pointer' : 'default'};"
+                ></ha-icon>
+              ` : ''}
+              <ha-markdown class="title-text" .content="${this._config.title}" breaks></ha-markdown>
+              ${this._config.title_right_icon ? html`
+                <ha-icon 
+                  class="title-icon right"
+                  .icon=${this._config.title_right_icon}
+                  @click=${() => this._handleIconClick(this._config.title_right_action)}
+                  style="--mdc-icon-size: ${this._config.title_right_icon_size}; cursor: ${this._config.title_right_action ? 'pointer' : 'default'};"
+                ></ha-icon>
+              ` : ''}
+            </div>
           </div>
         ` : ''}
         <div class="ticker-wrap ${wrapClasses}">
@@ -522,12 +524,10 @@ class StripCard extends LitElement {
         display: flex;
         flex-direction: column;
         position: relative;
-        left: 50%;
-        transform: translateX(-50%);
+        margin: 0 auto;
       }
       ha-card.full-width {
-        left: 0;
-        transform: none;
+        margin: 0;
       }
       .card-header {
         padding: 16px;
@@ -535,14 +535,15 @@ class StripCard extends LitElement {
         font-weight: 400;
         color: var(--primary-text-color);
         display: flex;
+        justify-content: var(--strip-card-title-alignment, flex-start);
+      }
+      .title-content {
+        display: flex;
         align-items: center;
-        justify-content: space-between;
         gap: var(--strip-card-title-icon-gap, 12px);
       }
       .title-text {
-        flex: 1;
         font-size: var(--strip-card-title-font-size, 16px);
-        text-align: var(--strip-card-title-alignment, left);
       }
       .title-text p {
         margin: 0;
@@ -554,12 +555,6 @@ class StripCard extends LitElement {
       }
       .title-icon:hover {
         color: var(--primary-color);
-      }
-      .title-icon.left {
-        order: -1;
-      }
-      .title-icon.right {
-        order: 1;
       }
       .ticker-wrap {
         flex: 1;
