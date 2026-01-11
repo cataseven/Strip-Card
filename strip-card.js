@@ -3,7 +3,7 @@ const html = LitElement.prototype.html;
 const css = LitElement.prototype.css;
 
 console.info(
-  `%c STRIP-CARD %c v2.4.6 `,
+  `%c STRIP-CARD %c v2.4.7 `,
   "color: orange; font-weight: bold; background: black",
   "color: white; font-weight: bold; background: dimgray"
 );
@@ -805,17 +805,24 @@ class StripCardEditor extends LitElement {
               </div>
               ${isExpanded ? html`
                 <div class="entity-editor">
-                  <ha-textfield label="Name (für Editor)" .value="${entityObj.name || ''}" .entityIndex="${index}" .configValue="${"name"}" @input="${this._entityPropertyChanged}" helper-text="Anzeigename in der Entitätenliste"></ha-textfield>
+                  <ha-textfield 
+                    label="Name (für Editor)" 
+                    .value="${entityObj.name || ''}" 
+                    .entityIndex="${index}" 
+                    .configValue="${"name"}" 
+                    @input="${this._entityPropertyChanged}" 
+                    helper-text="Anzeigename in der Entitätenliste"
+                  ></ha-textfield>
                   
-                  <label class="input-label">Entität</label>
-                  <ha-combo-box
-                    .hass="${this.hass}"
-                    .value="${entityId}"
-                    .label="Entität wählen"
-                    .items="${this._getEntityList()}"
-                    @value-changed="${(e) => this._entityComboChanged(e, index)}"
-                    allow-custom-value
-                  ></ha-combo-box>
+                  <ha-textfield 
+                    label="Entität" 
+                    .value="${entityId}" 
+                    .entityIndex="${index}" 
+                    .configValue="${"entity"}" 
+                    @input="${this._entityPropertyChanged}" 
+                    helper-text="${this._getEntityValidationText(entityId)}"
+                  ></ha-textfield>
+                  ${this._getEntityPreview(entityId)}
                   
                   <ha-textfield label="Content (Template)" .value="${entityObj.content || ''}" .entityIndex="${index}" .configValue="${"content"}" @input="${this._entityPropertyChanged}" helper-text="z.B: {{ states('sensor.temp') }} °C"></ha-textfield>
                   <ha-textfield label="Label (Template)" .value="${entityObj.label || ''}" .entityIndex="${index}" .configValue="${"label"}" @input="${this._entityPropertyChanged}" helper-text="Chips: oben, Normal: rechts"></ha-textfield>
@@ -854,23 +861,25 @@ class StripCardEditor extends LitElement {
     `;
   }
 
-  _getEntityList() {
-    if (!this.hass) return [];
-    return Object.keys(this.hass.states).map(eid => ({
-      label: this.hass.states[eid].attributes.friendly_name || eid,
-      value: eid
-    }));
+  _getEntityValidationText(entityId) {
+    if (!entityId) return 'z.B: sensor.temperatur';
+    if (this.hass?.states[entityId]) {
+      const state = this.hass.states[entityId];
+      return `✓ Gefunden: ${state.attributes.friendly_name || entityId}`;
+    }
+    return '⚠ Entität nicht gefunden';
   }
 
-  _entityComboChanged(ev, index) {
-    if (!ev.detail.value) return;
-    const entities = [...this._config.entities];
-    entities[index] = typeof entities[index] === 'string' 
-      ? { entity: ev.detail.value } 
-      : { ...entities[index], entity: ev.detail.value };
-    this._config = { ...this._config, entities };
-    this._configChanged();
-    this.requestUpdate();
+  _getEntityPreview(entityId) {
+    if (!entityId || !this.hass?.states[entityId]) return html``;
+    const state = this.hass.states[entityId];
+    return html`
+      <div class="entity-preview">
+        <span class="preview-label">Aktuell:</span>
+        <span class="preview-state">${state.state}</span>
+        ${state.attributes.unit_of_measurement ? html`<span class="preview-unit">${state.attributes.unit_of_measurement}</span>` : ''}
+      </div>
+    `;
   }
 
   _renderVisibilityConditions(entityObj, entityIndex) {
@@ -888,15 +897,15 @@ class StripCardEditor extends LitElement {
               <ha-icon icon="mdi:delete"></ha-icon>
             </ha-icon-button>
           </div>
-          <label class="input-label">Entität für Bedingung</label>
-          <ha-combo-box
-            .hass="${this.hass}"
-            .value="${condition.entity || ''}"
-            .label="Entität wählen"
-            .items="${this._getEntityList()}"
-            @value-changed="${(e) => this._visibilityComboChanged(e, entityIndex, condIndex)}"
-            allow-custom-value
-          ></ha-combo-box>
+          <ha-textfield 
+            label="Entität für Bedingung" 
+            .value="${condition.entity || ''}" 
+            .entityIndex="${entityIndex}"
+            .condIndex="${condIndex}"
+            .configValue="${"entity"}"
+            @input="${this._visibilityPropertyChanged}"
+            helper-text="${this._getEntityValidationText(condition.entity)}"
+          ></ha-textfield>
           <ha-textfield 
             label="Status (state)" 
             .value="${condition.state || ''}" 
@@ -918,20 +927,6 @@ class StripCardEditor extends LitElement {
         </div>
       `)}
     `;
-  }
-
-  _visibilityComboChanged(ev, entityIndex, condIndex) {
-    if (!ev.detail.value) return;
-    const entities = [...this._config.entities];
-    const entity = { ...entities[entityIndex] };
-    
-    if (!entity.visibility) return;
-    entity.visibility = [...entity.visibility];
-    entity.visibility[condIndex] = { ...entity.visibility[condIndex], entity: ev.detail.value };
-    
-    entities[entityIndex] = entity;
-    this._config = { ...this._config, entities };
-    this._configChanged();
   }
 
   _addVisibilityCondition(entityIndex) {
@@ -1184,8 +1179,7 @@ class StripCardEditor extends LitElement {
         border-bottom: 1px solid var(--divider-color);
       }
       ha-textfield,
-      ha-select,
-      ha-combo-box {
+      ha-select {
         width: 100%;
         margin-bottom: 12px;
         display: block;
@@ -1230,6 +1224,27 @@ class StripCardEditor extends LitElement {
       .entity-editor {
         padding: 16px;
         border-top: 1px solid var(--divider-color);
+      }
+      .entity-preview {
+        background: var(--secondary-background-color);
+        padding: 8px 12px;
+        border-radius: 4px;
+        margin-bottom: 12px;
+        display: flex;
+        gap: 8px;
+        align-items: center;
+        font-size: 14px;
+      }
+      .preview-label {
+        color: var(--secondary-text-color);
+        font-weight: 500;
+      }
+      .preview-state {
+        color: var(--primary-color);
+        font-weight: 600;
+      }
+      .preview-unit {
+        color: var(--secondary-text-color);
       }
       .visibility-condition {
         background: var(--secondary-background-color);
