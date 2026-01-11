@@ -3,7 +3,7 @@ const html = LitElement.prototype.html;
 const css = LitElement.prototype.css;
 
 console.info(
-  `%c STRIP-CARD %c v2.2.0 `,
+  `%c STRIP-CARD %c v2.3.0 `,
   "color: orange; font-weight: bold; background: black",
   "color: white; font-weight: bold; background: dimgray"
 );
@@ -102,6 +102,26 @@ class StripCard extends LitElement {
     return true;
   }
 
+  _checkVisibility(entityConfig) {
+    if (!entityConfig.visibility || !Array.isArray(entityConfig.visibility)) return true;
+    
+    return entityConfig.visibility.every(condition => {
+      if (condition.condition === 'state') {
+        const entity = condition.entity;
+        const stateObj = this.hass.states[entity];
+        if (!stateObj) return false;
+        
+        if (condition.state !== undefined) {
+          return stateObj.state === condition.state;
+        }
+        if (condition.state_not !== undefined) {
+          return stateObj.state !== condition.state_not;
+        }
+      }
+      return true;
+    });
+  }
+
   _handleIconClick(action) {
     if (!action) return;
     
@@ -168,8 +188,10 @@ class StripCard extends LitElement {
     if (!this._config || !this.hass) return html``;
 
     const duration = this.evaluateTemplate(this._config.duration, this.hass);
+    const animationName = this._config.continuous_scroll 
+      ? (this._config.vertical_scroll ? 'vertical-ticker' : 'ticker')
+      : (this._config.vertical_scroll ? 'vertical-ticker-return' : 'ticker-return');
     const animationIteration = this._config.continuous_scroll ? 'infinite' : '1';
-    const animationDirection = this._config.continuous_scroll ? 'normal' : 'alternate';
     
     const cardStyles = `
       --strip-card-font-size: ${this._config.font_size};
@@ -190,6 +212,7 @@ class StripCard extends LitElement {
     `;
 
     const renderedEntities = this._config.entities
+        .filter(entityConfig => this._checkVisibility(entityConfig))
         .map((entityConfig) => this.renderEntity(entityConfig))
         .filter(Boolean);
     
@@ -215,7 +238,10 @@ class StripCard extends LitElement {
       this._config.badge_style && 'has-chips-style'
     ].filter(Boolean).join(' ');
     
-    const moveClasses = this._config.vertical_alignment === 'inline' ? 'has-inline-vertical-alignment' : '';
+    const moveClasses = [
+      this._config.vertical_alignment === 'inline' && 'has-inline-vertical-alignment',
+      !this._config.continuous_scroll && 'has-return-animation'
+    ].filter(Boolean).join(' ');
     
     return html`
       <ha-card style="${cardStyles}">
@@ -241,7 +267,7 @@ class StripCard extends LitElement {
           </div>
         ` : ''}
         <div class="ticker-wrap ${wrapClasses}">
-          <div class="ticker-move ${moveClasses}" style="animation-duration: ${duration}s; animation-iteration-count: ${animationIteration}; animation-direction: ${animationDirection};">
+          <div class="ticker-move ${moveClasses}" style="animation: ${animationName} ${duration}s linear ${animationIteration};">
             ${content}
           </div>
         </div>
@@ -385,17 +411,16 @@ class StripCard extends LitElement {
         display: inline-block;
         white-space: nowrap;
         will-change: transform;
-        animation-name: ticker;
-        animation-timing-function: linear;
+      }
+      .ticker-move.has-return-animation {
+        animation-iteration-count: infinite !important;
       }
       .ticker-move.has-inline-vertical-alignment {
         display: block;
         height: max-content;
-        animation-name: vertical-ticker-inline;
       }
       .ticker-wrap.has-vertical-scroll .ticker-move {
         white-space: normal;
-        animation-name: vertical-ticker;
         display: block;
         height: max-content;
       }
@@ -498,9 +523,19 @@ class StripCard extends LitElement {
         0% { transform: translateX(0); }
         100% { transform: translateX(-50%); }
       }
+      @keyframes ticker-return {
+        0% { transform: translateX(0); }
+        50% { transform: translateX(-100%); }
+        100% { transform: translateX(0); }
+      }
       @keyframes vertical-ticker {
         0% { transform: translateY(0); }
         100% { transform: translateY(-50%); }
+      }
+      @keyframes vertical-ticker-return {
+        0% { transform: translateY(0); }
+        50% { transform: translateY(-100%); }
+        100% { transform: translateY(0); }
       }
       @keyframes vertical-ticker-inline {
         0% { transform: translateY(0); }
