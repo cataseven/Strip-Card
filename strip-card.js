@@ -3,7 +3,7 @@ const html = LitElement.prototype.html;
 const css = LitElement.prototype.css;
 
 console.info(
-  `%c STRIP-CARD %c Loaded - Version 2.0.5 (Smart UI) `,
+  `%c STRIP-CARD %c Loaded - Version 2.0.6 (Smart UI) `,
   "color: orange; font-weight: bold; background: black",
   "color: white; font-weight: bold; background: dimgray"
 );
@@ -404,6 +404,7 @@ class StripCard extends LitElement {
       }
       .ticker-wrap.has-fading {
         position: relative;
+        padding: 0 20px;
         -webkit-mask-image: linear-gradient(to right,
           rgba(0, 0, 0, 0) 0%,
           rgba(0, 0, 0, 1) 14%,
@@ -422,6 +423,7 @@ class StripCard extends LitElement {
         mask-repeat: no-repeat;
       }
       .ticker-wrap.has-vertical-scroll.has-fading {
+        padding: 20px 0;
         -webkit-mask-image: linear-gradient(to bottom,
           rgba(0, 0, 0, 0) 0%,
           rgba(0, 0, 0, 1) 14%,
@@ -434,6 +436,12 @@ class StripCard extends LitElement {
           rgba(0, 0, 0, 1) 86%,
           rgba(0, 0, 0, 0) 100%
         );
+      }
+      .ticker-wrap.has-chips-style.has-fading {
+        padding: 8px 20px;
+      }
+      .ticker-wrap.has-vertical-scroll.has-chips-style.has-fading {
+        padding: 20px 0;
       }
       .ticker-wrap.pausable:hover .ticker-move {
         animation-play-state: paused;
