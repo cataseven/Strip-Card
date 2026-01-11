@@ -86,7 +86,10 @@ class StripCard extends LitElement {
   connectedCallback() {
     super.connectedCallback();
     this._resizeObserver = new ResizeObserver(() => {
-      requestAnimationFrame(() => this._checkAndUpdateScroll());
+      requestAnimationFrame(() => {
+        this._updateFullWidthDimensions();
+        this._checkAndUpdateScroll();
+      });
     });
   }
 
@@ -98,18 +101,41 @@ class StripCard extends LitElement {
   }
 
   firstUpdated() {
+    this._updateFullWidthDimensions();
     this._checkAndUpdateScroll();
     if (this._resizeObserver) {
       const wrapElement = this.shadowRoot.querySelector('.ticker-wrap');
       if (wrapElement) {
         this._resizeObserver.observe(wrapElement);
       }
+      
+      // Observe parent container for width changes
+      const container = this.closest('hui-view, .view, hui-sections-view');
+      if (container) {
+        this._resizeObserver.observe(container);
+      }
     }
   }
 
   updated(changedProps) {
     if (changedProps.has('_config')) {
+      this._updateFullWidthDimensions();
       requestAnimationFrame(() => this._checkAndUpdateScroll());
+    }
+  }
+
+  _updateFullWidthDimensions() {
+    if (!this._config || !this._config.full_width) return;
+    
+    const container = this.closest('hui-view, .view, hui-sections-view');
+    if (container) {
+      const containerWidth = container.offsetWidth;
+      const rect = this.getBoundingClientRect();
+      const containerRect = container.getBoundingClientRect();
+      const leftOffset = rect.left - containerRect.left;
+      
+      this.style.setProperty('--full-width-container-width', `${containerWidth}px`);
+      this.style.setProperty('--full-width-left-offset', `${leftOffset}px`);
     }
   }
 
@@ -491,7 +517,8 @@ class StripCard extends LitElement {
         width: 100%;
       }
       .strip-card-wrapper.full-width-mode {
-        width: 100%;
+        width: var(--full-width-container-width, 100%);
+        margin-left: calc(var(--full-width-left-offset, 0px) * -1);
       }
       .strip-card-wrapper.full-width-mode ha-card {
         width: 100% !important;
