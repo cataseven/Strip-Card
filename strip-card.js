@@ -404,28 +404,28 @@ class StripCard extends LitElement {
       .ticker-wrap.has-fading {
         -webkit-mask-image: linear-gradient(to right,
           rgba(0, 0, 0, 0) 0%,
-          rgba(0, 0, 0, 1) 15%,
-          rgba(0, 0, 0, 1) 85%,
+          rgba(0, 0, 0, 1) 14%,
+          rgba(0, 0, 0, 1) 86%,
           rgba(0, 0, 0, 0) 100%
         );
         mask-image: linear-gradient(to right,
           rgba(0, 0, 0, 0) 0%,
-          rgba(0, 0, 0, 1) 15%,
-          rgba(0, 0, 0, 1) 85%,
+          rgba(0, 0, 0, 1) 14%,
+          rgba(0, 0, 0, 1) 86%,
           rgba(0, 0, 0, 0) 100%
         );
       }
       .ticker-wrap.has-vertical-scroll.has-fading {
         -webkit-mask-image: linear-gradient(to bottom,
           rgba(0, 0, 0, 0) 0%,
-          rgba(0, 0, 0, 1) 15%,
-          rgba(0, 0, 0, 1) 85%,
+          rgba(0, 0, 0, 1) 14%,
+          rgba(0, 0, 0, 1) 86%,
           rgba(0, 0, 0, 0) 100%
         );
         mask-image: linear-gradient(to bottom,
           rgba(0, 0, 0, 0) 0%,
-          rgba(0, 0, 0, 1) 15%,
-          rgba(0, 0, 0, 1) 85%,
+          rgba(0, 0, 0, 1) 14%,
+          rgba(0, 0, 0, 1) 86%,
           rgba(0, 0, 0, 0) 100%
         );
       }
