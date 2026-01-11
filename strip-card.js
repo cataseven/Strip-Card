@@ -3,7 +3,7 @@ const html = LitElement.prototype.html;
 const css = LitElement.prototype.css;
 
 console.info(
-  `%c STRIP-CARD %c v2.1.1 `,
+  `%c STRIP-CARD %c v2.2.0 `,
   "color: orange; font-weight: bold; background: black",
   "color: white; font-weight: bold; background: dimgray"
 );
@@ -169,6 +169,7 @@ class StripCard extends LitElement {
 
     const duration = this.evaluateTemplate(this._config.duration, this.hass);
     const animationIteration = this._config.continuous_scroll ? 'infinite' : '1';
+    const animationDirection = this._config.continuous_scroll ? 'normal' : 'alternate';
     
     const cardStyles = `
       --strip-card-font-size: ${this._config.font_size};
@@ -240,7 +241,7 @@ class StripCard extends LitElement {
           </div>
         ` : ''}
         <div class="ticker-wrap ${wrapClasses}">
-          <div class="ticker-move ${moveClasses}" style="animation-duration: ${duration}s; animation-iteration-count: ${animationIteration};">
+          <div class="ticker-move ${moveClasses}" style="animation-duration: ${duration}s; animation-iteration-count: ${animationIteration}; animation-direction: ${animationDirection};">
             ${content}
           </div>
         </div>
@@ -695,6 +696,7 @@ class StripCardEditor extends LitElement {
               </div>
               ${isExpanded ? html`
                 <div class="entity-editor">
+                  <ha-textfield label="Name (für Editor)" .value="${entityObj.name || ''}" .entityIndex="${index}" .configValue="${"name"}" @input="${this._entityPropertyChanged}" helper-text="Anzeigename in der Entitätenliste"></ha-textfield>
                   <ha-entity-picker .hass="${this.hass}" .value="${entityId}" .entityIndex="${index}" @value-changed="${this._entityChanged}" allow-custom-entity></ha-entity-picker>
                   <ha-textfield label="Content (Template)" .value="${entityObj.content || ''}" .entityIndex="${index}" .configValue="${"content"}" @input="${this._entityPropertyChanged}" helper-text="z.B: {{ states('sensor.temp') }} °C"></ha-textfield>
                   <ha-textfield label="Label (Template)" .value="${entityObj.label || ''}" .entityIndex="${index}" .configValue="${"label"}" @input="${this._entityPropertyChanged}" helper-text="Chips: oben, Normal: rechts"></ha-textfield>
@@ -729,6 +731,7 @@ class StripCardEditor extends LitElement {
 
   _getEntityDisplayName(entity, entityId) {
     if (typeof entity === 'string') return entityId || 'Neue Entität';
+    if (entity.name) return entity.name;
     if (entity.content) return entity.content.substring(0, 30) + (entity.content.length > 30 ? '...' : '');
     if (entityId && this.hass?.states[entityId]) return this.hass.states[entityId].attributes.friendly_name || entityId;
     return entityId || 'Neue Entität';
