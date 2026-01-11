@@ -3,7 +3,7 @@ const html = LitElement.prototype.html;
 const css = LitElement.prototype.css;
 
 console.info(
-  `%c STRIP-CARD %c v2.4.9 `,
+  `%c STRIP-CARD %c v2.5.0 `,
   "color: orange; font-weight: bold; background: black",
   "color: white; font-weight: bold; background: dimgray"
 );
@@ -107,8 +107,37 @@ class StripCard extends LitElement {
   }
 
   updated(changedProps) {
-    if (changedProps.has('_config') && !this._config.continuous_scroll) {
-      requestAnimationFrame(() => this._setupReturnAnimation());
+    if (changedProps.has('_config')) {
+      if (!this._config.continuous_scroll) {
+        requestAnimationFrame(() => this._setupReturnAnimation());
+      }
+      this._applyFullWidthMode();
+    }
+  }
+
+  _applyFullWidthMode() {
+    if (this._config.width_mode !== 'full') return;
+    
+    const findContentContainer = (element) => {
+      let current = element;
+      while (current && current.parentElement) {
+        current = current.parentElement;
+        if (current.tagName === 'HUI-VIEW' || 
+            current.classList?.contains('view') ||
+            current.id === 'view') {
+          return current;
+        }
+      }
+      return null;
+    };
+    
+    const contentContainer = findContentContainer(this);
+    if (contentContainer) {
+      const containerWidth = contentContainer.offsetWidth;
+      const card = this.shadowRoot.querySelector('ha-card');
+      if (card) {
+        card.style.setProperty('--strip-card-calculated-width', `${containerWidth}px`);
+      }
     }
   }
 
@@ -296,8 +325,8 @@ class StripCard extends LitElement {
     const duration = this.evaluateTemplate(this._config.duration, this.hass);
     
     let actualWidth = '100%';
-    if (this._config.width_mode === 'viewport') {
-      actualWidth = '100vw';
+    if (this._config.width_mode === 'full') {
+      actualWidth = 'var(--strip-card-calculated-width, 100%)';
     } else if (this._config.width_mode === 'custom') {
       actualWidth = this._config.card_width || '100%';
     }
@@ -802,7 +831,7 @@ class StripCardEditor extends LitElement {
         <div class="section-divider">Kartenbreite</div>
         <ha-select label="Breitenmodus" .value="${this._config.width_mode || 'container'}" .configValue="${"width_mode"}" @selected="${this._selectChanged}" @closed="${(e) => e.stopPropagation()}">
           <mwc-list-item value="container">Container-Breite</mwc-list-item>
-          <mwc-list-item value="viewport">Bildschirmbreite</mwc-list-item>
+          <mwc-list-item value="full">Volle Content-Breite</mwc-list-item>
           <mwc-list-item value="custom">Benutzerdefiniert</mwc-list-item>
         </ha-select>
         ${this._config.width_mode === 'custom' ? html`
