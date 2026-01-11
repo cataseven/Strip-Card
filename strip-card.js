@@ -3,7 +3,7 @@ const html = LitElement.prototype.html;
 const css = LitElement.prototype.css;
 
 console.info(
-  `%c STRIP-CARD %c v2.6.0 `,
+  `%c STRIP-CARD %c v2.6.1 `,
   "color: orange; font-weight: bold; background: black",
   "color: white; font-weight: bold; background: dimgray"
 );
@@ -534,20 +534,82 @@ class StripCardEditor extends LitElement {
             <ha-textfield label="Content (Template)" .value="${obj.content || ''}" @input=${e => this._entityChange(i, 'content', e.target.value)} helper-text="{{ states('...') }}"></ha-textfield>
             <ha-textfield label="Label" .value="${obj.label || ''}" @input=${e => this._entityChange(i, 'label', e.target.value)}></ha-textfield>
             <ha-textfield label="Icon" .value="${obj.icon || ''}" @input=${e => this._entityChange(i, 'icon', e.target.value)}></ha-textfield>
+            
+            <div class="divider">Sichtbarkeit</div>
+            ${this._renderVisibility(obj, i)}
+            <mwc-button @click=${() => this._addVisibility(i)}>Bedingung hinzufügen</mwc-button>
+            
             <div class="divider">Farben</div>
             <ha-textfield label="Icon-Farbe" .value="${obj.color || ''}" @input=${e => this._entityChange(i, 'color', e.target.value)}></ha-textfield>
             <ha-textfield label="Label-Farbe" .value="${obj.label_color || ''}" @input=${e => this._entityChange(i, 'label_color', e.target.value)}></ha-textfield>
             <ha-textfield label="Content-Farbe" .value="${obj.content_color || ''}" @input=${e => this._entityChange(i, 'content_color', e.target.value)}></ha-textfield>
+            
             <div class="divider">Tap Action</div>
             <ha-select label="Aktion" .value="${obj.tap_action?.action || 'more-info'}" @selected=${e => this._entityChange(i, 'tap_action.action', e.target.value)} @closed=${e => e.stopPropagation()}>
               ${[['more-info', 'More Info'], ['toggle', 'Toggle'], ['navigate', 'Navigate'], ['call-service', 'Call Service'], ['none', 'Keine']].map(([v, l]) => html`<mwc-list-item value="${v}">${l}</mwc-list-item>`)}
             </ha-select>
-            ${obj.tap_action?.action === 'navigate' ? html`<ha-textfield label="Path" .value="${obj.tap_action?.navigation_path || ''}" @input=${e => this._entityChange(i, 'tap_action.navigation_path', e.target.value)}></ha-textfield>` : ''}
-            ${obj.tap_action?.action === 'call-service' ? html`<ha-textfield label="Service" .value="${obj.tap_action?.service || ''}" @input=${e => this._entityChange(i, 'tap_action.service', e.target.value)}></ha-textfield>` : ''}
+            ${obj.tap_action?.action === 'navigate' ? html`
+              <ha-textfield label="Path" .value="${obj.tap_action?.navigation_path || ''}" @input=${e => this._entityChange(i, 'tap_action.navigation_path', e.target.value)} helper-text="z.B: /lovelace/home"></ha-textfield>
+            ` : ''}
+            ${obj.tap_action?.action === 'call-service' ? html`
+              <ha-textfield label="Service" .value="${obj.tap_action?.service || ''}" @input=${e => this._entityChange(i, 'tap_action.service', e.target.value)} helper-text="z.B: light.turn_on"></ha-textfield>
+              <ha-textfield label="Service Data (JSON)" .value="${JSON.stringify(obj.tap_action?.service_data || {})}" @input=${e => this._entityChangeJSON(i, 'tap_action.service_data', e.target.value)} helper-text='z.B: {"brightness": 255}'></ha-textfield>
+            ` : ''}
           </div>
         ` : ''}
       </div>
     `;
+  }
+
+  _renderVisibility(obj, i) {
+    const vis = obj.visibility || [];
+    if (!vis.length) return html`<p class="help">Keine Bedingungen - Entität immer sichtbar</p>`;
+    
+    return html`
+      ${vis.map((c, ci) => html`
+        <div class="visibility">
+          <div class="vis-head">
+            <span>Bedingung ${ci + 1}</span>
+            <ha-icon-button @click=${() => this._removeVisibility(i, ci)}><ha-icon icon="mdi:delete"></ha-icon></ha-icon-button>
+          </div>
+          <ha-textfield label="Entität" .value="${c.entity || ''}" @input=${e => this._visibilityChange(i, ci, 'entity', e.target.value)} helper-text="${this._validateEntity(c.entity)}"></ha-textfield>
+          <ha-textfield label="Status (state)" .value="${c.state || ''}" @input=${e => this._visibilityChange(i, ci, 'state', e.target.value)} helper-text="z.B: on, off, home"></ha-textfield>
+          <ha-textfield label="Status nicht (state_not)" .value="${c.state_not || ''}" @input=${e => this._visibilityChange(i, ci, 'state_not', e.target.value)} helper-text="Optional"></ha-textfield>
+        </div>
+      `)}
+    `;
+  }
+
+  _addVisibility(i) {
+    const entities = [...this._config.entities];
+    let e = typeof entities[i] === 'string' ? { entity: entities[i] } : { ...entities[i] };
+    if (!e.visibility) e.visibility = [];
+    e.visibility = [...e.visibility, { condition: 'state', entity: '', state: '' }];
+    entities[i] = e;
+    this._change('entities', entities);
+  }
+
+  _removeVisibility(i, ci) {
+    const entities = [...this._config.entities];
+    let e = { ...entities[i] };
+    if (e.visibility) {
+      e.visibility = e.visibility.filter((_, idx) => idx !== ci);
+      if (!e.visibility.length) delete e.visibility;
+    }
+    entities[i] = e;
+    this._change('entities', entities);
+  }
+
+  _visibilityChange(i, ci, key, val) {
+    const entities = [...this._config.entities];
+    let e = { ...entities[i] };
+    if (!e.visibility) return;
+    e.visibility = [...e.visibility];
+    e.visibility[ci] = { ...e.visibility[ci], [key]: val };
+    if (key === 'state' && !val) delete e.visibility[ci].state;
+    if (key === 'state_not' && !val) delete e.visibility[ci].state_not;
+    entities[i] = e;
+    this._change('entities', entities);
   }
 
   _validateEntity(id) {
@@ -579,6 +641,15 @@ class StripCardEditor extends LitElement {
     }
     entities[i] = e;
     this._change('entities', entities);
+  }
+
+  _entityChangeJSON(i, key, val) {
+    try {
+      const parsed = JSON.parse(val);
+      this._entityChange(i, key, parsed);
+    } catch (e) {
+      console.warn('Invalid JSON:', val);
+    }
   }
 
   _addEntity() {
@@ -628,6 +699,8 @@ class StripCardEditor extends LitElement {
     .preview { background: var(--secondary-background-color); padding: 8px 12px; border-radius: 4px; margin-bottom: 12px; display: flex; gap: 8px; align-items: center; font-size: 14px; }
     .preview span { color: var(--secondary-text-color); }
     .preview b { color: var(--primary-color); }
+    .visibility { background: var(--secondary-background-color); padding: 12px; border-radius: 8px; margin-bottom: 12px; }
+    .vis-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; font-weight: 500; }
     mwc-button { margin-top: 16px; width: 100%; }
   `;
 }
