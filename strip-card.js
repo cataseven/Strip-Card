@@ -330,6 +330,9 @@ class StripCard extends LitElement {
 
   static get styles() {
     return css`
+      :host {
+        display: block;
+      }
       ha-card {
         overflow: hidden;
         border-radius: var(--strip-card-border-radius, 0px);
@@ -338,6 +341,9 @@ class StripCard extends LitElement {
         display: flex;
         flex-direction: column;
         justify-content: flex-start;
+        position: relative;
+        left: 50%;
+        transform: translateX(-50%);
       }
       .card-header {
         padding: 16px;
