@@ -2,44 +2,83 @@
 
 **Version 3.0.0** - Enhanced Strip Card with Badge Support
 
-Eine erweiterte Version der Strip Card, die zusätzlich zu Sensoren und Entitäten auch Home Assistant Badges im horizontalen Scrolling-Ticker darstellen kann.
+**Specially designed to replace the Markdown card as a dynamic dashboard header!**
+
+An enhanced version of the Strip Card that displays not only sensors and entities but also Home Assistant badges in a horizontally scrolling ticker format. Perfect for creating beautiful, information-rich dashboard headers.
 
 ---
 
 ## ✨ Features
 
-- 🔁 **Horizontal scrollender Ticker** mit flüssiger Animation
-- 🏷️ **Badge-Unterstützung** - zeige Home Assistant Badges direkt in der Karte an
-- 📊 **Header-Funktionalität** - nutze die Karte als dynamischen Dashboard-Header
-- 🧩 **Multi-Entity Support** mit Attributen und Templates
-- 🎨 **Umfassende Styling-Optionen** global und pro Entität
-- 🖱️ **Interaktiv** - More-Info Dialog oder Service-Calls per Klick
-- ⏸️ **Hover-Pause** optional aktivierbar
-- ⚙️ **Hochgradig konfigurierbar** - Icons, Farben, Units, Templates und mehr
+- 🔁 **Horizontal scrolling ticker** with smooth animation
+- 🏷️ **Badge support** - display Home Assistant badges directly in the card
+- 📊 **Header functionality** - designed to replace static Markdown headers
+- 🧩 **Multi-entity support** with attributes and templates
+- 🎨 **Comprehensive styling options** globally and per entity
+- 🖱️ **Interactive** - More-info dialog or service calls on click
+- ⏸️ **Hover pause** optionally enabled
+- ⚙️ **Highly configurable** - icons, colors, units, templates and more
 
 ---
 
 ## 📦 Installation
 
-### HACS (empfohlen)
-1. Öffne HACS → Frontend
-2. Klicke auf "Custom repositories"
-3. Füge `https://github.com/Spider19996/Header-and-Badges-Strip-Card` hinzu (Kategorie: Lovelace)
-4. Suche nach "Header and Badges Strip Card" und installiere
-5. Lade Home Assistant neu
+### HACS (Recommended)
+1. Open HACS → Frontend
+2. Click on "Custom repositories"
+3. Add `https://github.com/Spider19996/Header-and-Badges-Strip-Card` (Category: Lovelace)
+4. Search for "Header and Badges Strip Card" and install
+5. Reload Home Assistant
 
-### Manuell
-1. Kopiere `header-and-badges-strip-card.js` nach `/config/www/`
-2. Gehe zu **Einstellungen → Dashboards → Ressourcen**
-3. Füge hinzu:
+### Manual
+1. Copy `header-and-badges-strip-card.js` to `/config/www/`
+2. Go to **Settings → Dashboards → Resources**
+3. Add resource:
    - URL: `/local/header-and-badges-strip-card.js`
-   - Typ: JavaScript-Modul
+   - Type: JavaScript Module
 
 ---
 
-## 🚀 Schnellstart
+## 🚀 Quick Start - Creating a Dashboard Header
 
-### Basis-Konfiguration
+### Step 1: Add a Header in Your Dashboard
+1. Edit your dashboard
+2. Click "Add Card"
+3. Search for and select **"Heading"** (or "Header")
+4. Click on **"Show Code Editor"** at the bottom
+5. Replace the existing code with:
+
+```yaml
+type: custom:header-and-badges-strip-card
+title: My Smart Home
+duration: 25
+show_icon: true
+border_radius: 12px
+card_height: 70px
+fading: true
+pause_on_hover: true
+entities:
+  - type: badge
+    entity: person.your_name
+  - type: badge
+    entity: sensor.outside_temperature
+  - entity: sensor.living_room_temperature
+    name: Living Room
+    icon: mdi:sofa
+  - entity: light.kitchen
+    name: Kitchen
+    show_icon: true
+```
+
+6. Click "Save"
+
+**This replaces the static Markdown header with a dynamic, scrolling information ticker!**
+
+---
+
+## 💡 Basic Examples
+
+### Simple Header
 ```yaml
 type: custom:header-and-badges-strip-card
 duration: 20
@@ -47,10 +86,10 @@ show_icon: true
 entities:
   - sensor.temperature
   - sensor.humidity
-  - person.robin
+  - person.john
 ```
 
-### Mit Badges
+### Advanced Header with Badges
 ```yaml
 type: custom:header-and-badges-strip-card
 title: System Status
@@ -58,76 +97,77 @@ duration: 25
 show_icon: true
 border_radius: 12px
 card_height: 60px
+transparent: false
 entities:
   - type: badge
-    entity: person.robin
+    entity: person.john
   - type: badge
     entity: sensor.cpu_temperature
   - entity: sensor.disk_free
-    name: Speicher
+    name: Storage
     icon: mdi:harddisk
   - entity: binary_sensor.door
-    name: Haustür
+    name: Front Door
 ```
 
 ---
 
-## 📝 Konfigurationsoptionen
+## 📋 Configuration Options
 
-### Globale Optionen
+### Global Options
 
-| Option | Typ | Standard | Beschreibung |
-|--------|-----|----------|-------------|
-| `title` | string | `""` | Kartentitel |
-| `duration` | number | `20` | Scroll-Dauer in Sekunden (niedriger = schneller) |
-| `font_size` | string | `"14px"` | Schriftgröße |
-| `border_radius` | string | `"0px"` | Ecken-Rundung |
-| `card_height` | string | `"50px"` | Kartenhöhe |
-| `card_width` | string | `""` | Kartenbreite (leer = automatisch) |
-| `separator` | string | `"•"` | Trennzeichen zwischen Entitäten |
-| `pause_on_hover` | boolean | `false` | Pausiert Animation bei Hover |
-| `continuous_scroll` | boolean | `true` | Endlos-Schleife aktivieren |
-| `vertical_scroll` | boolean | `false` | Vertikaler statt horizontaler Scroll |
-| `fading` | boolean | `false` | Fade-Effekt an den Rändern |
-| `show_icon` | boolean | `false` | Icons standardmäßig anzeigen |
-| `unit_position` | string | `"right"` | Position der Einheit (`left`/`right`) |
-| `transparent` | boolean | `false` | Transparenter Hintergrund |
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `title` | string | `""` | Card title |
+| `duration` | number | `20` | Scroll duration in seconds (lower = faster) |
+| `font_size` | string | `"14px"` | Font size |
+| `border_radius` | string | `"0px"` | Corner radius |
+| `card_height` | string | `"50px"` | Card height |
+| `card_width` | string | `""` | Card width (empty = auto) |
+| `separator` | string | `"•"` | Separator between entities |
+| `pause_on_hover` | boolean | `false` | Pause animation on hover |
+| `continuous_scroll` | boolean | `true` | Enable infinite loop |
+| `vertical_scroll` | boolean | `false` | Vertical instead of horizontal scroll |
+| `fading` | boolean | `false` | Fade effect at edges |
+| `show_icon` | boolean | `false` | Show icons by default |
+| `unit_position` | string | `"right"` | Unit position (`left`/`right`) |
+| `transparent` | boolean | `false` | Transparent background |
 
-### Farb-Optionen
+### Color Options
 
-| Option | Standard | Beschreibung |
-|--------|----------|-------------|
-| `name_color` | `var(--primary-text-color)` | Farbe des Entity-Namens |
-| `value_color` | `var(--primary-color)` | Farbe des Wertes |
-| `unit_color` | `var(--secondary-text-color)` | Farbe der Einheit |
-| `icon_color` | `var(--paper-item-icon-color)` | Icon-Farbe |
+| Option | Default | Description |
+|--------|---------|-------------|
+| `name_color` | `var(--primary-text-color)` | Entity name color |
+| `value_color` | `var(--primary-color)` | Value color |
+| `unit_color` | `var(--secondary-text-color)` | Unit color |
+| `icon_color` | `var(--paper-item-icon-color)` | Icon color |
 
-### Entity-Optionen
+### Entity Options
 
-| Option | Typ | Standard | Beschreibung |
-|--------|-----|----------|-------------|
-| `type` | string | - | `"badge"` für Badge-Darstellung |
-| `entity` | string | **Erforderlich** | Entity-ID (z.B. `sensor.temp`) |
-| `name` | string | friendly_name | Überschreibt Entity-Namen |
-| `icon` | string | Entity-Icon | Custom Icon (z.B. `mdi:thermometer`) |
-| `attribute` | string | `state` | Zeigt spezifisches Attribut an |
-| `value_template` | string | - | Jinja2-Template für Wert |
-| `unit` | string | unit_of_measurement | Custom Einheit |
-| `unit_position` | string | Erbt von Karte | Unit-Position überschreiben |
-| `show_icon` | boolean | Erbt von Karte | Icon-Sichtbarkeit überschreiben |
-| `service` | string | - | Service-Call bei Klick |
-| `data` | object | - | Service-Call Daten |
-| `visible_if` | string | - | Sichtbarkeits-Template |
-| `*_color` | string | - | Farb-Überschreibungen pro Entity |
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `type` | string | - | `"badge"` for badge display |
+| `entity` | string | **Required** | Entity ID (e.g., `sensor.temp`) |
+| `name` | string | friendly_name | Override entity name |
+| `icon` | string | Entity icon | Custom icon (e.g., `mdi:thermometer`) |
+| `attribute` | string | `state` | Display specific attribute |
+| `value_template` | string | - | Jinja2 template for value |
+| `unit` | string | unit_of_measurement | Custom unit |
+| `unit_position` | string | Inherits from card | Override unit position |
+| `show_icon` | boolean | Inherits from card | Override icon visibility |
+| `service` | string | - | Service call on click |
+| `data` | object | - | Service call data |
+| `visible_if` | string | - | Visibility template |
+| `*_color` | string | - | Color overrides per entity |
 
 ---
 
-## 💡 Erweiterte Beispiele
+## 🎨 Advanced Examples
 
-### Dashboard-Header mit Badges
+### Dashboard Header with Person Badges
 ```yaml
 type: custom:header-and-badges-strip-card
-title: Mein Smart Home
+title: Welcome Home
 duration: 30
 font_size: 16px
 border_radius: 12px
@@ -136,28 +176,28 @@ fading: true
 pause_on_hover: true
 entities:
   - type: badge
-    entity: person.robin
+    entity: person.john
   - type: badge
-    entity: person.sarah
+    entity: person.jane
   - type: badge
     entity: sensor.outside_temperature
   - entity: sensor.living_room_temperature
-    name: Wohnzimmer
+    name: Living Room
     icon: mdi:sofa
     show_icon: true
   - entity: light.kitchen
-    name: Küche
+    name: Kitchen
     service: light.toggle
     show_icon: true
     icon_color: orange
 ```
 
-### Farbige Templates
+### Color Templates
 ```yaml
 type: custom:header-and-badges-strip-card
 entities:
   - entity: sensor.temperature
-    name: Temperatur
+    name: Temperature
     show_icon: true
     icon: >-
       {{ 'mdi:snowflake' if states('sensor.temperature')|float < 18
@@ -169,66 +209,102 @@ entities:
          else 'red' }}
 ```
 
-### Bedingte Sichtbarkeit
+### Conditional Visibility
 ```yaml
 type: custom:header-and-badges-strip-card
 entities:
   - entity: sensor.rain_probability
-    name: Regen
+    name: Rain
     visible_if: "{{ states('sensor.rain_probability')|int > 30 }}"
   - entity: sun.sun
-    name: Sonne
+    name: Sun
     visible_if: "{{ states('sun.sun') == 'above_horizon' }}"
+```
+
+### Interactive Switches
+```yaml
+type: custom:header-and-badges-strip-card
+entities:
+  - entity: light.living_room
+    name: Living Room
+    service: light.toggle
+    data:
+      entity_id: light.living_room
+    show_icon: true
+    icon_color: "{{ 'orange' if is_state('light.living_room', 'on') else 'gray' }}"
+  - entity: switch.coffee_maker
+    name: Coffee
+    service: switch.toggle
+    show_icon: true
 ```
 
 ---
 
-## 🎨 Styling-Tipps
+## 🎨 Styling Tips
 
-- **Minimalistisch**: `transparent: true`, kein `border_radius`, `show_icon: false`
-- **Modern**: `border_radius: 12px`, `fading: true`, `pause_on_hover: true`
-- **Dashboard-Header**: Große `card_height` (70-80px), `font_size: 16px`, Badges verwenden
-- **Status-Ticker**: Kleine `card_height` (40-50px), schnelle `duration` (10-15s)
+- **Minimalist Header**: `transparent: true`, no `border_radius`, `show_icon: false`
+- **Modern Header**: `border_radius: 12px`, `fading: true`, `pause_on_hover: true`
+- **Dashboard Header**: Large `card_height` (70-80px), `font_size: 16px`, use badges
+- **Status Ticker**: Small `card_height` (40-50px), fast `duration` (10-15s)
 
 ---
 
 ## 🔧 Troubleshooting
 
-**Karte wird nicht angezeigt:**
-- Cache leeren (Strg+F5)
-- Ressource korrekt hinzugefügt?
-- Browser-Konsole auf Fehler prüfen
+**Card not showing:**
+- Clear cache (Ctrl+F5)
+- Resource correctly added?
+- Check browser console for errors
 
-**Badges werden nicht angezeigt:**
-- `type: badge` bei Entity angegeben?
-- Entity existiert und ist verfügbar?
+**Badges not displaying:**
+- Added `type: badge` to entity?
+- Entity exists and available?
 
-**Animation ruckelt:**
-- `duration` erhöhen
-- Weniger Entities verwenden
-- Hardware-Beschleunigung im Browser prüfen
+**Animation stuttering:**
+- Increase `duration`
+- Use fewer entities
+- Check browser hardware acceleration
+
+**"Show Code Editor" not visible:**
+- Make sure you're in edit mode
+- Look at the bottom of the card configuration dialog
+- Alternative: Use YAML mode for the entire dashboard
+
+---
+
+## 📚 Why Replace Markdown Headers?
+
+Traditional Markdown cards used as headers are static and don't show real-time information. This card was specifically designed to:
+
+✅ Display **live data** from sensors and entities  
+✅ Show **person badges** with status and avatars  
+✅ Provide **interactive elements** (click to toggle lights, etc.)  
+✅ Create **dynamic, scrolling content** that updates automatically  
+✅ Offer **extensive customization** with colors, icons, and templates  
+
+**Perfect for creating beautiful, functional dashboard headers!**
 
 ---
 
 ## 📜 Credits & License
 
-### Basiert auf
-Dieses Projekt basiert auf der originalen **[Strip Card](https://github.com/cataseven/Strip-Card)** von **cataseven**.
+### Based On
+This project is based on the original **[Strip Card](https://github.com/cataseven/Strip-Card)** by **cataseven**.
 
-### Entwickelt von
+### Developed By
 **Robin Zimmermann** ([Spider19996](https://github.com/Spider19996))  
-Version 3.0.0 - Januar 2026
+Version 3.0.0 - January 2026
 
-### Unterstützung
+### Support the Original Author
 <a href="https://www.buymeacoffee.com/cataseven" target="_blank">
   <img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Buy Me a Coffee" style="height: 60px !important;width: 217px !important;" >
 </a>
 
-Wenn dir diese Karte gefällt, gib dem Projekt einen ⭐ auf GitHub!
+If you like this card, give the project a ⭐ on GitHub!
 
-### Lizenz
+### License
 MIT License
 
 ---
 
-**Viel Spaß mit deinem neuen Dashboard-Header! 🚀**
+**Enjoy your new dynamic dashboard header! 🚀**
