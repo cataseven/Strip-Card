@@ -122,12 +122,10 @@ class StripCard extends LitElement {
     const contentWidth = moveElement.scrollWidth;
     const contentFits = contentWidth <= wrapWidth;
 
-    if (this._config.disable_scroll_if_fits) {
-      if (contentFits) {
-        moveElement.style.animation = 'none';
-        moveElement.style.transform = 'none';
-        return;
-      }
+    if (this._config.disable_scroll_if_fits && contentFits) {
+      moveElement.style.animation = 'none';
+      moveElement.style.transform = 'none';
+      return;
     }
 
     if (this._config.continuous_scroll) {
@@ -148,7 +146,8 @@ class StripCard extends LitElement {
     const wrapWidth = wrapElement.offsetWidth;
     const contentWidth = moveElement.scrollWidth;
     
-    if (contentWidth <= wrapWidth) {
+    // Only stop animation if content fits AND disable_scroll_if_fits is enabled
+    if (this._config.disable_scroll_if_fits && contentWidth <= wrapWidth) {
       moveElement.style.animation = 'none';
       moveElement.style.transform = 'none';
       return;
