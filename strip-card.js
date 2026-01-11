@@ -469,49 +469,52 @@ class StripCard extends LitElement {
       .chip-item {
         display: inline-flex;
         align-items: center;
-        gap: 8px;
-        padding: 4px 10px;
+        gap: 6px;
+        padding: 3px 8px;
         margin-right: 8px;
         min-height: 28px;
+        max-height: 28px;
         background: var(--strip-card-chip-background);
         border-radius: 14px;
         cursor: pointer;
-        font-size: 13px;
+        font-size: 12px;
         white-space: nowrap;
         transition: background 0.2s;
         box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
         box-sizing: border-box;
+        vertical-align: middle;
       }
       .chip-item:hover {
         background: var(--secondary-background-color);
       }
       .chip-icon {
-        --mdc-icon-size: 18px;
-        width: 18px;
-        height: 18px;
+        --mdc-icon-size: 16px;
+        width: 16px;
+        height: 16px;
         flex-shrink: 0;
       }
       .chip-text {
         display: flex;
         flex-direction: column;
-        gap: 2px;
+        gap: 1px;
         align-items: flex-start;
         justify-content: center;
+        line-height: 1;
       }
       .chip-item:not(.has-label) .chip-text {
         flex-direction: row;
         align-items: center;
       }
       .chip-label {
-        font-size: 10px;
+        font-size: 9px;
         font-weight: 400;
         opacity: 0.8;
-        line-height: 1.2;
+        line-height: 1;
         color: var(--strip-card-label-color);
       }
       .chip-content {
         font-weight: 600;
-        line-height: 1.2;
+        line-height: 1;
         color: var(--strip-card-content-color);
       }
       .icon {
