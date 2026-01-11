@@ -127,6 +127,9 @@ class StripCard extends LitElement {
   _updateFullWidthDimensions() {
     if (!this._config || !this._config.full_width) return;
     
+    const wrapper = this.shadowRoot.querySelector('.strip-card-wrapper');
+    if (!wrapper) return;
+    
     const container = this.closest('hui-view, .view, hui-sections-view');
     if (container) {
       const containerWidth = container.offsetWidth;
@@ -134,8 +137,9 @@ class StripCard extends LitElement {
       const containerRect = container.getBoundingClientRect();
       const leftOffset = rect.left - containerRect.left;
       
-      this.style.setProperty('--full-width-container-width', `${containerWidth}px`);
-      this.style.setProperty('--full-width-left-offset', `${leftOffset}px`);
+      // Setze direkt auf wrapper statt this
+      wrapper.style.setProperty('--full-width-container-width', `${containerWidth}px`);
+      wrapper.style.setProperty('--full-width-left-offset', `${leftOffset}px`);
     }
   }
 
@@ -329,7 +333,7 @@ class StripCard extends LitElement {
     
     styleElement.textContent = `
       @keyframes ${animationName} {
-        0% { transform: ${transform}(0); }
+        0% { transform: ${transform}(0); };
         ${afterScrollPercent}% { transform: ${transform}(-${scrollDistance}px); }
         ${afterFirstPausePercent}% { transform: ${transform}(-${scrollDistance}px); }
         ${afterReturnPercent}% { transform: ${transform}(0); }
@@ -875,7 +879,7 @@ class StripCardEditor extends LitElement {
         ${!this._config.badge_style ? html`
           <ha-textfield label="Trennzeichen" .value="${this._config.separator}" .configValue="${"separator"}" @input="${this._valueChanged}"></ha-textfield>
           <ha-textfield label="Schriftgröße" .value="${this._config.font_size}" .configValue="${"font_size"}" @input="${this._valueChanged}"></ha-textfield>
-        ` : ''}
+        ` : ''}  
         ${!this._config.transparent ? html`
           <ha-textfield label="Rahmenradius" .value="${this._config.border_radius}" .configValue="${"border_radius"}" @input="${this._valueChanged}"></ha-textfield>
         ` : ''}
