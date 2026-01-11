@@ -322,6 +322,8 @@ class StripCard extends LitElement {
 
     const duration = this.evaluateTemplate(this._config.duration, this.hass);
     
+    const isCustomWidth = this._config.card_width && this._config.card_width !== '100%';
+    
     const cardStyles = `
       --strip-card-font-size: ${this._config.font_size};
       --strip-card-border-radius: ${this._config.border_radius};
@@ -333,6 +335,7 @@ class StripCard extends LitElement {
       --strip-card-title-alignment: ${this._config.title_alignment};
       --strip-card-title-icon-spacing: ${this._config.title_icon_spacing};
       ${this._config.card_width ? `--strip-card-width: ${this._config.card_width};` : ''}
+      ${isCustomWidth ? `--strip-card-custom-width: true;` : ''}
       ${this._config.transparent ? `
         --ha-card-background: transparent;
         --card-background-color: transparent;
@@ -481,6 +484,8 @@ class StripCard extends LitElement {
         display: flex;
         flex-direction: column;
         position: relative;
+      }
+      ha-card[style*="--strip-card-custom-width"] {
         left: 50%;
         transform: translateX(-50%);
       }
