@@ -353,12 +353,13 @@ class StripCard extends LitElement {
     const duration = this.evaluateTemplate(this._config.duration, this.hass);
     
     let actualWidth = '100%';
-    let useFullWidth = false;
+    let cardClasses = '';
     if (this._config.width_mode === 'full') {
       actualWidth = 'var(--strip-card-calculated-width, 100%)';
-      useFullWidth = true;
+      cardClasses = 'full-width';
     } else if (this._config.width_mode === 'custom') {
       actualWidth = this._config.card_width || '100%';
+      cardClasses = 'custom-width';
     }
     
     const cardStyles = `
@@ -419,8 +420,6 @@ class StripCard extends LitElement {
       const animationName = this._config.vertical_scroll ? 'ticker-vertical' : 'ticker';
       animationStyle = `animation: ${animationName} ${duration}s linear infinite;`;
     }
-    
-    const cardClasses = useFullWidth ? 'full-width' : '';
     
     return html`
       <ha-card class="${cardClasses}" style="${cardStyles}">
@@ -526,8 +525,10 @@ class StripCard extends LitElement {
         position: relative;
         margin: 0 auto;
       }
-      ha-card.full-width {
-        margin: 0;
+      ha-card.full-width,
+      ha-card.custom-width {
+        margin-left: 0;
+        margin-right: auto;
       }
       .card-header {
         padding: 16px;
