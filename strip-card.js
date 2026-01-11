@@ -3,7 +3,7 @@ const html = LitElement.prototype.html;
 const css = LitElement.prototype.css;
 
 console.info(
-  `%c STRIP-CARD %c v2.3.0 `,
+  `%c STRIP-CARD %c v2.4.0 `,
   "color: orange; font-weight: bold; background: black",
   "color: white; font-weight: bold; background: dimgray"
 );
@@ -55,6 +55,7 @@ class StripCard extends LitElement {
       title_right_icon_size: "24px",
       title_right_action: "",
       duration: 20,
+      pause_duration: 2,
       separator: "•",
       font_size: "14px",
       content_color: "var(--primary-text-color)",
@@ -188,10 +189,7 @@ class StripCard extends LitElement {
     if (!this._config || !this.hass) return html``;
 
     const duration = this.evaluateTemplate(this._config.duration, this.hass);
-    const animationName = this._config.continuous_scroll 
-      ? (this._config.vertical_scroll ? 'vertical-ticker' : 'ticker')
-      : (this._config.vertical_scroll ? 'vertical-ticker-return' : 'ticker-return');
-    const animationIteration = this._config.continuous_scroll ? 'infinite' : '1';
+    const pauseDuration = this.evaluateTemplate(this._config.pause_duration, this.hass);
     
     const cardStyles = `
       --strip-card-font-size: ${this._config.font_size};
@@ -202,6 +200,8 @@ class StripCard extends LitElement {
       --strip-card-chip-background: ${this._config.chip_background};
       --strip-card-title-font-size: ${this._config.title_font_size};
       --strip-card-title-alignment: ${this._config.title_alignment};
+      --strip-card-duration: ${duration}s;
+      --strip-card-pause-duration: ${pauseDuration}s;
       ${this._config.card_width ? `--strip-card-width: ${this._config.card_width};` : ''}
       ${this._config.transparent ? `
         --ha-card-background: transparent;
@@ -240,8 +240,16 @@ class StripCard extends LitElement {
     
     const moveClasses = [
       this._config.vertical_alignment === 'inline' && 'has-inline-vertical-alignment',
-      !this._config.continuous_scroll && 'has-return-animation'
+      !this._config.continuous_scroll && (this._config.vertical_scroll ? 'return-vertical' : 'return-horizontal')
     ].filter(Boolean).join(' ');
+    
+    const animationName = this._config.continuous_scroll 
+      ? (this._config.vertical_scroll ? 'ticker' : 'ticker')
+      : (this._config.vertical_scroll ? 'ticker-return-vertical' : 'ticker-return-horizontal');
+    
+    const animationDuration = this._config.continuous_scroll 
+      ? `${duration}s`
+      : `calc(${duration}s * 2 + ${pauseDuration}s * 2)`;
     
     return html`
       <ha-card style="${cardStyles}">
@@ -267,7 +275,7 @@ class StripCard extends LitElement {
           </div>
         ` : ''}
         <div class="ticker-wrap ${wrapClasses}">
-          <div class="ticker-move ${moveClasses}" style="animation: ${animationName} ${duration}s linear ${animationIteration};">
+          <div class="ticker-move ${moveClasses}" style="animation: ${animationName} ${animationDuration} linear infinite;">
             ${content}
           </div>
         </div>
@@ -412,9 +420,6 @@ class StripCard extends LitElement {
         white-space: nowrap;
         will-change: transform;
       }
-      .ticker-move.has-return-animation {
-        animation-iteration-count: infinite !important;
-      }
       .ticker-move.has-inline-vertical-alignment {
         display: block;
         height: max-content;
@@ -520,26 +525,34 @@ class StripCard extends LitElement {
         font-weight: bold;
       }
       @keyframes ticker {
-        0% { transform: translateX(0); }
-        100% { transform: translateX(-50%); }
+        0% { transform: translate(0); }
+        100% { transform: translate(-50%); }
       }
-      @keyframes ticker-return {
+      @keyframes ticker-return-horizontal {
         0% { transform: translateX(0); }
-        50% { transform: translateX(-100%); }
+        calc((var(--strip-card-duration) / (var(--strip-card-duration) * 2 + var(--strip-card-pause-duration) * 2)) * 100%) { 
+          transform: translateX(calc(-100% + 100vw)); 
+        }
+        calc(((var(--strip-card-duration) + var(--strip-card-pause-duration)) / (var(--strip-card-duration) * 2 + var(--strip-card-pause-duration) * 2)) * 100%) { 
+          transform: translateX(calc(-100% + 100vw)); 
+        }
+        calc(((var(--strip-card-duration) * 2 + var(--strip-card-pause-duration)) / (var(--strip-card-duration) * 2 + var(--strip-card-pause-duration) * 2)) * 100%) { 
+          transform: translateX(0); 
+        }
         100% { transform: translateX(0); }
       }
-      @keyframes vertical-ticker {
+      @keyframes ticker-return-vertical {
         0% { transform: translateY(0); }
-        100% { transform: translateY(-50%); }
-      }
-      @keyframes vertical-ticker-return {
-        0% { transform: translateY(0); }
-        50% { transform: translateY(-100%); }
+        calc((var(--strip-card-duration) / (var(--strip-card-duration) * 2 + var(--strip-card-pause-duration) * 2)) * 100%) { 
+          transform: translateY(calc(-100% + 100vh)); 
+        }
+        calc(((var(--strip-card-duration) + var(--strip-card-pause-duration)) / (var(--strip-card-duration) * 2 + var(--strip-card-pause-duration) * 2)) * 100%) { 
+          transform: translateY(calc(-100% + 100vh)); 
+        }
+        calc(((var(--strip-card-duration) * 2 + var(--strip-card-pause-duration)) / (var(--strip-card-duration) * 2 + var(--strip-card-pause-duration) * 2)) * 100%) { 
+          transform: translateY(0); 
+        }
         100% { transform: translateY(0); }
-      }
-      @keyframes vertical-ticker-inline {
-        0% { transform: translateY(0); }
-        100% { transform: translateY(-50%); }
       }
     `;
   }
@@ -573,6 +586,7 @@ class StripCardEditor extends LitElement {
       title_right_icon_size: "24px",
       title_right_action: "",
       duration: 20,
+      pause_duration: 2,
       separator: "•",
       font_size: "14px",
       content_color: "var(--primary-text-color)",
@@ -664,6 +678,9 @@ class StripCardEditor extends LitElement {
       <div class="tab-panel">
         <ha-textfield label="Scroll-Dauer (Sekunden)" type="number" .value="${this._config.duration}" .configValue="${"duration"}" @input="${this._valueChanged}"></ha-textfield>
         <ha-formfield label="Kontinuierliches Scrollen"><ha-switch .checked="${this._config.continuous_scroll}" .configValue="${"continuous_scroll"}" @change="${this._switchChanged}"></ha-switch></ha-formfield>
+        ${!this._config.continuous_scroll ? html`
+          <ha-textfield label="Pause-Dauer (Sekunden)" type="number" .value="${this._config.pause_duration}" .configValue="${"pause_duration"}" @input="${this._valueChanged}" helper-text="Pause am Ende des Scrollens"></ha-textfield>
+        ` : ''}
         <ha-formfield label="Bei Hover pausieren"><ha-switch .checked="${this._config.pause_on_hover}" .configValue="${"pause_on_hover"}" @change="${this._switchChanged}"></ha-switch></ha-formfield>
         <ha-formfield label="Vertikales Scrollen"><ha-switch .checked="${this._config.vertical_scroll}" .configValue="${"vertical_scroll"}" @change="${this._switchChanged}"></ha-switch></ha-formfield>
         ${this._config.vertical_scroll ? html`
@@ -736,10 +753,16 @@ class StripCardEditor extends LitElement {
                   <ha-textfield label="Content (Template)" .value="${entityObj.content || ''}" .entityIndex="${index}" .configValue="${"content"}" @input="${this._entityPropertyChanged}" helper-text="z.B: {{ states('sensor.temp') }} °C"></ha-textfield>
                   <ha-textfield label="Label (Template)" .value="${entityObj.label || ''}" .entityIndex="${index}" .configValue="${"label"}" @input="${this._entityPropertyChanged}" helper-text="Chips: oben, Normal: rechts"></ha-textfield>
                   <ha-textfield label="Icon (optional)" .value="${entityObj.icon || ''}" .entityIndex="${index}" .configValue="${"icon"}" @input="${this._entityPropertyChanged}"></ha-textfield>
+                  
+                  <div class="section-divider">Sichtbarkeit</div>
+                  ${this._renderVisibilityConditions(entityObj, index)}
+                  <mwc-button @click="${() => this._addVisibilityCondition(index)}">Bedingung hinzufügen</mwc-button>
+                  
                   <div class="section-divider">Farben</div>
                   <ha-textfield label="Icon-Farbe (optional)" .value="${entityObj.color || ''}" .entityIndex="${index}" .configValue="${"color"}" @input="${this._entityPropertyChanged}" helper-text="Farbe nur für Icon"></ha-textfield>
                   <ha-textfield label="Label-Farbe (optional)" .value="${entityObj.label_color || ''}" .entityIndex="${index}" .configValue="${"label_color"}" @input="${this._entityPropertyChanged}" helper-text="Überschreibt globale Label-Farbe"></ha-textfield>
                   <ha-textfield label="Content-Farbe (optional)" .value="${entityObj.content_color || ''}" .entityIndex="${index}" .configValue="${"content_color"}" @input="${this._entityPropertyChanged}" helper-text="Überschreibt globale Content-Farbe"></ha-textfield>
+                  
                   <div class="section-divider">Tap Action</div>
                   <ha-select label="Aktion" .value="${entityObj.tap_action?.action || 'more-info'}" .entityIndex="${index}" .configValue="${"tap_action.action"}" @selected="${this._entitySelectChanged}" @closed="${(e) => e.stopPropagation()}">
                     <mwc-list-item value="more-info">More Info</mwc-list-item>
@@ -762,6 +785,116 @@ class StripCardEditor extends LitElement {
         <mwc-button raised @click="${this._addEntity}">Entität hinzufügen</mwc-button>
       </div>
     `;
+  }
+
+  _renderVisibilityConditions(entityObj, entityIndex) {
+    const visibility = entityObj.visibility || [];
+    if (visibility.length === 0) {
+      return html`<p class="helper-text">Keine Bedingungen - Entität immer sichtbar</p>`;
+    }
+    
+    return html`
+      ${visibility.map((condition, condIndex) => html`
+        <div class="visibility-condition">
+          <div class="condition-header">
+            <span>Bedingung ${condIndex + 1}</span>
+            <ha-icon-button @click="${() => this._removeVisibilityCondition(entityIndex, condIndex)}">
+              <ha-icon icon="mdi:delete"></ha-icon>
+            </ha-icon-button>
+          </div>
+          <ha-entity-picker 
+            .hass="${this.hass}" 
+            .value="${condition.entity || ''}" 
+            .entityIndex="${entityIndex}"
+            .condIndex="${condIndex}"
+            @value-changed="${this._visibilityEntityChanged}" 
+            allow-custom-entity
+            label="Entität"
+          ></ha-entity-picker>
+          <ha-textfield 
+            label="Status (state)" 
+            .value="${condition.state || ''}" 
+            .entityIndex="${entityIndex}"
+            .condIndex="${condIndex}"
+            .configValue="${"state"}"
+            @input="${this._visibilityPropertyChanged}"
+            helper-text="z.B: on, off, home"
+          ></ha-textfield>
+          <ha-textfield 
+            label="Status nicht (state_not)" 
+            .value="${condition.state_not || ''}" 
+            .entityIndex="${entityIndex}"
+            .condIndex="${condIndex}"
+            .configValue="${"state_not"}"
+            @input="${this._visibilityPropertyChanged}"
+            helper-text="Optional: Status der NICHT erfüllt sein soll"
+          ></ha-textfield>
+        </div>
+      `)}
+    `;
+  }
+
+  _addVisibilityCondition(entityIndex) {
+    const entities = [...this._config.entities];
+    const entity = typeof entities[entityIndex] === 'string' ? { entity: entities[entityIndex] } : { ...entities[entityIndex] };
+    
+    if (!entity.visibility) entity.visibility = [];
+    entity.visibility = [...entity.visibility, { condition: 'state', entity: '', state: '' }];
+    
+    entities[entityIndex] = entity;
+    this._config = { ...this._config, entities };
+    this._configChanged();
+  }
+
+  _removeVisibilityCondition(entityIndex, condIndex) {
+    const entities = [...this._config.entities];
+    const entity = { ...entities[entityIndex] };
+    
+    if (entity.visibility) {
+      entity.visibility = entity.visibility.filter((_, i) => i !== condIndex);
+      if (entity.visibility.length === 0) delete entity.visibility;
+    }
+    
+    entities[entityIndex] = entity;
+    this._config = { ...this._config, entities };
+    this._configChanged();
+  }
+
+  _visibilityEntityChanged(ev) {
+    const entityIndex = ev.currentTarget.entityIndex;
+    const condIndex = ev.currentTarget.condIndex;
+    const entities = [...this._config.entities];
+    const entity = { ...entities[entityIndex] };
+    
+    if (!entity.visibility) return;
+    entity.visibility = [...entity.visibility];
+    entity.visibility[condIndex] = { ...entity.visibility[condIndex], entity: ev.detail.value };
+    
+    entities[entityIndex] = entity;
+    this._config = { ...this._config, entities };
+    this._configChanged();
+  }
+
+  _visibilityPropertyChanged(ev) {
+    const entityIndex = ev.currentTarget.entityIndex;
+    const condIndex = ev.currentTarget.condIndex;
+    const configValue = ev.currentTarget.configValue;
+    const value = ev.currentTarget.value;
+    
+    const entities = [...this._config.entities];
+    const entity = { ...entities[entityIndex] };
+    
+    if (!entity.visibility) return;
+    entity.visibility = [...entity.visibility];
+    entity.visibility[condIndex] = { ...entity.visibility[condIndex], [configValue]: value };
+    
+    // Remove empty state/state_not fields
+    if (configValue === 'state' && !value) delete entity.visibility[condIndex].state;
+    if (configValue === 'state_not' && !value) delete entity.visibility[condIndex].state_not;
+    
+    entities[entityIndex] = entity;
+    this._config = { ...this._config, entities };
+    this._configChanged();
   }
 
   _getEntityDisplayName(entity, entityId) {
@@ -869,7 +1002,7 @@ class StripCardEditor extends LitElement {
     if (!this._config || !this.hass) return;
     const configValue = ev.currentTarget.configValue;
     const value = ev.currentTarget.value;
-    if (!configValue || this._config[configValue] === value) return;
+    if (!configValue || this.config[configValue] === value) return;
     this._config = { ...this._config, [configValue]: value };
     this._configChanged();
   }
@@ -977,7 +1110,8 @@ class StripCardEditor extends LitElement {
         border-bottom: 1px solid var(--divider-color);
       }
       ha-textfield,
-      ha-select {
+      ha-select,
+      ha-entity-picker {
         width: 100%;
         margin-bottom: 12px;
         display: block;
@@ -1022,6 +1156,19 @@ class StripCardEditor extends LitElement {
       .entity-editor {
         padding: 16px;
         border-top: 1px solid var(--divider-color);
+      }
+      .visibility-condition {
+        background: var(--secondary-background-color);
+        padding: 12px;
+        border-radius: 8px;
+        margin-bottom: 12px;
+      }
+      .condition-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 8px;
+        font-weight: 500;
       }
       mwc-button {
         margin-top: 16px;
