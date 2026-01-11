@@ -3,7 +3,7 @@ const html = LitElement.prototype.html;
 const css = LitElement.prototype.css;
 
 console.info(
-  `%c STRIP-CARD %c Loaded - Version 2.0.3 (Smart UI) `,
+  `%c STRIP-CARD %c Loaded - Version 2.0.4 (Smart UI) `,
   "color: orange; font-weight: bold; background: black",
   "color: white; font-weight: bold; background: dimgray"
 );
@@ -402,6 +402,7 @@ class StripCard extends LitElement {
         min-height: auto;
       }
       .ticker-wrap.has-fading {
+        position: relative;
         -webkit-mask-image: linear-gradient(to right,
           rgba(0, 0, 0, 0) 0%,
           rgba(0, 0, 0, 1) 14%,
@@ -414,6 +415,10 @@ class StripCard extends LitElement {
           rgba(0, 0, 0, 1) 86%,
           rgba(0, 0, 0, 0) 100%
         );
+        -webkit-mask-size: 100% 100%;
+        mask-size: 100% 100%;
+        -webkit-mask-repeat: no-repeat;
+        mask-repeat: no-repeat;
       }
       .ticker-wrap.has-vertical-scroll.has-fading {
         -webkit-mask-image: linear-gradient(to bottom,
