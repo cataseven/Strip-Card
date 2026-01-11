@@ -553,6 +553,7 @@ class StripCard extends LitElement {
         flex: 1;
         display: flex;
         align-items: center;
+        justify-content: center;
         width: 100%;
         overflow: hidden;
         background-color: var(--card-background-color, white);
