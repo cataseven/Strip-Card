@@ -318,9 +318,14 @@ class StripCard extends LitElement {
   _injectReturnAnimation(scrollDistance, duration, pauseDuration, isVertical) {
     const totalDuration = duration + pauseDuration + duration + pauseDuration;
     
+    // Berechne die Prozentsätze für die Animation-Keyframes
+    // Phase 1: Vorwärts scrollen (0% bis afterScrollPercent)
     const afterScrollPercent = (duration / totalDuration * 100).toFixed(2);
+    // Phase 2: Pause am Ende (afterScrollPercent bis afterFirstPausePercent)
     const afterFirstPausePercent = ((duration + pauseDuration) / totalDuration * 100).toFixed(2);
+    // Phase 3: Rückwärts scrollen (afterFirstPausePercent bis afterReturnPercent)
     const afterReturnPercent = ((duration + pauseDuration + duration) / totalDuration * 100).toFixed(2);
+    // Phase 4: Pause am Anfang (afterReturnPercent bis 100%)
     
     const animationName = `ticker-return-${isVertical ? 'v' : 'h'}-${Date.now()}`;
     const transform = isVertical ? 'translateY' : 'translateX';
@@ -334,13 +339,29 @@ class StripCard extends LitElement {
       this.shadowRoot.appendChild(styleElement);
     }
     
+    // Korrigierte Animation: 
+    // - Start und Ende bei transform(0) für Pause am Anfang
+    // - Scroll nach rechts/unten zu -scrollDistance
+    // - Pause am Ende
+    // - Scroll zurück zu 0
+    // - Pause am Anfang
     styleElement.textContent = `
       @keyframes ${animationName} {
-        0% { transform: ${transform}(0); };
-        ${afterScrollPercent}% { transform: ${transform}(-${scrollDistance}px); }
-        ${afterFirstPausePercent}% { transform: ${transform}(-${scrollDistance}px); }
-        ${afterReturnPercent}% { transform: ${transform}(0); }
-        100% { transform: ${transform}(0); }
+        0% { 
+          transform: ${transform}(0); 
+        }
+        ${afterScrollPercent}% { 
+          transform: ${transform}(-${scrollDistance}px); 
+        }
+        ${afterFirstPausePercent}% { 
+          transform: ${transform}(-${scrollDistance}px); 
+        }
+        ${afterReturnPercent}% { 
+          transform: ${transform}(0); 
+        }
+        100% { 
+          transform: ${transform}(0); 
+        }
       }
     `;
     
@@ -1186,7 +1207,7 @@ class StripCardEditor extends LitElement {
       entity[configValue] = value;
     }
     
-    entities[entityIndex] = entity;
+    entities[index] = entity;
     this._config = { ...this._config, entities };
     this._configChanged();
     this.requestUpdate();
