@@ -3,7 +3,7 @@ const html = LitElement.prototype.html;
 const css = LitElement.prototype.css;
 
 console.info(
-  `%c STRIP-CARD %c v2.5.0 `,
+  `%c STRIP-CARD %c v2.5.1 `,
   "color: orange; font-weight: bold; background: black",
   "color: white; font-weight: bold; background: dimgray"
 );
@@ -87,6 +87,7 @@ class StripCard extends LitElement {
       if (!this._config.continuous_scroll) {
         this._setupReturnAnimation();
       }
+      this._applyFullWidthMode();
     });
   }
 
@@ -104,6 +105,7 @@ class StripCard extends LitElement {
     if (this._resizeObserver) {
       this._resizeObserver.observe(this);
     }
+    this._applyFullWidthMode();
   }
 
   updated(changedProps) {
@@ -118,25 +120,33 @@ class StripCard extends LitElement {
   _applyFullWidthMode() {
     if (this._config.width_mode !== 'full') return;
     
-    const findContentContainer = (element) => {
+    const findHuiView = (element) => {
       let current = element;
-      while (current && current.parentElement) {
-        current = current.parentElement;
-        if (current.tagName === 'HUI-VIEW' || 
-            current.classList?.contains('view') ||
-            current.id === 'view') {
+      
+      // Durchlaufe parent elements und springe über Shadow DOM Grenzen
+      while (current) {
+        if (current.tagName === 'HUI-VIEW') {
           return current;
+        }
+        
+        // Shadow DOM: gehe zum host
+        if (current.parentNode) {
+          current = current.parentNode;
+        } else if (current.host) {
+          current = current.host;
+        } else {
+          break;
         }
       }
       return null;
     };
     
-    const contentContainer = findContentContainer(this);
-    if (contentContainer) {
-      const containerWidth = contentContainer.offsetWidth;
+    const huiView = findHuiView(this);
+    if (huiView) {
+      const viewWidth = huiView.offsetWidth;
       const card = this.shadowRoot.querySelector('ha-card');
       if (card) {
-        card.style.setProperty('--strip-card-calculated-width', `${containerWidth}px`);
+        card.style.setProperty('--strip-card-calculated-width', `${viewWidth}px`);
       }
     }
   }
@@ -831,7 +841,7 @@ class StripCardEditor extends LitElement {
         <div class="section-divider">Kartenbreite</div>
         <ha-select label="Breitenmodus" .value="${this._config.width_mode || 'container'}" .configValue="${"width_mode"}" @selected="${this._selectChanged}" @closed="${(e) => e.stopPropagation()}">
           <mwc-list-item value="container">Container-Breite</mwc-list-item>
-          <mwc-list-item value="full">Volle Content-Breite</mwc-list-item>
+          <mwc-list-item value="full">Volle View-Breite</mwc-list-item>
           <mwc-list-item value="custom">Benutzerdefiniert</mwc-list-item>
         </ha-select>
         ${this._config.width_mode === 'custom' ? html`
