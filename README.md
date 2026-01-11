@@ -1,334 +1,234 @@
-<a href="https://www.buymeacoffee.com/cataseven" target="_blank">
-  <img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Buy Me a Coffee" style="height: 60px !important;width: 217px !important;" >
-</a>      
+# 🎯 Header and Badges Strip Card for Home Assistant
 
-# 🔶 Strip Card for Home Assistant
+**Version 3.0.0** - Enhanced Strip Card with Badge Support
+
+Eine erweiterte Version der Strip Card, die zusätzlich zu Sensoren und Entitäten auch Home Assistant Badges im horizontalen Scrolling-Ticker darstellen kann.
+
+---
 
 ## ✨ Features
 
-- 🔁 Horizontally scrolling ticker layout
-- 🧩 Supports multiple entities and attributes
-- 🎨 Global and per-entity styling
-- 🖱️ Click to open `more-info` or trigger an action
-- ⏸️ Optional pause on hover
-- ⚙️ Rich customization: icons, colors, attributes, units, etc.
+- 🔁 **Horizontal scrollender Ticker** mit flüssiger Animation
+- 🏷️ **Badge-Unterstützung** - zeige Home Assistant Badges direkt in der Karte an
+- 📊 **Header-Funktionalität** - nutze die Karte als dynamischen Dashboard-Header
+- 🧩 **Multi-Entity Support** mit Attributen und Templates
+- 🎨 **Umfassende Styling-Optionen** global und pro Entität
+- 🖱️ **Interaktiv** - More-Info Dialog oder Service-Calls per Klick
+- ⏸️ **Hover-Pause** optional aktivierbar
+- ⚙️ **Hochgradig konfigurierbar** - Icons, Farben, Units, Templates und mehr
 
 ---
 
 ## 📦 Installation
 
-### Method 1 - Download From HACS
-Search for Strip Card and download
+### HACS (empfohlen)
+1. Öffne HACS → Frontend
+2. Klicke auf "Custom repositories"
+3. Füge `https://github.com/Spider19996/Header-and-Badges-Strip-Card` hinzu (Kategorie: Lovelace)
+4. Suche nach "Header and Badges Strip Card" und installiere
+5. Lade Home Assistant neu
 
-### Method 2 - Manual
-- Copy `strip-card.js` into your `/www/community/strip-card/` folder inside your Home Assistant config.
-- Go to **Settings > Dashboards > Resources**
-- Click **Add Resource**
-- URL: `/local/community/Strip-Card/strip-card.js`
-
-#### Or via YAML:
-```yaml
-lovelace:
-  resources:
-    - url: /local/community/Strip-Card/strip-card.js
-      type: module
-```
+### Manuell
+1. Kopiere `header-and-badges-strip-card.js` nach `/config/www/`
+2. Gehe zu **Einstellungen → Dashboards → Ressourcen**
+3. Füge hinzu:
+   - URL: `/local/header-and-badges-strip-card.js`
+   - Typ: JavaScript-Modul
 
 ---
 
+## 🚀 Schnellstart
 
-# 🧩 Custom Card Configuration Options
-
-## General Options
-
-| **Option**            | **Type**   | **Default**                 | **Description**                                                                 |
-|-----------------------|------------|-----------------------------|---------------------------------------------------------------------------------|
-| `title`               | `string`   | `""`                        | Sets the card title.                                                            |
-| `duration`            | `number`   | `20`                        | Duration (in seconds) for one full scroll cycle. Lower values = faster scroll. |
-| `font_size`           | `string`   | `"14px"`                    | Sets the font size for text.                                                    |
-| `border_radius`       | `string`   | `"0px"`                     | Controls card corner roundness (e.g., `"10px"`).                               |
-| `card_height`         | `string`   | `"50px"`                    | Fixed height of the card.                                                       |
-| `card_width`          | `string`   | `""`                        | Fixed width of the card. Leave blank for automatic width.                      |
-| `separator`           | `string`   | `"•"`                       | Symbol shown between each entity item.                                          |
-| `pause_on_hover`      | `boolean`  | `false`                     | 🖱️ Pauses animation when the mouse hovers over the card.                       |
-| `continuous_scroll`   | `boolean`  | `true`                      | If true, scrolling loops continuously. If false, scrolls once and stops.       |
-| `vertical_scroll`     | `boolean`  | `false`                     | Changes scroll direction from horizontal to vertical.                          |
-| `vertical_alignment`  | `string`   | `"stack"`                   | Used with vertical scroll: `"stack"` (top-to-bottom) or `"inline"` (side-by-side). |
-| `fading`              | `boolean`  | `false`                     | Adds fade effect at the card’s edges.                                           |
-| `show_icon`           | `boolean`  | `false`                     | Displays the entity icon if true.                                               |
-| `unit_position`       | `string`   | `"right"`                   | Position of unit label relative to value. Options: `"left"` or `"right"`.     |
-| `transparent`         | `boolean`  | `false`                     | Background transparent. Options: `true` or `false`.     |
-
-
-## Color Options
-
-| **Option**      | **Default**                       | **Description**                           |
-|------------------|-----------------------------------|-------------------------------------------|
-| `name_color`     | `var(--primary-text-color)`       | Color of the entity name.                 |
-| `value_color`    | `var(--primary-color)`            | Color of the entity value.                |
-| `unit_color`     | `var(--secondary-text-color)`     | Color of the unit text.                   |
-| `icon_color`     | `var(--paper-item-icon-color)`    | Color of the entity icon.                 |
-
-## Per-Entity Options (`entities`)
-
-| **Sub-Option**       | **Type**     | **Default**              | **Description**                                                                 |
-|----------------------|--------------|---------------------------|----------------------------------------------------------------------------------|
-| `entity`             | `string`     | **Required**              | The `entity_id` to display (e.g., `sensor.temp`).                                |
-| `name`               | `string`     | `friendly_name`           | Overrides the default entity name.                                               |
-| `icon`               | `string`     | Default entity icon       | Overrides the default icon (e.g., `"mdi:weather-sunny"`).                        |
-| `attribute`          | `string`     | `state`                   | Displays a specific attribute instead of the state.                              |
-| `value_template`     | `string`     | `state`                   | A Jinja2 template to customize the displayed value.                              |
-| `unit`               | `string`     | `unit_of_measurement`     | Overrides the default unit of measurement.                                       |
-| `unit_position`      | `string`     | Inherits from card        | Overrides the global unit position for this entity.                              |
-| `show_icon`          | `boolean`    | Inherits from card        | Overrides icon visibility for this specific entity.                              |
-| `service`            | `string`     | —                         | Home Assistant service to call on click (e.g., `"light.toggle"`).               |
-| `data`               | `object`     | —                         | Additional data to pass with the service call (e.g., `{"entity_id": "light.kitchen"}`). |
-| `visible_if`         | `string`     | —                         | entity is visible if template is true. Example: `visible_if: "{{ states['sun.sun'].state == 'above_horizon' }}"` |
-
-
----
-
-## 🧾 Example Configuration
-
-![image1](images/a.gif)
-
+### Basis-Konfiguration
 ```yaml
-type: custom:strip-card
-duration: 20
-show_icon: false
-border_radius: 12px
-card_height: 50px
-card_width: 250px
-entities:
-  - entity: sensor.temperature
-    name: Bedroom
-  - entity: switch.kitchen
-    name: Kitchen Switch
-    service: switch.toggle
-    data:
-      entity_id: switch.kitchen
-    show_icon: true
-    icon_color: orange
-    icon: mdi:lightbulb
-    name_color: gold
-    value_color: yellow
-    unit_color: silver
-  - entity: sun.sun
-    attribute: elevation
-    name: Sun Elevation
-    unit: °
-```
-
-```yaml
-type: custom:strip-card
-title: System Status
-duration: 25
-font_size: 15px
-border_radius: 12px
-card_height: 50px
-card_width: 250px
-separator: "•"
-pause_on_hover: true
-show_icon: false
-transparent: false
-entities:
-  - entity: sensor.cpu_temp
-    name: CPU
-    unit: °C
-    unit_position: left
-    value_color: "#e53935"
-  - entity: sensor.disk_free
-    name: Disk
-    unit: GB
-    value_color: "#43a047"
-    name_color: "#000"
-  - entity: binary_sensor.door
-    name: Door
-    show_icon: true
-    icon_color: "#ffa000"
-  - entity: sensor.co2_level
-    name: CO₂
-    unit: ppm
-    show_icon: true
-    icon_color: "#2196f3"
-    name_color: "#222"
-    value_color: "#2196f3"
-    unit_color: "#666"
-```
-
-Vertical Scroll Example
-```yaml
-  type: custom:strip-card
-  title: Comprehensive Vertical Scroll
-  entities:
-    - entity: sun.sun
-      name: "Sun Position"
-      show_icon: true
-      visible_if: "{{ states['sun.sun'].state == 'above_horizon' }}" 
-    - entity: zone.home
-      name: "People at Home"
-      show_icon: true
-    - entity: sensor.rain_sensor
-      name: "Rain Sensor"
-      show_icon: true
-    - entity: sensor.weather_station_humidity
-      name: "Humidity"
-      show_icon: true
-  duration: 20
-  separator: "•"
-  font_size: "14px"
-  card_height: "300px" # A taller card works well for vertical scrolling.
-  card_width:  "100pxpx" 
-  fading: true
-  pause_on_hover: false
-  vertical_scroll: true
-  vertical_alignment: 'stack'
-  continuous_scroll: true
-```
-
-Color Template Example
-
-```yaml
-type: custom:strip-card
+type: custom:header-and-badges-strip-card
 duration: 20
 show_icon: true
 entities:
-  - entity: sensor.temperature
-    name: Bedroom
-    icon: mdi:thermometer
+  - sensor.temperature
+  - sensor.humidity
+  - person.robin
+```
+
+### Mit Badges
+```yaml
+type: custom:header-and-badges-strip-card
+title: System Status
+duration: 25
+show_icon: true
+border_radius: 12px
+card_height: 60px
+entities:
+  - type: badge
+    entity: person.robin
+  - type: badge
+    entity: sensor.cpu_temperature
+  - entity: sensor.disk_free
+    name: Speicher
+    icon: mdi:harddisk
+  - entity: binary_sensor.door
+    name: Haustür
+```
+
+---
+
+## 📝 Konfigurationsoptionen
+
+### Globale Optionen
+
+| Option | Typ | Standard | Beschreibung |
+|--------|-----|----------|-------------|
+| `title` | string | `""` | Kartentitel |
+| `duration` | number | `20` | Scroll-Dauer in Sekunden (niedriger = schneller) |
+| `font_size` | string | `"14px"` | Schriftgröße |
+| `border_radius` | string | `"0px"` | Ecken-Rundung |
+| `card_height` | string | `"50px"` | Kartenhöhe |
+| `card_width` | string | `""` | Kartenbreite (leer = automatisch) |
+| `separator` | string | `"•"` | Trennzeichen zwischen Entitäten |
+| `pause_on_hover` | boolean | `false` | Pausiert Animation bei Hover |
+| `continuous_scroll` | boolean | `true` | Endlos-Schleife aktivieren |
+| `vertical_scroll` | boolean | `false` | Vertikaler statt horizontaler Scroll |
+| `fading` | boolean | `false` | Fade-Effekt an den Rändern |
+| `show_icon` | boolean | `false` | Icons standardmäßig anzeigen |
+| `unit_position` | string | `"right"` | Position der Einheit (`left`/`right`) |
+| `transparent` | boolean | `false` | Transparenter Hintergrund |
+
+### Farb-Optionen
+
+| Option | Standard | Beschreibung |
+|--------|----------|-------------|
+| `name_color` | `var(--primary-text-color)` | Farbe des Entity-Namens |
+| `value_color` | `var(--primary-color)` | Farbe des Wertes |
+| `unit_color` | `var(--secondary-text-color)` | Farbe der Einheit |
+| `icon_color` | `var(--paper-item-icon-color)` | Icon-Farbe |
+
+### Entity-Optionen
+
+| Option | Typ | Standard | Beschreibung |
+|--------|-----|----------|-------------|
+| `type` | string | - | `"badge"` für Badge-Darstellung |
+| `entity` | string | **Erforderlich** | Entity-ID (z.B. `sensor.temp`) |
+| `name` | string | friendly_name | Überschreibt Entity-Namen |
+| `icon` | string | Entity-Icon | Custom Icon (z.B. `mdi:thermometer`) |
+| `attribute` | string | `state` | Zeigt spezifisches Attribut an |
+| `value_template` | string | - | Jinja2-Template für Wert |
+| `unit` | string | unit_of_measurement | Custom Einheit |
+| `unit_position` | string | Erbt von Karte | Unit-Position überschreiben |
+| `show_icon` | boolean | Erbt von Karte | Icon-Sichtbarkeit überschreiben |
+| `service` | string | - | Service-Call bei Klick |
+| `data` | object | - | Service-Call Daten |
+| `visible_if` | string | - | Sichtbarkeits-Template |
+| `*_color` | string | - | Farb-Überschreibungen pro Entity |
+
+---
+
+## 💡 Erweiterte Beispiele
+
+### Dashboard-Header mit Badges
+```yaml
+type: custom:header-and-badges-strip-card
+title: Mein Smart Home
+duration: 30
+font_size: 16px
+border_radius: 12px
+card_height: 70px
+fading: true
+pause_on_hover: true
+entities:
+  - type: badge
+    entity: person.robin
+  - type: badge
+    entity: person.sarah
+  - type: badge
+    entity: sensor.outside_temperature
+  - entity: sensor.living_room_temperature
+    name: Wohnzimmer
+    icon: mdi:sofa
+    show_icon: true
+  - entity: light.kitchen
+    name: Küche
+    service: light.toggle
+    show_icon: true
     icon_color: orange
-    name_color: >
-      {{ states['sensor.temperature'].state < 21 ? 'blue' :
-      (states['sensor.temperature'].state <= 25 ? 'green' : 'red') }}
-    value_color: >
-      {{ states['sensor.temperature'].state < 21 ? 'blue' :
-      (states['sensor.temperature'].state <= 25 ? 'green' : 'red') }}
-    unit_color: >
-      {{ states['sensor.temperature'].state < 21 ? 'blue' :
-      (states['sensor.temperature'].state <= 25 ? 'green' : 'yellow') }}
-  - entity: person.man
-    name: Man
-    icon: mdi:account
-    value_color: >
-      {{ states['person.man'].state === 'home' ? 'blue' : 'gray' }}
-  - entity: person.woman
-    name: Woman
-    icon: mdi:account-outline
-    value_color: >
-      {{ states['person.woman'].state === 'home' ? 'green' : 'gray' }}
 ```
 
-Another Template Example
+### Farbige Templates
 ```yaml
-type: custom:strip-card
-duration: >
-  {{ states['sensor.temperature'].state < 21 ? '10' :
-  (states['sensor.temperature'].state <= 25 ? '20' : '10') }}
+type: custom:header-and-badges-strip-card
 entities:
   - entity: sensor.temperature
-    name: Oda Sıcaklığı
-    show_icon: |
-      {{ states['sensor.temperature'].state > 28 }}
-    icon: >
-      {{ states['sensor.temperature'].state < 21 ? 'mdi:snowflake' :
-      (states['sensor.temperature'].state <= 25 ? 'mdi:thermometer' :
-      'mdi:fire') }}
-    unit_color: >
-      {{ states['sensor.temperature'].state < 21 ? 'blue' :
-      (states['sensor.temperature'].state <= 25 ? 'green' : 'red') }}
-    value_template: >
-      {{ states['sensor.temperature'].state < 21 ? 'Cold' : 
-      (states['sensor.temperature'].state <= 25 ? 'Fine' : 'Damn Hot') }}
-    value_color: >
-      {{ states['sensor.temperature'].state < 21 ? 'blue' :
-      (states['sensor.temperature'].state <= 25 ? 'green' : 'yellow') }}      
+    name: Temperatur
+    show_icon: true
+    icon: >-
+      {{ 'mdi:snowflake' if states('sensor.temperature')|float < 18
+         else 'mdi:thermometer' if states('sensor.temperature')|float <= 24
+         else 'mdi:fire' }}
+    value_color: >-
+      {{ 'blue' if states('sensor.temperature')|float < 18
+         else 'green' if states('sensor.temperature')|float <= 24
+         else 'red' }}
 ```
 
-
-## 🧩 Entity-Level Customization
-
-You can define each entity as an object to override global styles:
-
+### Bedingte Sichtbarkeit
 ```yaml
-- entity: sensor.example
-  name: Example
-  unit: kWh
-  attribute: temperature
-  show_icon: true
-  icon_color: "#ff9800"
-  name_color: "#333"
-  value_color: "#4caf50"
-  unit_color: "#999"
-```
-
-You can also just list the entity ID for default behavior:
-
-```yaml
-- sensor.simple
-```
-
----
-
-## 🖊️ Regex Support for Entity Friendly Names 
-Allows removing or replacing parts of the friendly name via regular expressions.
-- `string`: treated as pattern with flags `gi`, replacement `""`.
-- `object`: `{ pattern: string, flags?: string, replace?: string }`.
-
-Example:
-
-```yaml
-name_replace:
-  - pattern: your Text
-    flags: 'gi'
-    replace: 'your new Text'
-  - pattern: your Text 2
-    flags: 'gi'
-    replace: ''
-```
-```yaml
-type: custom:strip-card
+type: custom:header-and-badges-strip-card
 entities:
-  - entity: sensor.temperature     ##friendly name: LIVING ROOM  -> Result: LIVING
-  - entity: sensor.temperature_2   ##friendly name: KIDS ROOM    -> Result: KIDS
-  - entity: sensor.temperature_3   ##friendly name: GUEST ROOM   -> Result: GUEST
-name_replace:
-  - pattern: "ROOM"
-    replace: ""
-```
-
-
-## ⚡ Tap to Call Action
-
-By default, clicking an item opens the `more-info` dialog. You can also trigger a service/action instead:
-
-```yaml
-- entity: switch.kitchen
-  name: Kitchen Switch
-  service: switch.toggle
-  data:
-    entity_id: switch.kitchen
+  - entity: sensor.rain_probability
+    name: Regen
+    visible_if: "{{ states('sensor.rain_probability')|int > 30 }}"
+  - entity: sun.sun
+    name: Sonne
+    visible_if: "{{ states('sun.sun') == 'above_horizon' }}"
 ```
 
 ---
 
-## 🧑‍🎨 Developer Notes
+## 🎨 Styling-Tipps
 
-- This card uses `ha-card` and `ha-state-icon` for native look & feel.
-- Per-entity styling allows full customization.
-- Animation is CSS-based and smooth across all modern browsers.
-
----
-
-## 📄 License
-
-MIT License  
-Created by cataseven
+- **Minimalistisch**: `transparent: true`, kein `border_radius`, `show_icon: false`
+- **Modern**: `border_radius: 12px`, `fading: true`, `pause_on_hover: true`
+- **Dashboard-Header**: Große `card_height` (70-80px), `font_size: 16px`, Badges verwenden
+- **Status-Ticker**: Kleine `card_height` (40-50px), schnelle `duration` (10-15s)
 
 ---
 
-## ⭐ Support
+## 🔧 Troubleshooting
+
+**Karte wird nicht angezeigt:**
+- Cache leeren (Strg+F5)
+- Ressource korrekt hinzugefügt?
+- Browser-Konsole auf Fehler prüfen
+
+**Badges werden nicht angezeigt:**
+- `type: badge` bei Entity angegeben?
+- Entity existiert und ist verfügbar?
+
+**Animation ruckelt:**
+- `duration` erhöhen
+- Weniger Entities verwenden
+- Hardware-Beschleunigung im Browser prüfen
+
+---
+
+## 📜 Credits & License
+
+### Basiert auf
+Dieses Projekt basiert auf der originalen **[Strip Card](https://github.com/cataseven/Strip-Card)** von **cataseven**.
+
+### Entwickelt von
+**Robin Zimmermann** ([Spider19996](https://github.com/Spider19996))  
+Version 3.0.0 - Januar 2026
+
+### Unterstützung
 <a href="https://www.buymeacoffee.com/cataseven" target="_blank">
   <img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Buy Me a Coffee" style="height: 60px !important;width: 217px !important;" >
-</a>      
+</a>
 
-If you like this card, feel free to ⭐ star the project on GitHub and share it with the Home Assistant community!
+Wenn dir diese Karte gefällt, gib dem Projekt einen ⭐ auf GitHub!
+
+### Lizenz
+MIT License
+
+---
+
+**Viel Spaß mit deinem neuen Dashboard-Header! 🚀**
