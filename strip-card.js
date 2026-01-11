@@ -3,7 +3,7 @@ const html = LitElement.prototype.html;
 const css = LitElement.prototype.css;
 
 console.info(
-  `%c STRIP-CARD %c v2.4.1 `,
+  `%c STRIP-CARD %c v2.4.2 `,
   "color: orange; font-weight: bold; background: black",
   "color: white; font-weight: bold; background: dimgray"
 );
@@ -204,6 +204,38 @@ class StripCard extends LitElement {
     }
   }
 
+  _injectReturnAnimation(duration, pauseDuration, isVertical) {
+    const totalDuration = duration * 2 + pauseDuration * 2;
+    const scrollPercent = (duration / totalDuration * 100).toFixed(2);
+    const firstPausePercent = ((duration + pauseDuration) / totalDuration * 100).toFixed(2);
+    const returnPercent = ((duration * 2 + pauseDuration) / totalDuration * 100).toFixed(2);
+    
+    const animationName = isVertical ? 'ticker-return-vertical-dynamic' : 'ticker-return-horizontal-dynamic';
+    const transform = isVertical ? 'translateY' : 'translateX';
+    const viewportSize = isVertical ? '100vh' : '100vw';
+    
+    const styleId = `strip-card-return-animation-${isVertical ? 'v' : 'h'}`;
+    let styleElement = this.shadowRoot.getElementById(styleId);
+    
+    if (!styleElement) {
+      styleElement = document.createElement('style');
+      styleElement.id = styleId;
+      this.shadowRoot.appendChild(styleElement);
+    }
+    
+    styleElement.textContent = `
+      @keyframes ${animationName} {
+        0% { transform: ${transform}(0); }
+        ${scrollPercent}% { transform: ${transform}(calc(-100% + ${viewportSize})); }
+        ${firstPausePercent}% { transform: ${transform}(calc(-100% + ${viewportSize})); }
+        ${returnPercent}% { transform: ${transform}(0); }
+        100% { transform: ${transform}(0); }
+      }
+    `;
+    
+    return { animationName, totalDuration };
+  }
+
   render() {
     if (!this._config || !this.hass) return html``;
 
@@ -257,7 +289,7 @@ class StripCard extends LitElement {
     
     const moveClasses = [
       this._config.vertical_alignment === 'inline' && 'has-inline-vertical-alignment',
-      !this._config.continuous_scroll && (this._config.vertical_scroll ? 'return-vertical' : 'return-horizontal')
+      !this._config.continuous_scroll && 'has-return-animation'
     ].filter(Boolean).join(' ');
     
     let animationStyle;
@@ -265,19 +297,8 @@ class StripCard extends LitElement {
       const animationName = this._config.vertical_scroll ? 'ticker-vertical' : 'ticker';
       animationStyle = `animation: ${animationName} ${duration}s linear infinite;`;
     } else {
-      // Calculate percentages for return animation
-      const totalDuration = duration * 2 + pauseDuration * 2;
-      const scrollPercent = (duration / totalDuration * 100).toFixed(2);
-      const firstPausePercent = ((duration + pauseDuration) / totalDuration * 100).toFixed(2);
-      const returnPercent = ((duration * 2 + pauseDuration) / totalDuration * 100).toFixed(2);
-      
-      const animationName = this._config.vertical_scroll ? 'ticker-return-vertical' : 'ticker-return-horizontal';
-      animationStyle = `
-        animation: ${animationName} ${totalDuration}s linear infinite;
-        --scroll-percent: ${scrollPercent}%;
-        --first-pause-percent: ${firstPausePercent}%;
-        --return-percent: ${returnPercent}%;
-      `;
+      const { animationName, totalDuration } = this._injectReturnAnimation(duration, pauseDuration, this._config.vertical_scroll);
+      animationStyle = `animation: ${animationName} ${totalDuration}s linear infinite;`;
     }
     
     return html`
@@ -561,20 +582,6 @@ class StripCard extends LitElement {
         0% { transform: translateY(0); }
         100% { transform: translateY(-50%); }
       }
-      @keyframes ticker-return-horizontal {
-        0% { transform: translateX(0); }
-        var(--scroll-percent) { transform: translateX(calc(-100% + 100vw)); }
-        var(--first-pause-percent) { transform: translateX(calc(-100% + 100vw)); }
-        var(--return-percent) { transform: translateX(0); }
-        100% { transform: translateX(0); }
-      }
-      @keyframes ticker-return-vertical {
-        0% { transform: translateY(0); }
-        var(--scroll-percent) { transform: translateY(calc(-100% + 100vh)); }
-        var(--first-pause-percent) { transform: translateY(calc(-100% + 100vh)); }
-        var(--return-percent) { transform: translateY(0); }
-        100% { transform: translateY(0); }
-      }
     `;
   }
 }
@@ -627,6 +634,13 @@ class StripCardEditor extends LitElement {
       ...config,
       entities: config.entities || []
     };
+  }
+
+  firstUpdated() {
+    // Ensure entity picker is loaded
+    if (!customElements.get('ha-entity-picker')) {
+      import('https://unpkg.com/home-assistant-js-websocket@8.2.0/dist/haws.js').catch(() => {});
+    }
   }
 
   render() {
@@ -770,7 +784,7 @@ class StripCardEditor extends LitElement {
               ${isExpanded ? html`
                 <div class="entity-editor">
                   <ha-textfield label="Name (für Editor)" .value="${entityObj.name || ''}" .entityIndex="${index}" .configValue="${"name"}" @input="${this._entityPropertyChanged}" helper-text="Anzeigename in der Entitätenliste"></ha-textfield>
-                  <ha-entity-picker .hass="${this.hass}" .value="${entityId}" .entityIndex="${index}" @value-changed="${this._entityChanged}" allow-custom-entity></ha-entity-picker>
+                  <ha-entity-picker .hass="${this.hass}" .value="${entityId}" .entityIndex="${index}" @value-changed="${this._entityChanged}" allow-custom-entity label="Entität"></ha-entity-picker>
                   <ha-textfield label="Content (Template)" .value="${entityObj.content || ''}" .entityIndex="${index}" .configValue="${"content"}" @input="${this._entityPropertyChanged}" helper-text="z.B: {{ states('sensor.temp') }} °C"></ha-textfield>
                   <ha-textfield label="Label (Template)" .value="${entityObj.label || ''}" .entityIndex="${index}" .configValue="${"label"}" @input="${this._entityPropertyChanged}" helper-text="Chips: oben, Normal: rechts"></ha-textfield>
                   <ha-textfield label="Icon (optional)" .value="${entityObj.icon || ''}" .entityIndex="${index}" .configValue="${"icon"}" @input="${this._entityPropertyChanged}"></ha-textfield>
@@ -1013,7 +1027,7 @@ class StripCardEditor extends LitElement {
       entity[configValue] = value;
     }
     
-    entities[entityIndex] = entity;
+    entities[index] = entity;
     this._config = { ...this._config, entities };
     this._configChanged();
     this.requestUpdate();
