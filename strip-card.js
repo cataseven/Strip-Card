@@ -111,22 +111,26 @@ class StripCard extends LitElement {
 
   _checkAndUpdateScroll() {
     const moveElement = this.shadowRoot.querySelector('.ticker-move');
-    if (!moveElement) return;
+    const wrapElement = this.shadowRoot.querySelector('.ticker-wrap');
+    if (!moveElement || !wrapElement) return;
+
+    const wrapWidth = wrapElement.offsetWidth;
+    const contentWidth = moveElement.scrollWidth;
+    const contentFits = contentWidth <= wrapWidth;
 
     if (this._config.disable_scroll_if_fits) {
-      const wrapElement = this.shadowRoot.querySelector('.ticker-wrap');
-      if (!wrapElement) return;
-
-      const wrapWidth = wrapElement.offsetWidth;
-      const contentWidth = moveElement.scrollWidth;
-
-      if (contentWidth <= wrapWidth) {
+      if (contentFits) {
         moveElement.style.animation = 'none';
+        moveElement.style.transform = 'none';
         return;
       }
     }
 
-    if (!this._config.continuous_scroll) {
+    if (this._config.continuous_scroll) {
+      const animationName = this._config.vertical_scroll ? 'ticker-vertical' : 'ticker';
+      const duration = this.evaluateTemplate(this._config.duration, this.hass);
+      moveElement.style.animation = `${animationName} ${duration}s linear infinite`;
+    } else {
       this._setupReturnAnimation();
     }
   }
@@ -142,6 +146,7 @@ class StripCard extends LitElement {
     
     if (contentWidth <= wrapWidth) {
       moveElement.style.animation = 'none';
+      moveElement.style.transform = 'none';
       return;
     }
     
@@ -650,7 +655,7 @@ class StripCard extends LitElement {
         font-weight: bold;
       }
       @keyframes ticker {
-        0% { transform: translateX(0); };
+        0% { transform: translateX(0); }
         100% { transform: translateX(-50%); }
       }
       @keyframes ticker-vertical {
