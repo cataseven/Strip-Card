@@ -3,7 +3,7 @@ const html = LitElement.prototype.html;
 const css = LitElement.prototype.css;
 
 console.info(
-  `%c STRIP-CARD %c v2.6.0 `,
+  `%c STRIP-CARD %c v2.6.1 `,
   "color: orange; font-weight: bold; background: black",
   "color: white; font-weight: bold; background: dimgray"
 );
@@ -54,6 +54,7 @@ class StripCard extends LitElement {
       title_right_icon: "",
       title_right_icon_size: "24px",
       title_right_action: "",
+      title_icon_gap: "12px",
       duration: 20,
       pause_duration: 2,
       separator: "•",
@@ -352,8 +353,10 @@ class StripCard extends LitElement {
     const duration = this.evaluateTemplate(this._config.duration, this.hass);
     
     let actualWidth = '100%';
+    let useFullWidth = false;
     if (this._config.width_mode === 'full') {
       actualWidth = 'var(--strip-card-calculated-width, 100%)';
+      useFullWidth = true;
     } else if (this._config.width_mode === 'custom') {
       actualWidth = this._config.card_width || '100%';
     }
@@ -367,6 +370,7 @@ class StripCard extends LitElement {
       --strip-card-chip-background: ${this._config.chip_background};
       --strip-card-title-font-size: ${this._config.title_font_size};
       --strip-card-title-alignment: ${this._config.title_alignment};
+      --strip-card-title-icon-gap: ${this._config.title_icon_gap};
       --strip-card-width: ${actualWidth};
       ${this._config.transparent ? `
         --ha-card-background: transparent;
@@ -416,8 +420,10 @@ class StripCard extends LitElement {
       animationStyle = `animation: ${animationName} ${duration}s linear infinite;`;
     }
     
+    const cardClasses = useFullWidth ? 'full-width' : '';
+    
     return html`
-      <ha-card style="${cardStyles}">
+      <ha-card class="${cardClasses}" style="${cardStyles}">
         ${this._config.title ? html`
           <div class="card-header">
             ${this._config.title_left_icon ? html`
@@ -519,6 +525,10 @@ class StripCard extends LitElement {
         left: 50%;
         transform: translateX(-50%);
       }
+      ha-card.full-width {
+        left: 0;
+        transform: none;
+      }
       .card-header {
         padding: 16px;
         font-size: 16px;
@@ -527,7 +537,7 @@ class StripCard extends LitElement {
         display: flex;
         align-items: center;
         justify-content: space-between;
-        gap: 12px;
+        gap: var(--strip-card-title-icon-gap, 12px);
       }
       .title-text {
         flex: 1;
@@ -731,6 +741,7 @@ class StripCardEditor extends LitElement {
       title_right_icon: "",
       title_right_icon_size: "24px",
       title_right_action: "",
+      title_icon_gap: "12px",
       duration: 20,
       pause_duration: 2,
       separator: "•",
@@ -799,6 +810,9 @@ class StripCardEditor extends LitElement {
             <mwc-list-item value="center">Zentriert</mwc-list-item>
             <mwc-list-item value="right">Rechts</mwc-list-item>
           </ha-select>
+          ${(this._config.title_left_icon || this._config.title_right_icon) ? html`
+            <ha-textfield label="Icon-Abstand" .value="${this._config.title_icon_gap}" .configValue="${"title_icon_gap"}" @input="${this._valueChanged}" helper-text="Abstand zwischen Icons und Titel"></ha-textfield>
+          ` : ''}
           <div class="section-divider">Linkes Icon</div>
           <ha-textfield label="Icon links" .value="${this._config.title_left_icon || ''}" .configValue="${"title_left_icon"}" @input="${this._valueChanged}"></ha-textfield>
           ${this._config.title_left_icon ? html`
