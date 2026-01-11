@@ -492,6 +492,9 @@ class StripCard extends LitElement {
         width: 16px;
         height: 16px;
         flex-shrink: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
       }
       .chip-text {
         display: flex;
