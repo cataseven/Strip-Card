@@ -3,7 +3,7 @@ const html = LitElement.prototype.html;
 const css = LitElement.prototype.css;
 
 console.info(
-  `%c STRIP-CARD %c v2.4.8 `,
+  `%c STRIP-CARD %c v2.4.9 `,
   "color: orange; font-weight: bold; background: black",
   "color: white; font-weight: bold; background: dimgray"
 );
@@ -66,6 +66,7 @@ class StripCard extends LitElement {
       border_radius: "0px",
       card_height: "auto",
       card_width: "100%",
+      width_mode: "container",
       fading: false,
       vertical_scroll: false,
       vertical_alignment: 'stack',
@@ -294,6 +295,13 @@ class StripCard extends LitElement {
 
     const duration = this.evaluateTemplate(this._config.duration, this.hass);
     
+    let actualWidth = '100%';
+    if (this._config.width_mode === 'viewport') {
+      actualWidth = '100vw';
+    } else if (this._config.width_mode === 'custom') {
+      actualWidth = this._config.card_width || '100%';
+    }
+    
     const cardStyles = `
       --strip-card-font-size: ${this._config.font_size};
       --strip-card-border-radius: ${this._config.border_radius};
@@ -303,7 +311,7 @@ class StripCard extends LitElement {
       --strip-card-chip-background: ${this._config.chip_background};
       --strip-card-title-font-size: ${this._config.title_font_size};
       --strip-card-title-alignment: ${this._config.title_alignment};
-      ${this._config.card_width ? `--strip-card-width: ${this._config.card_width};` : ''}
+      --strip-card-width: ${actualWidth};
       ${this._config.transparent ? `
         --ha-card-background: transparent;
         --card-background-color: transparent;
@@ -676,6 +684,7 @@ class StripCardEditor extends LitElement {
       border_radius: "0px",
       card_height: "auto",
       card_width: "100%",
+      width_mode: "container",
       fading: false,
       vertical_scroll: false,
       vertical_alignment: 'stack',
@@ -789,7 +798,16 @@ class StripCardEditor extends LitElement {
           <ha-textfield label="Rahmenradius" .value="${this._config.border_radius}" .configValue="${"border_radius"}" @input="${this._valueChanged}"></ha-textfield>
         ` : ''}
         <ha-textfield label="Kartenhöhe" .value="${this._config.card_height}" .configValue="${"card_height"}" @input="${this._valueChanged}"></ha-textfield>
-        <ha-textfield label="Kartenbreite" .value="${this._config.card_width}" .configValue="${"card_width"}" @input="${this._valueChanged}"></ha-textfield>
+        
+        <div class="section-divider">Kartenbreite</div>
+        <ha-select label="Breitenmodus" .value="${this._config.width_mode || 'container'}" .configValue="${"width_mode"}" @selected="${this._selectChanged}" @closed="${(e) => e.stopPropagation()}">
+          <mwc-list-item value="container">Container-Breite</mwc-list-item>
+          <mwc-list-item value="viewport">Bildschirmbreite</mwc-list-item>
+          <mwc-list-item value="custom">Benutzerdefiniert</mwc-list-item>
+        </ha-select>
+        ${this._config.width_mode === 'custom' ? html`
+          <ha-textfield label="Breite" .value="${this._config.card_width}" .configValue="${"card_width"}" @input="${this._valueChanged}" helper-text="z.B: 100%, 800px, 50vw"></ha-textfield>
+        ` : ''}
       </div>
     `;
   }
