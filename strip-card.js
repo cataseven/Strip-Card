@@ -353,13 +353,10 @@ class StripCard extends LitElement {
     const duration = this.evaluateTemplate(this._config.duration, this.hass);
     
     let actualWidth = '100%';
-    let cardClasses = '';
     if (this._config.width_mode === 'full') {
       actualWidth = 'var(--strip-card-calculated-width, 100%)';
-      cardClasses = 'full-width';
     } else if (this._config.width_mode === 'custom') {
       actualWidth = this._config.card_width || '100%';
-      cardClasses = 'custom-width';
     }
     
     const cardStyles = `
@@ -422,7 +419,7 @@ class StripCard extends LitElement {
     }
     
     return html`
-      <ha-card class="${cardClasses}" style="${cardStyles}">
+      <ha-card style="${cardStyles}">
         ${this._config.title ? html`
           <div class="card-header">
             <div class="title-content">
@@ -525,11 +522,6 @@ class StripCard extends LitElement {
         position: relative;
         margin: 0 auto;
       }
-      ha-card.full-width,
-      ha-card.custom-width {
-        margin-left: 0;
-        margin-right: auto;
-      }
       .card-header {
         padding: 16px;
         font-size: 16px;
@@ -593,6 +585,8 @@ class StripCard extends LitElement {
         display: inline-block;
         white-space: nowrap;
         will-change: transform;
+        padding-left: 0;
+        transform: translateX(0);
       }
       .ticker-move.has-inline-vertical-alignment {
         display: block;
@@ -602,6 +596,7 @@ class StripCard extends LitElement {
         white-space: normal;
         display: block;
         height: max-content;
+        transform: translateY(0);
       }
       .ticker-item {
         display: inline-flex;
@@ -867,8 +862,7 @@ class StripCardEditor extends LitElement {
         ` : ''}
         ${!this._config.transparent ? html`
           <ha-textfield label="Rahmenradius" .value="${this._config.border_radius}" .configValue="${"border_radius"}" @input="${this._valueChanged}"></ha-textfield>
-        ` : ''}
-        <ha-textfield label="Kartenhöhe" .value="${this._config.card_height}" .configValue="${"card_height"}" @input="${this._valueChanged}"></ha-textfield>
+        ` : ''}        <ha-textfield label="Kartenhöhe" .value="${this._config.card_height}" .configValue="${"card_height"}" @input="${this._valueChanged}"></ha-textfield>
         
         <div class="section-divider">Kartenbreite</div>
         <ha-select label="Breitenmodus" .value="${this._config.width_mode || 'container'}" .configValue="${"width_mode"}" @selected="${this._selectChanged}" @closed="${(e) => e.stopPropagation()}">
