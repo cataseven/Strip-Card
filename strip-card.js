@@ -3,7 +3,7 @@ const html = LitElement.prototype.html;
 const css = LitElement.prototype.css;
 
 console.info(
-  `%c STRIP-CARD %c v2.5.1 `,
+  `%c STRIP-CARD %c v2.6.0 `,
   "color: orange; font-weight: bold; background: black",
   "color: white; font-weight: bold; background: dimgray"
 );
@@ -71,6 +71,7 @@ class StripCard extends LitElement {
       vertical_scroll: false,
       vertical_alignment: 'stack',
       continuous_scroll: true,
+      auto_disable_scroll: false,
       transparent: false,
       badge_style: false,
       ...config,
@@ -329,6 +330,22 @@ class StripCard extends LitElement {
     }
   }
 
+  _shouldScroll() {
+    if (!this._config.auto_disable_scroll) return true;
+    
+    // Warte bis DOM bereit ist
+    const wrapElement = this.shadowRoot.querySelector('.ticker-wrap');
+    const moveElement = this.shadowRoot.querySelector('.ticker-move');
+    
+    if (!wrapElement || !moveElement) return true;
+    
+    const wrapWidth = wrapElement.offsetWidth;
+    const contentWidth = moveElement.scrollWidth;
+    
+    // Scrollen nur wenn Content breiter als Container
+    return contentWidth > wrapWidth;
+  }
+
   render() {
     if (!this._config || !this.hass) return html``;
 
@@ -368,7 +385,10 @@ class StripCard extends LitElement {
 
     let content = renderedEntities;
 
-    if (this._config.continuous_scroll) {
+    // Prüfe ob gescrollt werden soll
+    const shouldScroll = this._shouldScroll();
+
+    if (this._config.continuous_scroll && shouldScroll) {
       const containerWidth = this.getBoundingClientRect().width || 400;
       const divisor = (renderedEntities.length * 100) || 100;
       const minCopies = Math.ceil(containerWidth / divisor) + 2;
@@ -381,7 +401,7 @@ class StripCard extends LitElement {
     
     const wrapClasses = [
       this._config.pause_on_hover && 'pausable',
-      this._config.fading && this._config.continuous_scroll && 'has-fading',
+      this._config.fading && this._config.continuous_scroll && shouldScroll && 'has-fading',
       this._config.vertical_scroll && 'has-vertical-scroll',
       this._config.badge_style && 'has-chips-style'
     ].filter(Boolean).join(' ');
@@ -391,7 +411,7 @@ class StripCard extends LitElement {
     ].filter(Boolean).join(' ');
     
     let animationStyle = '';
-    if (this._config.continuous_scroll) {
+    if (this._config.continuous_scroll && shouldScroll) {
       const animationName = this._config.vertical_scroll ? 'ticker-vertical' : 'ticker';
       animationStyle = `animation: ${animationName} ${duration}s linear infinite;`;
     }
@@ -728,6 +748,7 @@ class StripCardEditor extends LitElement {
       vertical_scroll: false,
       vertical_alignment: 'stack',
       continuous_scroll: true,
+      auto_disable_scroll: false,
       transparent: false,
       badge_style: false,
       ...config,
@@ -808,6 +829,7 @@ class StripCardEditor extends LitElement {
         ${!this._config.continuous_scroll ? html`
           <ha-textfield label="Pause-Dauer (Sekunden)" type="number" min="0" step="0.5" .value="${this._config.pause_duration}" .configValue="${"pause_duration"}" @input="${this._valueChanged}" helper-text="Pause am Ende vor Rückwärtsfahrt"></ha-textfield>
         ` : ''}
+        <ha-formfield label="Auto-Deaktivieren bei Platz"><ha-switch .checked="${this._config.auto_disable_scroll}" .configValue="${"auto_disable_scroll"}" @change="${this._switchChanged}"></ha-switch></ha-formfield>
         <ha-formfield label="Bei Hover pausieren"><ha-switch .checked="${this._config.pause_on_hover}" .configValue="${"pause_on_hover"}" @change="${this._switchChanged}"></ha-switch></ha-formfield>
         <ha-formfield label="Vertikales Scrollen"><ha-switch .checked="${this._config.vertical_scroll}" .configValue="${"vertical_scroll"}" @change="${this._switchChanged}"></ha-switch></ha-formfield>
         ${this._config.vertical_scroll ? html`
