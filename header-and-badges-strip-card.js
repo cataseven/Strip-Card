@@ -262,6 +262,11 @@ class HeaderAndBadgesStripCard extends LitElement {
     const animStyle = this._config.continuous_scroll ? 
       `animation: ticker ${this._evalTemplate(this._config.duration)}s linear infinite;` : '';
 
+    // Ausrichtung für nicht-scrollende Badges basierend auf title_alignment
+    const justifyContent = this._config.continuous_scroll ? 'flex-start' : 
+      (this._config.title_alignment === 'center' ? 'center' : 
+       this._config.title_alignment === 'right' ? 'flex-end' : 'flex-start');
+
     return html`
       <div class="header-badges-wrapper ${this._config.full_width ? 'full-width' : ''}">
         <ha-card class="${this._config.card_width !== '100%' && !this._config.full_width ? 'custom-width' : ''}" style="
@@ -280,7 +285,7 @@ class HeaderAndBadgesStripCard extends LitElement {
                 style="--mdc-icon-size: ${this._config.title_right_icon_size}; cursor: ${this._config.title_right_action ? 'pointer' : 'default'};"></ha-icon>` : ''}
             </div>
           ` : ''}
-          <div class="ticker-wrap ${wrapClass}">
+          <div class="ticker-wrap ${wrapClass}" style="justify-content: ${justifyContent};">
             <div class="ticker-move" style="${animStyle}">${content}</div>
           </div>
         </ha-card>
