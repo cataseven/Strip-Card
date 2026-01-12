@@ -79,11 +79,15 @@ class HeaderAndBadgesStripCard extends LitElement {
     clearTimeout(this._debounceTimer);
     this._debounceTimer = setTimeout(() => requestAnimationFrame(() => {
       this._updateScroll();
+      this._updateFullWidth();
     }), DEBOUNCE_DELAY);
   }
 
   firstUpdated() {
-    setTimeout(() => { this._updateScroll(); }, 0);
+    setTimeout(() => { 
+      this._updateScroll();
+      this._updateFullWidth();
+    }, 0);
     if (this._resizeObserver) {
       this.shadowRoot.querySelector('.ticker-wrap') && this._resizeObserver.observe(this.shadowRoot.querySelector('.ticker-wrap'));
       const container = this.closest('hui-view, .view, hui-sections-view');
@@ -94,7 +98,27 @@ class HeaderAndBadgesStripCard extends LitElement {
   updated(changedProps) {
     if (changedProps.has('_config')) {
       this._cache.animation = null;
-      requestAnimationFrame(() => this._updateScroll());
+      requestAnimationFrame(() => {
+        this._updateScroll();
+        this._updateFullWidth();
+      });
+    }
+  }
+
+  _updateFullWidth() {
+    if (!this._config.full_width) return;
+    
+    const wrapper = this.shadowRoot.querySelector('.header-badges-wrapper');
+    const huiView = this.closest('hui-view, .view, hui-sections-view');
+    
+    if (wrapper && huiView) {
+      const cardRect = this.getBoundingClientRect();
+      const viewRect = huiView.getBoundingClientRect();
+      const offset = cardRect.left - viewRect.left;
+      const width = viewRect.width;
+      
+      wrapper.style.setProperty('--full-width-offset', `${offset}px`);
+      wrapper.style.setProperty('--full-width-width', `${width}px`);
     }
   }
 
@@ -336,8 +360,9 @@ class HeaderAndBadgesStripCard extends LitElement {
     .header-badges-wrapper { display: flex; justify-content: center; width: 100%; position: relative; }
     .header-badges-wrapper.full-width { 
       position: relative;
-      left: -450px;
-      width: calc(100% + 900px);
+      left: calc(var(--full-width-offset, 450px) * -1);
+      width: var(--full-width-width, 100vw);
+      max-width: 100vw;
     }
     .header-badges-wrapper.full-width ha-card { width: 100% !important; max-width: 100% !important; }
     ha-card { overflow: hidden; border-radius: var(--radius, 0); height: var(--height, auto); width: 100%; display: flex; flex-direction: column; }
