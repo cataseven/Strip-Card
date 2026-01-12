@@ -105,18 +105,17 @@ class HeaderAndBadgesStripCard extends LitElement {
     const wrapper = this.shadowRoot.querySelector('.header-badges-wrapper');
     const container = this.closest('hui-view, .view, hui-sections-view');
     if (wrapper && container) {
-      const rect = this.getBoundingClientRect();
+      const cardRect = this.getBoundingClientRect();
       const containerRect = container.getBoundingClientRect();
       
-      // Berechne den linken Offset relativ zum Container
-      const leftOffset = rect.left - containerRect.left;
+      // Berechne wie weit die Karte vom linken Rand des Containers entfernt ist
+      const leftOffset = cardRect.left - containerRect.left;
       
-      // Nutze die volle Breite des Containers (clientWidth berücksichtigt kein padding)
-      const fullWidth = container.offsetWidth;
+      // Die volle Breite des Containers
+      const containerWidth = container.offsetWidth;
       
-      wrapper.style.setProperty('--full-width-container-width', `${fullWidth}px`);
+      wrapper.style.setProperty('--full-width-container-width', `${containerWidth}px`);
       wrapper.style.setProperty('--full-width-left-offset', `${leftOffset}px`);
-      wrapper.style.setProperty('--full-width-right-offset', `${containerRect.right - rect.right}px`);
     }
   }
 
@@ -357,10 +356,10 @@ class HeaderAndBadgesStripCard extends LitElement {
     :host { display: block; position: relative; }
     .header-badges-wrapper { display: flex; justify-content: center; width: 100%; position: relative; }
     .header-badges-wrapper.full-width { 
+      position: relative;
       width: var(--full-width-container-width, 100vw);
-      margin-left: calc(var(--full-width-left-offset, 0px) * -1);
-      margin-right: calc(var(--full-width-right-offset, 0px) * -1);
-      max-width: var(--full-width-container-width, 100vw);
+      left: calc(var(--full-width-left-offset, 0px) * -1);
+      max-width: none;
     }
     .header-badges-wrapper.full-width ha-card { width: 100% !important; max-width: 100% !important; }
     ha-card { overflow: hidden; border-radius: var(--radius, 0); height: var(--height, auto); width: 100%; display: flex; flex-direction: column; }
