@@ -48,6 +48,12 @@ Scrolling header for sensors, entities and HA badges. Fully configurable via UI.
 
 ---
 
+## ⚠️ Note
+
+**Please note:** Integrating this card into the header is a bit hacky. If you encounter any bugs or issues, feel free to open an issue on [GitHub](https://github.com/Spider19996/Header-and-Badges-Strip-Card/issues).
+
+---
+
 ## 📜 Credits
 
 Based on **[Strip Card](https://github.com/cataseven/Strip-Card)** by **cataseven**  
