@@ -78,13 +78,14 @@ class HeaderAndBadgesStripCard extends LitElement {
   _debouncedResize() {
     clearTimeout(this._debounceTimer);
     this._debounceTimer = setTimeout(() => requestAnimationFrame(() => {
-      this._updateFullWidth();
       this._updateScroll();
     }), DEBOUNCE_DELAY);
   }
 
   firstUpdated() {
-    setTimeout(() => { this._updateFullWidth(); this._updateScroll(); }, 0);
+    setTimeout(() => { 
+      this._updateScroll();
+    }, 0);
     if (this._resizeObserver) {
       this.shadowRoot.querySelector('.ticker-wrap') && this._resizeObserver.observe(this.shadowRoot.querySelector('.ticker-wrap'));
       const container = this.closest('hui-view, .view, hui-sections-view');
@@ -94,21 +95,10 @@ class HeaderAndBadgesStripCard extends LitElement {
 
   updated(changedProps) {
     if (changedProps.has('_config')) {
-      this._updateFullWidth();
       this._cache.animation = null;
-      requestAnimationFrame(() => this._updateScroll());
-    }
-  }
-
-  _updateFullWidth() {
-    if (!this._config.full_width) return;
-    const wrapper = this.shadowRoot.querySelector('.header-badges-wrapper');
-    const container = this.closest('hui-view, .view, hui-sections-view');
-    if (wrapper && container) {
-      const rect = this.getBoundingClientRect();
-      const containerRect = container.getBoundingClientRect();
-      wrapper.style.setProperty('--full-width-container-width', `${container.offsetWidth}px`);
-      wrapper.style.setProperty('--full-width-left-offset', `${rect.left - containerRect.left}px`);
+      requestAnimationFrame(() => {
+        this._updateScroll();
+      });
     }
   }
 
@@ -284,7 +274,7 @@ class HeaderAndBadgesStripCard extends LitElement {
       `animation: ${this._config.vertical_scroll ? 'ticker-vertical' : 'ticker'} ${this._evalTemplate(this._config.duration)}s linear infinite;` : '';
 
     return html`
-      <div class="wrapper ${this._config.full_width ? 'full-width' : ''}">
+      <div class="header-badges-wrapper ${this._config.full_width ? 'full-width' : ''}">
         <ha-card class="${this._config.card_width !== '100%' && !this._config.full_width ? 'custom-width' : ''}" style="
           --font: ${this._config.font_size}; --radius: ${this._config.border_radius}; --height: ${this._config.card_height};
           --content-color: ${this._config.content_color}; --label-color: ${this._config.label_color}; --chip-bg: ${this._config.chip_background};
@@ -347,9 +337,14 @@ class HeaderAndBadgesStripCard extends LitElement {
 
   static styles = css`
     :host { display: block; position: relative; }
-    .wrapper { display: flex; justify-content: center; width: 100%; }
-    .wrapper.full-width { width: var(--full-width-container-width, 100%); margin-left: calc(var(--full-width-left-offset, 0px) * -1); }
-    .wrapper.full-width ha-card { width: 100% !important; max-width: 100% !important; }
+    .header-badges-wrapper { display: flex; justify-content: center; width: 100%; position: relative; }
+    .header-badges-wrapper.full-width { 
+      position: relative;
+      margin-left: calc(-50vw + 50% + 128px);
+      width: calc(100vw - 256px);
+      max-width: 100%;
+    }
+    .header-badges-wrapper.full-width ha-card { width: 100% !important; max-width: 100% !important; }
     ha-card { overflow: hidden; border-radius: var(--radius, 0); height: var(--height, auto); width: 100%; display: flex; flex-direction: column; }
     ha-card.custom-width { flex-shrink: 0; }
     .header { padding: 16px; font-size: 16px; font-weight: 400; color: var(--primary-text-color); display: flex; align-items: center; gap: 0; }
