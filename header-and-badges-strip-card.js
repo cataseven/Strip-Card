@@ -3,7 +3,7 @@ const html = LitElement.prototype.html;
 const css = LitElement.prototype.css;
 
 console.info(
-  `%c HEADER AND BADGES STRIP CARD %c v3.0.1 `,
+  `%c HEADER AND BADGES STRIP CARD %c v3.1.0 `,
   "color: orange; font-weight: bold; background: black",
   "color: white; font-weight: bold; background: dimgray"
 );
@@ -54,8 +54,8 @@ class HeaderAndBadgesStripCard extends LitElement {
       duration: 20, pause_duration: 2, separator: "•", font_size: "14px", title_font_size: "16px", title_alignment: "left",
       title_icon_spacing: "4px", title_left_icon_size: "24px", title_right_icon_size: "24px", content_color: "var(--primary-text-color)",
       label_color: "var(--secondary-text-color)", chip_background: "var(--primary-background-color)", border_radius: "0px",
-      card_height: "auto", card_width: "100%", vertical_alignment: 'stack', show_icon: false, pause_on_hover: false,
-      full_width: false, fading: false, vertical_scroll: false, continuous_scroll: true,
+      card_height: "auto", card_width: "100%", show_icon: false, pause_on_hover: false,
+      full_width: false, fading: false, continuous_scroll: true,
       transparent: false, badge_style: false, title: "", title_left_icon: "", title_left_action: "", title_right_icon: "",
       title_right_action: "", ...config 
     };
@@ -108,9 +108,8 @@ class HeaderAndBadgesStripCard extends LitElement {
     if (!move || !wrap) return;
 
     if (this._config.continuous_scroll) {
-      const anim = this._config.vertical_scroll ? 'ticker-vertical' : 'ticker';
       const dur = this._evalTemplate(this._config.duration);
-      move.style.animation = `${anim} ${dur}s linear infinite`;
+      move.style.animation = `ticker ${dur}s linear infinite`;
     } else {
       this._setupReturnAnim(move, wrap);
     }
@@ -120,7 +119,7 @@ class HeaderAndBadgesStripCard extends LitElement {
     const dist = Math.max(0, move.scrollWidth - wrap.offsetWidth);
     const dur = parseFloat(this._evalTemplate(this._config.duration));
     const pause = parseFloat(this._evalTemplate(this._config.pause_duration));
-    const cacheKey = `${dist}-${dur}-${pause}-${this._config.vertical_scroll}`;
+    const cacheKey = `${dist}-${dur}-${pause}`;
     
     if (this._cache.animation === cacheKey) return;
     this._cache.animation = cacheKey;
@@ -129,8 +128,7 @@ class HeaderAndBadgesStripCard extends LitElement {
     const p1 = (dur / total * 100).toFixed(2);
     const p2 = ((dur + pause) / total * 100).toFixed(2);
     const p3 = ((dur + pause + dur) / total * 100).toFixed(2);
-    const transform = this._config.vertical_scroll ? 'translateY' : 'translateX';
-    const name = `ticker-return-${this._config.vertical_scroll ? 'v' : 'h'}-${Date.now()}`;
+    const name = `ticker-return-${Date.now()}`;
 
     let style = this.shadowRoot.getElementById(ANIMATION_ID);
     if (!style) {
@@ -140,9 +138,9 @@ class HeaderAndBadgesStripCard extends LitElement {
     }
 
     style.textContent = `@keyframes ${name} {
-      0%, 100% { transform: ${transform}(0); }
-      ${p1}%, ${p2}% { transform: ${transform}(-${dist}px); }
-      ${p3}% { transform: ${transform}(0); }
+      0%, 100% { transform: translateX(0); }
+      ${p1}%, ${p2}% { transform: translateX(-${dist}px); }
+      ${p3}% { transform: translateX(0); }
     }`;
     move.style.animation = `${name} ${total}s linear infinite`;
   }
@@ -260,10 +258,9 @@ class HeaderAndBadgesStripCard extends LitElement {
     }
 
     const wrapClass = [this._config.pause_on_hover && 'pausable', this._config.fading && this._config.continuous_scroll && 'fading',
-      this._config.vertical_scroll && 'vertical', this._config.badge_style && 'chips'].filter(Boolean).join(' ');
-    const moveClass = this._config.vertical_alignment === 'inline' ? 'inline' : '';
+      this._config.badge_style && 'chips'].filter(Boolean).join(' ');
     const animStyle = this._config.continuous_scroll ? 
-      `animation: ${this._config.vertical_scroll ? 'ticker-vertical' : 'ticker'} ${this._evalTemplate(this._config.duration)}s linear infinite;` : '';
+      `animation: ticker ${this._evalTemplate(this._config.duration)}s linear infinite;` : '';
 
     return html`
       <div class="header-badges-wrapper ${this._config.full_width ? 'full-width' : ''}">
@@ -284,7 +281,7 @@ class HeaderAndBadgesStripCard extends LitElement {
             </div>
           ` : ''}
           <div class="ticker-wrap ${wrapClass}">
-            <div class="ticker-move ${moveClass}" style="${animStyle}">${content}</div>
+            <div class="ticker-move" style="${animStyle}">${content}</div>
           </div>
         </ha-card>
       </div>
@@ -334,6 +331,7 @@ class HeaderAndBadgesStripCard extends LitElement {
       position: relative;
       margin-left: calc(-50vw + 50% + 128px);
       width: calc(100vw - 256px);
+      max-width: 100%;
     }
     .header-badges-wrapper.full-width ha-card { width: 100% !important; max-width: 100% !important; }
     ha-card { overflow: hidden; border-radius: var(--radius, 0); height: var(--height, auto); width: 100%; display: flex; flex-direction: column; }
@@ -346,20 +344,13 @@ class HeaderAndBadgesStripCard extends LitElement {
     .header .icon.left { order: -1; margin-right: var(--title-spacing, 4px); }
     .header .icon.right { order: 1; margin-left: var(--title-spacing, 4px); }
     .ticker-wrap { flex: 1; display: flex; align-items: center; width: 100%; overflow: hidden; background: var(--card-background-color, white); position: relative; min-height: 50px; }
-    .ticker-wrap.vertical { flex-direction: column; height: var(--height, auto); }
     .ticker-wrap.chips { padding: 8px 0; min-height: auto; }
     .ticker-wrap.fading { -webkit-mask-image: linear-gradient(to right, transparent 0%, black 10%, black 90%, transparent 100%); mask-image: linear-gradient(to right, transparent 0%, black 10%, black 90%, transparent 100%); }
-    .ticker-wrap.vertical.fading { -webkit-mask-image: linear-gradient(to bottom, transparent 0%, black 10%, black 90%, transparent 100%); mask-image: linear-gradient(to bottom, transparent 0%, black 10%, black 90%, transparent 100%); }
     .ticker-wrap.pausable .ticker-move { animation-play-state: running; }
     .ticker-wrap.pausable:hover .ticker-move { animation-play-state: paused !important; }
     .ticker-move { display: inline-block; white-space: nowrap; will-change: transform; }
-    .ticker-move.inline { display: block; height: max-content; }
-    .ticker-wrap.vertical .ticker-move { white-space: normal; display: block; height: max-content; }
     .item { display: inline-flex; align-items: center; font-size: var(--font, 14px); cursor: pointer; }
-    .ticker-wrap.vertical .item { display: flex; flex-direction: column; align-items: flex-start; padding: .5rem 1rem; }
     .item .sep { margin: 0 1rem; color: var(--disabled-text-color); }
-    .ticker-wrap.vertical .item .sep { margin: .5rem 0 0 0; }
-    .ticker-move.inline .item { display: inline-flex; margin: .5rem 1rem; }
     .chip { display: inline-flex; align-items: center; gap: 6px; padding: 3px 8px; margin-right: 8px; min-height: 28px; max-height: 28px; background: var(--chip-bg); border-radius: 14px; cursor: pointer; font-size: 12px; white-space: nowrap; transition: background .2s; box-shadow: 0 1px 3px 0 rgba(0,0,0,.1), 0 1px 2px 0 rgba(0,0,0,.06); box-sizing: border-box; vertical-align: middle; }
     .chip:hover { background: var(--secondary-background-color); }
     .chip-icon { --mdc-icon-size: 16px; width: 16px; height: 16px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; }
@@ -372,7 +363,6 @@ class HeaderAndBadgesStripCard extends LitElement {
     .item .label { font-weight: 400; opacity: .8; margin-left: .5em; color: var(--label-color); }
     .error { color: var(--error-color); font-weight: bold; }
     @keyframes ticker { 0% { transform: translateX(0); } 100% { transform: translateX(-50%); } }
-    @keyframes ticker-vertical { 0% { transform: translateY(0); } 100% { transform: translateY(-50%); } }
   `;
 }
 
@@ -390,8 +380,8 @@ class HeaderAndBadgesStripCardEditor extends LitElement {
     this._config = { duration: 20, pause_duration: 2, separator: "•", font_size: "14px", title_font_size: "16px", title_alignment: "left",
       title_icon_spacing: "4px", title_left_icon_size: "24px", title_right_icon_size: "24px", content_color: "var(--primary-text-color)",
       label_color: "var(--secondary-text-color)", chip_background: "var(--primary-background-color)", border_radius: "0px", card_height: "auto",
-      card_width: "100%", vertical_alignment: 'stack', show_icon: false, pause_on_hover: false, full_width: false, fading: false,
-      vertical_scroll: false, continuous_scroll: true, transparent: false, badge_style: false, title: "",
+      card_width: "100%", show_icon: false, pause_on_hover: false, full_width: false, fading: false,
+      continuous_scroll: true, transparent: false, badge_style: false, title: "",
       title_left_icon: "", title_left_action: "", title_right_icon: "", title_right_action: "", ...config, entities: config.entities || [] };
   }
 
@@ -442,9 +432,7 @@ class HeaderAndBadgesStripCardEditor extends LitElement {
         { type: 'number', key: 'duration', label: 'Scroll-Dauer (Sek)', min: 1 },
         { type: 'switch', key: 'continuous_scroll', label: 'Kontinuierlich' },
         ...!this._config.continuous_scroll ? [{ type: 'number', key: 'pause_duration', label: 'Pause-Dauer (Sek)', min: 0, step: 0.5, helper: 'Pause am Ende' }] : [],
-        { type: 'switch', key: 'pause_on_hover', label: 'Bei Hover pausieren' },
-        { type: 'switch', key: 'vertical_scroll', label: 'Vertikal' },
-        ...this._config.vertical_scroll ? [{ type: 'select', key: 'vertical_alignment', label: 'Ausrichtung', options: [['stack', 'Gestapelt'], ['inline', 'Inline']] }] : []
+        { type: 'switch', key: 'pause_on_hover', label: 'Bei Hover pausieren' }
       ],
       style: [
         { type: 'switch', key: 'badge_style', label: 'Chips-Stil' },
