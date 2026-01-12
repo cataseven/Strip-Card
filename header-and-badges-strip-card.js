@@ -107,8 +107,16 @@ class HeaderAndBadgesStripCard extends LitElement {
     if (wrapper && container) {
       const rect = this.getBoundingClientRect();
       const containerRect = container.getBoundingClientRect();
-      wrapper.style.setProperty('--full-width-container-width', `${container.offsetWidth}px`);
-      wrapper.style.setProperty('--full-width-left-offset', `${rect.left - containerRect.left}px`);
+      
+      // Berechne den linken Offset relativ zum Container
+      const leftOffset = rect.left - containerRect.left;
+      
+      // Nutze die volle Breite des Containers (clientWidth berücksichtigt kein padding)
+      const fullWidth = container.offsetWidth;
+      
+      wrapper.style.setProperty('--full-width-container-width', `${fullWidth}px`);
+      wrapper.style.setProperty('--full-width-left-offset', `${leftOffset}px`);
+      wrapper.style.setProperty('--full-width-right-offset', `${containerRect.right - rect.right}px`);
     }
   }
 
@@ -284,7 +292,7 @@ class HeaderAndBadgesStripCard extends LitElement {
       `animation: ${this._config.vertical_scroll ? 'ticker-vertical' : 'ticker'} ${this._evalTemplate(this._config.duration)}s linear infinite;` : '';
 
     return html`
-      <div class="wrapper ${this._config.full_width ? 'full-width' : ''}">
+      <div class="header-badges-wrapper ${this._config.full_width ? 'full-width' : ''}">
         <ha-card class="${this._config.card_width !== '100%' && !this._config.full_width ? 'custom-width' : ''}" style="
           --font: ${this._config.font_size}; --radius: ${this._config.border_radius}; --height: ${this._config.card_height};
           --content-color: ${this._config.content_color}; --label-color: ${this._config.label_color}; --chip-bg: ${this._config.chip_background};
@@ -347,9 +355,14 @@ class HeaderAndBadgesStripCard extends LitElement {
 
   static styles = css`
     :host { display: block; position: relative; }
-    .wrapper { display: flex; justify-content: center; width: 100%; }
-    .wrapper.full-width { width: var(--full-width-container-width, 100%); margin-left: calc(var(--full-width-left-offset, 0px) * -1); }
-    .wrapper.full-width ha-card { width: 100% !important; max-width: 100% !important; }
+    .header-badges-wrapper { display: flex; justify-content: center; width: 100%; position: relative; }
+    .header-badges-wrapper.full-width { 
+      width: var(--full-width-container-width, 100vw);
+      margin-left: calc(var(--full-width-left-offset, 0px) * -1);
+      margin-right: calc(var(--full-width-right-offset, 0px) * -1);
+      max-width: var(--full-width-container-width, 100vw);
+    }
+    .header-badges-wrapper.full-width ha-card { width: 100% !important; max-width: 100% !important; }
     ha-card { overflow: hidden; border-radius: var(--radius, 0); height: var(--height, auto); width: 100%; display: flex; flex-direction: column; }
     ha-card.custom-width { flex-shrink: 0; }
     .header { padding: 16px; font-size: 16px; font-weight: 400; color: var(--primary-text-color); display: flex; align-items: center; gap: 0; }
