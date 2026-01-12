@@ -78,13 +78,12 @@ class HeaderAndBadgesStripCard extends LitElement {
   _debouncedResize() {
     clearTimeout(this._debounceTimer);
     this._debounceTimer = setTimeout(() => requestAnimationFrame(() => {
-      this._updateFullWidth();
       this._updateScroll();
     }), DEBOUNCE_DELAY);
   }
 
   firstUpdated() {
-    setTimeout(() => { this._updateFullWidth(); this._updateScroll(); }, 0);
+    setTimeout(() => { this._updateScroll(); }, 0);
     if (this._resizeObserver) {
       this.shadowRoot.querySelector('.ticker-wrap') && this._resizeObserver.observe(this.shadowRoot.querySelector('.ticker-wrap'));
       const container = this.closest('hui-view, .view, hui-sections-view');
@@ -94,28 +93,8 @@ class HeaderAndBadgesStripCard extends LitElement {
 
   updated(changedProps) {
     if (changedProps.has('_config')) {
-      this._updateFullWidth();
       this._cache.animation = null;
       requestAnimationFrame(() => this._updateScroll());
-    }
-  }
-
-  _updateFullWidth() {
-    if (!this._config.full_width) return;
-    const wrapper = this.shadowRoot.querySelector('.header-badges-wrapper');
-    const container = this.closest('hui-view, .view, hui-sections-view');
-    if (wrapper && container) {
-      const cardRect = this.getBoundingClientRect();
-      const containerRect = container.getBoundingClientRect();
-      
-      // Berechne wie weit die Karte vom linken Rand des Containers entfernt ist
-      const leftOffset = cardRect.left - containerRect.left;
-      
-      // Die volle Breite des Containers
-      const containerWidth = container.offsetWidth;
-      
-      wrapper.style.setProperty('--full-width-container-width', `${containerWidth}px`);
-      wrapper.style.setProperty('--full-width-left-offset', `${leftOffset}px`);
     }
   }
 
@@ -356,10 +335,11 @@ class HeaderAndBadgesStripCard extends LitElement {
     :host { display: block; position: relative; }
     .header-badges-wrapper { display: flex; justify-content: center; width: 100%; position: relative; }
     .header-badges-wrapper.full-width { 
-      position: relative;
-      width: var(--full-width-container-width, 100vw);
-      left: calc(var(--full-width-left-offset, 0px) * -1);
-      max-width: none;
+      position: absolute;
+      left: 0;
+      right: 0;
+      width: 100%;
+      margin: 0;
     }
     .header-badges-wrapper.full-width ha-card { width: 100% !important; max-width: 100% !important; }
     ha-card { overflow: hidden; border-radius: var(--radius, 0); height: var(--height, auto); width: 100%; display: flex; flex-direction: column; }
