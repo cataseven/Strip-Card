@@ -3,7 +3,7 @@ const html = LitElement.prototype.html;
 const css = LitElement.prototype.css;
 
 console.info(
-  `%c HEADER AND BADGES STRIP CARD %c v3.0.0 `,
+  `%c HEADER AND BADGES STRIP CARD %c v3.0.1 `,
   "color: orange; font-weight: bold; background: black",
   "color: white; font-weight: bold; background: dimgray"
 );
@@ -55,7 +55,7 @@ class HeaderAndBadgesStripCard extends LitElement {
       title_icon_spacing: "4px", title_left_icon_size: "24px", title_right_icon_size: "24px", content_color: "var(--primary-text-color)",
       label_color: "var(--secondary-text-color)", chip_background: "var(--primary-background-color)", border_radius: "0px",
       card_height: "auto", card_width: "100%", vertical_alignment: 'stack', show_icon: false, pause_on_hover: false,
-      full_width: false, fading: false, vertical_scroll: false, continuous_scroll: true, disable_scroll_if_fits: false,
+      full_width: false, fading: false, vertical_scroll: false, continuous_scroll: true,
       transparent: false, badge_style: false, title: "", title_left_icon: "", title_left_action: "", title_right_icon: "",
       title_right_action: "", ...config 
     };
@@ -106,14 +106,6 @@ class HeaderAndBadgesStripCard extends LitElement {
     const move = this.shadowRoot.querySelector('.ticker-move');
     const wrap = this.shadowRoot.querySelector('.ticker-wrap');
     if (!move || !wrap) return;
-
-    const fits = move.scrollWidth <= wrap.offsetWidth;
-    if (this._config.disable_scroll_if_fits && fits) {
-      move.style.animation = 'none';
-      move.style.transform = 'none';
-      this._cache.animation = null;
-      return;
-    }
 
     if (this._config.continuous_scroll) {
       const anim = this._config.vertical_scroll ? 'ticker-vertical' : 'ticker';
@@ -261,7 +253,7 @@ class HeaderAndBadgesStripCard extends LitElement {
     if (!entities.length) return html``;
 
     let content = entities;
-    if (this._config.continuous_scroll && !this._config.disable_scroll_if_fits) {
+    if (this._config.continuous_scroll) {
       const w = this.getBoundingClientRect().width || MIN_WIDTH;
       const copies = Math.max(Math.ceil(w / ((entities.length * 100) || 100)) + EXTRA_COPIES, 2);
       content = Array(copies).fill(entities).flat();
@@ -270,7 +262,7 @@ class HeaderAndBadgesStripCard extends LitElement {
     const wrapClass = [this._config.pause_on_hover && 'pausable', this._config.fading && this._config.continuous_scroll && 'fading',
       this._config.vertical_scroll && 'vertical', this._config.badge_style && 'chips'].filter(Boolean).join(' ');
     const moveClass = this._config.vertical_alignment === 'inline' ? 'inline' : '';
-    const animStyle = this._config.continuous_scroll && !this._config.disable_scroll_if_fits ? 
+    const animStyle = this._config.continuous_scroll ? 
       `animation: ${this._config.vertical_scroll ? 'ticker-vertical' : 'ticker'} ${this._evalTemplate(this._config.duration)}s linear infinite;` : '';
 
     return html`
@@ -400,7 +392,7 @@ class HeaderAndBadgesStripCardEditor extends LitElement {
       title_icon_spacing: "4px", title_left_icon_size: "24px", title_right_icon_size: "24px", content_color: "var(--primary-text-color)",
       label_color: "var(--secondary-text-color)", chip_background: "var(--primary-background-color)", border_radius: "0px", card_height: "auto",
       card_width: "100%", vertical_alignment: 'stack', show_icon: false, pause_on_hover: false, full_width: false, fading: false,
-      vertical_scroll: false, continuous_scroll: true, disable_scroll_if_fits: false, transparent: false, badge_style: false, title: "",
+      vertical_scroll: false, continuous_scroll: true, transparent: false, badge_style: false, title: "",
       title_left_icon: "", title_left_action: "", title_right_icon: "", title_right_action: "", ...config, entities: config.entities || [] };
   }
 
@@ -451,7 +443,6 @@ class HeaderAndBadgesStripCardEditor extends LitElement {
         { type: 'number', key: 'duration', label: 'Scroll-Dauer (Sek)', min: 1 },
         { type: 'switch', key: 'continuous_scroll', label: 'Kontinuierlich' },
         ...!this._config.continuous_scroll ? [{ type: 'number', key: 'pause_duration', label: 'Pause-Dauer (Sek)', min: 0, step: 0.5, helper: 'Pause am Ende' }] : [],
-        { type: 'switch', key: 'disable_scroll_if_fits', label: 'Deaktivieren wenn passt' },
         { type: 'switch', key: 'pause_on_hover', label: 'Bei Hover pausieren' },
         { type: 'switch', key: 'vertical_scroll', label: 'Vertikal' },
         ...this._config.vertical_scroll ? [{ type: 'select', key: 'vertical_alignment', label: 'Ausrichtung', options: [['stack', 'Gestapelt'], ['inline', 'Inline']] }] : []
