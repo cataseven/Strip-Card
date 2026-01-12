@@ -110,6 +110,7 @@ class HeaderAndBadgesStripCard extends LitElement {
     if (this._config.continuous_scroll) {
       const dur = this._evalTemplate(this._config.duration);
       move.style.animation = `ticker ${dur}s linear infinite`;
+      wrap.style.justifyContent = 'flex-start';
     } else {
       this._setupReturnAnim(move, wrap);
     }
@@ -124,25 +125,37 @@ class HeaderAndBadgesStripCard extends LitElement {
     if (this._cache.animation === cacheKey) return;
     this._cache.animation = cacheKey;
 
-    const total = dur + pause + dur + pause;
-    const p1 = (dur / total * 100).toFixed(2);
-    const p2 = ((dur + pause) / total * 100).toFixed(2);
-    const p3 = ((dur + pause + dur) / total * 100).toFixed(2);
-    const name = `ticker-return-${Date.now()}`;
+    // Ausrichtung basierend auf title_alignment, aber nur wenn Inhalt auf Bildschirm passt
+    if (dist === 0) {
+      // Content passt auf Bildschirm - Ausrichtung wie title_alignment
+      const align = this._config.title_alignment === 'center' ? 'center' : 
+                    this._config.title_alignment === 'right' ? 'flex-end' : 'flex-start';
+      wrap.style.justifyContent = align;
+      move.style.animation = 'none';
+    } else {
+      // Content muss scrollen - linksbündig
+      wrap.style.justifyContent = 'flex-start';
+      
+      const total = dur + pause + dur + pause;
+      const p1 = (dur / total * 100).toFixed(2);
+      const p2 = ((dur + pause) / total * 100).toFixed(2);
+      const p3 = ((dur + pause + dur) / total * 100).toFixed(2);
+      const name = `ticker-return-${Date.now()}`;
 
-    let style = this.shadowRoot.getElementById(ANIMATION_ID);
-    if (!style) {
-      style = document.createElement('style');
-      style.id = ANIMATION_ID;
-      this.shadowRoot.appendChild(style);
+      let style = this.shadowRoot.getElementById(ANIMATION_ID);
+      if (!style) {
+        style = document.createElement('style');
+        style.id = ANIMATION_ID;
+        this.shadowRoot.appendChild(style);
+      }
+
+      style.textContent = `@keyframes ${name} {
+        0%, 100% { transform: translateX(0); }
+        ${p1}%, ${p2}% { transform: translateX(-${dist}px); }
+        ${p3}% { transform: translateX(0); }
+      }`;
+      move.style.animation = `${name} ${total}s linear infinite`;
     }
-
-    style.textContent = `@keyframes ${name} {
-      0%, 100% { transform: translateX(0); }
-      ${p1}%, ${p2}% { transform: translateX(-${dist}px); }
-      ${p3}% { transform: translateX(0); }
-    }`;
-    move.style.animation = `${name} ${total}s linear infinite`;
   }
 
   shouldUpdate(changedProps) {
