@@ -3,7 +3,7 @@ const html = LitElement.prototype.html;
 const css = LitElement.prototype.css;
 
 console.info(
-  `%c HEADER AND BADGES STRIP CARD %c v3.1.0 `,
+  `%c HEADER AND BADGES STRIP CARD %c v3.1.1 `,
   "color: orange; font-weight: bold; background: black",
   "color: white; font-weight: bold; background: dimgray"
 );
@@ -32,6 +32,7 @@ class HeaderAndBadgesStripCard extends LitElement {
   static properties = {
     hass: { type: Object },
     _config: { type: Object },
+    _sidebarWidth: { type: Number },
   };
 
   static getStubConfig() {
@@ -46,6 +47,7 @@ class HeaderAndBadgesStripCard extends LitElement {
     super();
     this._cache = { animation: null, templates: new Map() };
     this._debounceTimer = null;
+    this._sidebarWidth = 0;
   }
 
   setConfig(config) {
@@ -67,12 +69,26 @@ class HeaderAndBadgesStripCard extends LitElement {
   connectedCallback() {
     super.connectedCallback();
     this._resizeObserver = new ResizeObserver(() => this._debouncedResize());
+    this._updateSidebarWidth();
   }
 
   disconnectedCallback() {
     super.disconnectedCallback();
     this._resizeObserver?.disconnect();
     clearTimeout(this._debounceTimer);
+  }
+
+  _updateSidebarWidth() {
+    const sidebar = document.querySelector('ha-drawer > ha-sidebar');
+    if (sidebar) {
+      const width = sidebar.offsetWidth || 0;
+      if (width !== this._sidebarWidth) {
+        this._sidebarWidth = width;
+        this.requestUpdate();
+      }
+    }
+    // Wiederhole Prüfung bei jedem Render
+    requestAnimationFrame(() => this._updateSidebarWidth());
   }
 
   _debouncedResize() {
@@ -94,7 +110,7 @@ class HeaderAndBadgesStripCard extends LitElement {
   }
 
   updated(changedProps) {
-    if (changedProps.has('_config')) {
+    if (changedProps.has('_config') || changedProps.has('_sidebarWidth')) {
       this._cache.animation = null;
       requestAnimationFrame(() => {
         this._updateScroll();
@@ -160,6 +176,7 @@ class HeaderAndBadgesStripCard extends LitElement {
 
   shouldUpdate(changedProps) {
     if (changedProps.has('_config')) return true;
+    if (changedProps.has('_sidebarWidth')) return true;
     if (changedProps.has('hass')) {
       const old = changedProps.get('hass');
       if (!old) return true;
@@ -276,7 +293,7 @@ class HeaderAndBadgesStripCard extends LitElement {
       `animation: ticker ${this._evalTemplate(this._config.duration)}s linear infinite;` : '';
 
     return html`
-      <div class="header-badges-wrapper ${this._config.full_width ? 'full-width' : ''}">
+      <div class="header-badges-wrapper ${this._config.full_width ? 'full-width' : ''}" style="${this._config.full_width ? `--sidebar-width: ${this._sidebarWidth}px;` : ''}">
         <ha-card class="${this._config.card_width !== '100%' && !this._config.full_width ? 'custom-width' : ''}" style="
           --font: ${this._config.font_size}; --radius: ${this._config.border_radius}; --height: ${this._config.card_height};
           --content-color: ${this._config.content_color}; --label-color: ${this._config.label_color}; --chip-bg: ${this._config.chip_background};
@@ -342,8 +359,8 @@ class HeaderAndBadgesStripCard extends LitElement {
     .header-badges-wrapper { display: flex; justify-content: center; width: 100%; position: relative; }
     .header-badges-wrapper.full-width { 
       position: relative;
-      margin-left: calc(-50vw + 50% + 128px);
-      width: calc(100vw - 256px);
+      margin-left: calc(-50vw + 50% + var(--sidebar-width, 256px) / 2);
+      width: calc(100vw - var(--sidebar-width, 256px));
     }
     .header-badges-wrapper.full-width ha-card { width: 100% !important; max-width: 100% !important; }
     ha-card { overflow: hidden; border-radius: var(--radius, 0); height: var(--height, auto); width: 100%; display: flex; flex-direction: column; }
