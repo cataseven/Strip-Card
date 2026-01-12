@@ -1,6 +1,6 @@
 # 🎯 Header and Badges Strip Card for Home Assistant
 
-**Version 3.0.0** - Modified Strip Card with Badge Support  
+Modified Strip Card with Badge Support  
 **Modified by Spider19996**
 
 Scrolling header for sensors, entities and HA badges. Fully configurable via UI.
@@ -22,9 +22,11 @@ Scrolling header for sensors, entities and HA badges. Fully configurable via UI.
 
 ## 🚀 Usage
 
-1. New card → `custom:header-and-badges-strip-card`
-2. Open **Visual Editor** → Add entities/badges
-3. All options (duration, colors, height, etc.) directly in UI
+1. Add Title
+2. Go to YAML Mode and paste → `custom:header-and-badges-strip-card`
+3. Open **Visual Editor** → Add entities/badges
+4. Edit all options (duration, colors, height, etc.) directly in UI
+5. Save
 
 **Replaces static Markdown headers with dynamic tickers!**
 
@@ -56,9 +58,8 @@ Scrolling header for sensors, entities and HA badges. Fully configurable via UI.
 
 ## 📜 Credits
 
-Based on **[Strip Card](https://github.com/cataseven/Strip-Card)** by **cataseven**  
-**Modified by Spider19996** - Version 3.0.0 (Jan 2026)
-
-⭐ Give the project a star!
-
-**MIT License**
+Based on **[Strip Card](https://github.com/cataseven/Strip-Card)** by **cataseven**
+His Donation Link:
+<a href="https://www.buymeacoffee.com/cataseven" target="_blank">
+  <img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Buy Me a Coffee" style="height: 60px !important;width: 217px !important;" >
+</a>  
