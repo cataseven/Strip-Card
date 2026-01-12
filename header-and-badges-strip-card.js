@@ -3,7 +3,7 @@ const html = LitElement.prototype.html;
 const css = LitElement.prototype.css;
 
 console.info(
-  `%c HEADER AND BADGES STRIP CARD %c v3.1.1 `,
+  `%c HEADER AND BADGES STRIP CARD %c v3.1.2 `,
   "color: orange; font-weight: bold; background: black",
   "color: white; font-weight: bold; background: dimgray"
 );
@@ -17,7 +17,6 @@ window.customCards.push({
 });
 
 const DEBOUNCE_DELAY = 150;
-const EXTRA_COPIES = 2;
 const MIN_WIDTH = 400;
 const ANIMATION_ID = 'header-badges-animation';
 
@@ -282,9 +281,9 @@ class HeaderAndBadgesStripCard extends LitElement {
 
     let content = entities;
     if (this._config.continuous_scroll) {
-      const w = this.getBoundingClientRect().width || MIN_WIDTH;
-      const copies = Math.max(Math.ceil(w / ((entities.length * 100) || 100)) + EXTRA_COPIES, 2);
-      content = Array(copies).fill(entities).flat();
+      // Für nahtloses Scrollen: Content immer 2x duplizieren
+      // Animation scrollt -50%, also genau eine Kopie
+      content = [...entities, ...entities];
     }
 
     const wrapClass = [this._config.pause_on_hover && 'pausable', this._config.fading && this._config.continuous_scroll && 'fading',
