@@ -334,7 +334,6 @@ class HeaderAndBadgesStripCard extends LitElement {
       position: relative;
       margin-left: calc(-50vw + 50% + 128px);
       width: calc(100vw - 256px);
-      max-width: 100%;
     }
     .header-badges-wrapper.full-width ha-card { width: 100% !important; max-width: 100% !important; }
     ha-card { overflow: hidden; border-radius: var(--radius, 0); height: var(--height, auto); width: 100%; display: flex; flex-direction: column; }
