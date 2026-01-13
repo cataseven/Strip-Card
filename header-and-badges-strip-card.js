@@ -408,7 +408,8 @@ class HeaderAndBadgesStripCard extends LitElement {
     ha-card.custom-width { flex-shrink: 0; }
     .header { padding: 16px; font-size: 16px; font-weight: 400; color: var(--primary-text-color); display: flex; align-items: center; gap: 0; }
     .title { flex: 0 1 auto; font-size: var(--title-font, 16px); }
-    .title p { margin: 0; }
+    .title p { margin: 0 0 0.5em 0; line-height: 1.4; }
+    .title p:last-child { margin-bottom: 0; }
     .header .icon { flex-shrink: 0; color: var(--primary-text-color); transition: color .2s; }
     .header .icon:hover { color: var(--primary-color); }
     .header .icon.left { order: -1; margin-right: var(--title-spacing, 4px); }
