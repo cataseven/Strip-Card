@@ -3,7 +3,7 @@ const html = LitElement.prototype.html;
 const css = LitElement.prototype.css;
 
 console.info(
-  `%c HEADER AND BADGES STRIP CARD %c v3.2.1 `,
+  `%c HEADER AND BADGES STRIP CARD %c v3.2.2 `,
   "color: orange; font-weight: bold; background: black",
   "color: white; font-weight: bold; background: dimgray"
 );
@@ -56,7 +56,7 @@ class HeaderAndBadgesStripCard extends LitElement {
       title_icon_spacing: "4px", title_left_icon_size: "24px", title_right_icon_size: "24px", content_color: "var(--primary-text-color)",
       label_color: "var(--secondary-text-color)", chip_background: "var(--primary-background-color)", border_radius: "0px",
       card_height: "auto", card_width: "100%", show_icon: false, pause_on_hover: false,
-      full_width: false, fading: false, continuous_scroll: true,
+      full_width: false, fading: false, continuous_scroll: true, scroll_direction: "left",
       transparent: false, badge_style: false, title: "", title_left_icon: "", title_left_action: "", title_right_icon: "",
       title_right_action: "", ...config 
     };
@@ -134,8 +134,10 @@ class HeaderAndBadgesStripCard extends LitElement {
       const speed = parseFloat(this._evalTemplate(this._config.scroll_speed) || 50);
       const contentWidth = move.scrollWidth / 2;
       const duration = contentWidth / speed;
+      const direction = this._config.scroll_direction || 'left';
       
-      move.style.animation = `ticker ${duration}s linear infinite`;
+      const animName = direction === 'right' ? 'ticker-right' : 'ticker';
+      move.style.animation = `${animName} ${duration}s linear infinite`;
       wrap.style.justifyContent = 'flex-start';
     } else {
       this._setupReturnAnim(move, wrap);
@@ -397,6 +399,7 @@ class HeaderAndBadgesStripCard extends LitElement {
     .item .label { font-weight: 400; opacity: .8; margin-left: .5em; color: var(--label-color); }
     .error { color: var(--error-color); font-weight: bold; }
     @keyframes ticker { 0% { transform: translateX(0); } 100% { transform: translateX(-50%); } }
+    @keyframes ticker-right { 0% { transform: translateX(-50%); } 100% { transform: translateX(0); } }
   `;
 }
 
@@ -415,7 +418,7 @@ class HeaderAndBadgesStripCardEditor extends LitElement {
       title_icon_spacing: "4px", title_left_icon_size: "24px", title_right_icon_size: "24px", content_color: "var(--primary-text-color)",
       label_color: "var(--secondary-text-color)", chip_background: "var(--primary-background-color)", border_radius: "0px", card_height: "auto",
       card_width: "100%", show_icon: false, pause_on_hover: false, full_width: false, fading: false,
-      continuous_scroll: true, transparent: false, badge_style: false, title: "",
+      continuous_scroll: true, scroll_direction: "left", transparent: false, badge_style: false, title: "",
       title_left_icon: "", title_left_action: "", title_right_icon: "", title_right_action: "", ...config, entities: config.entities || [] };
   }
 
@@ -465,7 +468,11 @@ class HeaderAndBadgesStripCardEditor extends LitElement {
       scroll: [
         { type: 'number', key: 'scroll_speed', label: 'Scroll-Geschwindigkeit (px/s)', min: 10, max: 200, step: 5, helper: 'Empfohlen: 30-80 px/s' },
         { type: 'switch', key: 'continuous_scroll', label: 'Kontinuierlich' },
-        ...!this._config.continuous_scroll ? [{ type: 'number', key: 'pause_duration', label: 'Pause-Dauer (Sek)', min: 0, step: 0.5, helper: 'Pause am Ende' }] : [],
+        ...this._config.continuous_scroll ? [
+          { type: 'select', key: 'scroll_direction', label: 'Scroll-Richtung', options: [['left', 'Nach links'], ['right', 'Nach rechts']] }
+        ] : [
+          { type: 'number', key: 'pause_duration', label: 'Pause-Dauer (Sek)', min: 0, step: 0.5, helper: 'Pause am Ende' }
+        ],
         { type: 'switch', key: 'pause_on_hover', label: 'Bei Hover pausieren' }
       ],
       style: [
