@@ -3,7 +3,7 @@ const html = LitElement.prototype.html;
 const css = LitElement.prototype.css;
 
 console.info(
-  `%c HEADER AND BADGES STRIP CARD %c v4.0.0 `,
+  `%c HEADER AND BADGES STRIP CARD %c v4.0.1 `,
   "color: orange; font-weight: bold; background: black",
   "color: white; font-weight: bold; background: dimgray"
 );
@@ -16,8 +16,9 @@ window.customCards.push({
   preview: true,
 });
 
-const DEBOUNCE_DELAY = 150;
+const DEBOUNCE_DELAY = 300; // Optimized: Increased from 150ms
 const ANIMATION_ID = 'header-badges-animation';
+const TEMPLATE_CACHE_LIMIT = 50; // Optimized: Prevent memory leaks
 
 const loadHaComponents = () => {
   if (!customElements.get("ha-entity-picker")) {
@@ -50,6 +51,7 @@ class HeaderAndBadgesStripCard extends LitElement {
     this._cache = { animation: null, templates: new Map() };
     this._debounceTimer = null;
     this._sidebarWidth = 0;
+    this._sidebarResizeObserver = null; // Optimized: For sidebar monitoring
   }
 
   setConfig(config) {
@@ -107,16 +109,20 @@ class HeaderAndBadgesStripCard extends LitElement {
   connectedCallback() {
     super.connectedCallback();
     this._resizeObserver = new ResizeObserver(() => this._debouncedResize());
-    this._updateSidebarWidth();
+    
+    // Optimized: Setup sidebar monitoring with ResizeObserver instead of infinite loop
+    this._setupSidebarObserver();
   }
 
   disconnectedCallback() {
     super.disconnectedCallback();
     this._resizeObserver?.disconnect();
+    this._sidebarResizeObserver?.disconnect(); // Optimized: Cleanup
     clearTimeout(this._debounceTimer);
   }
 
-  _updateSidebarWidth() {
+  // Optimized: New method to setup sidebar observation
+  _setupSidebarObserver() {
     try {
       const homeAssistant = document.querySelector('home-assistant');
       const main = homeAssistant?.shadowRoot?.querySelector('home-assistant-main');
@@ -124,16 +130,36 @@ class HeaderAndBadgesStripCard extends LitElement {
       const sidebar = drawer?.querySelector('ha-sidebar');
       
       if (sidebar) {
-        const width = Math.ceil(sidebar.getBoundingClientRect().width) || 0;
-        if (width !== this._sidebarWidth) {
-          this._sidebarWidth = width;
-          this.requestUpdate();
-        }
+        // Initial width
+        this._updateSidebarWidth(sidebar);
+        
+        // Monitor sidebar for changes
+        this._sidebarResizeObserver = new ResizeObserver(() => {
+          this._updateSidebarWidth(sidebar);
+        });
+        this._sidebarResizeObserver.observe(sidebar);
+      } else {
+        // Retry if sidebar not found yet
+        setTimeout(() => this._setupSidebarObserver(), 1000);
       }
     } catch (e) {
       // Silently fail
     }
-    requestAnimationFrame(() => this._updateSidebarWidth());
+  }
+
+  // Optimized: Simplified, no more infinite loop
+  _updateSidebarWidth(sidebar) {
+    if (!sidebar) return;
+    
+    try {
+      const width = Math.ceil(sidebar.getBoundingClientRect().width) || 0;
+      if (width !== this._sidebarWidth) {
+        this._sidebarWidth = width;
+        this.requestUpdate();
+      }
+    } catch (e) {
+      // Silently fail
+    }
   }
 
   _debouncedResize() {
@@ -210,10 +236,11 @@ class HeaderAndBadgesStripCard extends LitElement {
         this.shadowRoot.appendChild(style);
       }
 
+      // Optimized: Use translate3d for GPU acceleration
       style.textContent = `@keyframes ${name} {
-        0%, 100% { transform: translateX(0); }
-        ${p1}%, ${p2}% { transform: translateX(-${dist}px); }
-        ${p3}% { transform: translateX(0); }
+        0%, 100% { transform: translate3d(0, 0, 0); }
+        ${p1}%, ${p2}% { transform: translate3d(-${dist}px, 0, 0); }
+        ${p3}% { transform: translate3d(0, 0, 0); }
       }`;
       move.style.animation = `${name} ${total}s linear infinite`;
     }
@@ -311,6 +338,13 @@ class HeaderAndBadgesStripCard extends LitElement {
       const states = (id) => this.hass.states[id]?.state || 'unknown';
       const state_attr = (id, a) => this.hass.states[id]?.attributes[a] ?? null;
       const result = new Function("states", "state_attr", `"use strict"; return (${expr.trim()});`)(states, state_attr);
+      
+      // Optimized: Limit cache size to prevent memory leaks
+      if (this._cache.templates.size >= TEMPLATE_CACHE_LIMIT) {
+        const firstKey = this._cache.templates.keys().next().value;
+        this._cache.templates.delete(firstKey);
+      }
+      
       this._cache.templates.set(key, result);
       return result;
     } catch (e) {
@@ -433,8 +467,8 @@ class HeaderAndBadgesStripCard extends LitElement {
     .item .content { font-weight: 500; color: var(--content-color); }
     .item .label { font-weight: 400; opacity: .8; margin-left: .5em; color: var(--label-color); }
     .error { color: var(--error-color); font-weight: bold; }
-    @keyframes ticker { 0% { transform: translateX(0); } 100% { transform: translateX(-50%); } }
-    @keyframes ticker-right { 0% { transform: translateX(-50%); } 100% { transform: translateX(0); } }
+    @keyframes ticker { 0% { transform: translate3d(0, 0, 0); } 100% { transform: translate3d(-50%, 0, 0); } }
+    @keyframes ticker-right { 0% { transform: translate3d(-50%, 0, 0); } 100% { transform: translate3d(0, 0, 0); } }
   `;
 }
 
