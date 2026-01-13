@@ -3,7 +3,7 @@ const html = LitElement.prototype.html;
 const css = LitElement.prototype.css;
 
 console.info(
-  `%c HEADER AND BADGES STRIP CARD %c v4.0.1 `,
+  `%c HEADER AND BADGES STRIP CARD %c v4.0.2 `,
   "color: orange; font-weight: bold; background: black",
   "color: white; font-weight: bold; background: dimgray"
 );
@@ -16,9 +16,9 @@ window.customCards.push({
   preview: true,
 });
 
-const DEBOUNCE_DELAY = 300; // Optimized: Increased from 150ms
+const DEBOUNCE_DELAY = 300;
 const ANIMATION_ID = 'header-badges-animation';
-const TEMPLATE_CACHE_LIMIT = 50; // Optimized: Prevent memory leaks
+const TEMPLATE_CACHE_LIMIT = 50;
 
 const loadHaComponents = () => {
   if (!customElements.get("ha-entity-picker")) {
@@ -51,23 +51,31 @@ class HeaderAndBadgesStripCard extends LitElement {
     this._cache = { animation: null, templates: new Map() };
     this._debounceTimer = null;
     this._sidebarWidth = 0;
-    this._sidebarResizeObserver = null; // Optimized: For sidebar monitoring
+    this._sidebarResizeObserver = null;
+  }
+
+  _normalizeEntity(e) {
+    return typeof e === 'string' ? { entity: e } : e;
+  }
+
+  _getEntityId(e) {
+    return typeof e === "string" ? e : e.entity;
   }
 
   setConfig(config) {
     if (!config.entities?.length) throw new Error("entities required");
     
-    // Parse nested structure
     const c = config;
     const title = typeof c.title === 'string' ? { text: c.title } : (c.title || {});
     const scroll = c.scroll || {};
     const appearance = c.appearance || {};
     const colors = c.colors || {};
 
+    this._parsedConfig = { title, scroll, appearance, colors };
+
     this._config = {
       entities: c.entities,
       type: c.type,
-      // Title
       title: title.text || '',
       title_font_size: title.font_size || '16px',
       title_alignment: title.alignment || 'left',
@@ -78,14 +86,12 @@ class HeaderAndBadgesStripCard extends LitElement {
       title_right_icon: title.right_icon?.icon || '',
       title_right_icon_size: title.right_icon?.size || '24px',
       title_right_action: title.right_icon?.action || '',
-      // Scroll
       scroll_speed: scroll.speed || 50,
       scroll_direction: scroll.direction || 'left',
       continuous_scroll: scroll.continuous !== undefined ? scroll.continuous : true,
       pause_on_hover: scroll.pause_on_hover || false,
       pause_duration: scroll.pause_duration || 2,
       fading: scroll.fading || false,
-      // Appearance
       separator: appearance.separator || '•',
       font_size: appearance.font_size || '14px',
       card_height: appearance.card_height || 'auto',
@@ -95,7 +101,6 @@ class HeaderAndBadgesStripCard extends LitElement {
       badge_style: appearance.badge_style || false,
       show_icon: appearance.show_icon || false,
       full_width: appearance.full_width || false,
-      // Colors
       content_color: colors.content || 'var(--primary-text-color)',
       label_color: colors.label || 'var(--secondary-text-color)',
       chip_background: colors.chip_background || 'var(--primary-background-color)'
@@ -109,19 +114,16 @@ class HeaderAndBadgesStripCard extends LitElement {
   connectedCallback() {
     super.connectedCallback();
     this._resizeObserver = new ResizeObserver(() => this._debouncedResize());
-    
-    // Optimized: Setup sidebar monitoring with ResizeObserver instead of infinite loop
     this._setupSidebarObserver();
   }
 
   disconnectedCallback() {
     super.disconnectedCallback();
     this._resizeObserver?.disconnect();
-    this._sidebarResizeObserver?.disconnect(); // Optimized: Cleanup
+    this._sidebarResizeObserver?.disconnect();
     clearTimeout(this._debounceTimer);
   }
 
-  // Optimized: New method to setup sidebar observation
   _setupSidebarObserver() {
     try {
       const homeAssistant = document.querySelector('home-assistant');
@@ -130,36 +132,26 @@ class HeaderAndBadgesStripCard extends LitElement {
       const sidebar = drawer?.querySelector('ha-sidebar');
       
       if (sidebar) {
-        // Initial width
         this._updateSidebarWidth(sidebar);
-        
-        // Monitor sidebar for changes
         this._sidebarResizeObserver = new ResizeObserver(() => {
           this._updateSidebarWidth(sidebar);
         });
         this._sidebarResizeObserver.observe(sidebar);
       } else {
-        // Retry if sidebar not found yet
         setTimeout(() => this._setupSidebarObserver(), 1000);
       }
-    } catch (e) {
-      // Silently fail
-    }
+    } catch (e) {}
   }
 
-  // Optimized: Simplified, no more infinite loop
   _updateSidebarWidth(sidebar) {
     if (!sidebar) return;
-    
     try {
       const width = Math.ceil(sidebar.getBoundingClientRect().width) || 0;
       if (width !== this._sidebarWidth) {
         this._sidebarWidth = width;
         this.requestUpdate();
       }
-    } catch (e) {
-      // Silently fail
-    }
+    } catch (e) {}
   }
 
   _debouncedResize() {
@@ -236,7 +228,6 @@ class HeaderAndBadgesStripCard extends LitElement {
         this.shadowRoot.appendChild(style);
       }
 
-      // Optimized: Use translate3d for GPU acceleration
       style.textContent = `@keyframes ${name} {
         0%, 100% { transform: translate3d(0, 0, 0); }
         ${p1}%, ${p2}% { transform: translate3d(-${dist}px, 0, 0); }
@@ -254,7 +245,7 @@ class HeaderAndBadgesStripCard extends LitElement {
       if (!old) return true;
       
       const changed = this._config.entities.some(e => {
-        const id = typeof e === "string" ? e : e.entity;
+        const id = this._getEntityId(e);
         if (!id) return false;
         const os = old.states[id], ns = this.hass.states[id];
         if (!os || !ns) return true;
@@ -304,7 +295,7 @@ class HeaderAndBadgesStripCard extends LitElement {
 
   _handleTap(e) {
     const tap = e.tap_action || { action: 'more-info' };
-    const id = typeof e === "string" ? e : e.entity;
+    const id = this._getEntityId(e);
     
     switch (tap.action) {
       case 'more-info':
@@ -339,7 +330,6 @@ class HeaderAndBadgesStripCard extends LitElement {
       const state_attr = (id, a) => this.hass.states[id]?.attributes[a] ?? null;
       const result = new Function("states", "state_attr", `"use strict"; return (${expr.trim()});`)(states, state_attr);
       
-      // Optimized: Limit cache size to prevent memory leaks
       if (this._cache.templates.size >= TEMPLATE_CACHE_LIMIT) {
         const firstKey = this._cache.templates.keys().next().value;
         this._cache.templates.delete(firstKey);
@@ -378,10 +368,10 @@ class HeaderAndBadgesStripCard extends LitElement {
         ">
           ${this._config.title ? html`
             <div class="header" style="justify-content: ${this._config.title_alignment === 'center' ? 'center' : this._config.title_alignment === 'right' ? 'flex-end' : 'flex-start'};">
-              ${this._config.title_left_icon ? html`<ha-icon class="icon left" .icon=${this._config.title_left_icon} @click=${() => this._handleIconClick(this._config.title_left_action)} 
+              ${this._config.title_left_icon ? html`<ha-icon class="icon left" .icon=${this._config.title_left_icon} @click=${this._handleIconClick.bind(this, this._config.title_left_action)} 
                 style="--mdc-icon-size: ${this._config.title_left_icon_size}; cursor: ${this._config.title_left_action ? 'pointer' : 'default'};"></ha-icon>` : ''}
               <ha-markdown class="title" .content="${this._config.title}" breaks></ha-markdown>
-              ${this._config.title_right_icon ? html`<ha-icon class="icon right" .icon=${this._config.title_right_icon} @click=${() => this._handleIconClick(this._config.title_right_action)}
+              ${this._config.title_right_icon ? html`<ha-icon class="icon right" .icon=${this._config.title_right_icon} @click=${this._handleIconClick.bind(this, this._config.title_right_action)}
                 style="--mdc-icon-size: ${this._config.title_right_icon_size}; cursor: ${this._config.title_right_action ? 'pointer' : 'default'};"></ha-icon>` : ''}
             </div>
           ` : ''}
@@ -394,7 +384,7 @@ class HeaderAndBadgesStripCard extends LitElement {
   }
 
   _renderEntity(e) {
-    const id = typeof e === "string" ? e : e.entity;
+    const id = this._getEntityId(e);
     const state = this.hass.states[id];
     if (!state) return html`<div class="item error">Unknown: ${id}</div>`;
 
@@ -409,7 +399,7 @@ class HeaderAndBadgesStripCard extends LitElement {
 
     if (this._config.badge_style) {
       return html`
-        <div class="chip ${label ? 'has-label' : ''}" @click=${() => this._handleTap(e)} title="${content}${label ? ' - ' + label : ''}">
+        <div class="chip ${label ? 'has-label' : ''}" @click=${this._handleTap.bind(this, e)} title="${content}${label ? ' - ' + label : ''}">
           ${icon ? html`<ha-icon class="chip-icon" .icon=${icon} style="${iColor ? `color: ${iColor};` : ''}"></ha-icon>` : ''}
           <div class="chip-text">
             ${label ? html`<span class="chip-label" style="color: ${lColor};">${label}</span>` : ''}
@@ -420,9 +410,8 @@ class HeaderAndBadgesStripCard extends LitElement {
     }
 
     return html`
-      <div class="item" @click=${() => this._handleTap(e)} title="${content}${label ? ' - ' + label : ''}">
-        ${icon ? html`<ha-icon class="icon" .icon=${icon} style="${iColor ? `color: ${iColor};` : ''}"></ha-icon>` : ''}
-        <span class="content" style="color: ${cColor};">${content}</span>
+      <div class="item" @click=${this._handleTap.bind(this, e)} title="${content}${label ? ' - ' + label : ''}">
+        ${icon ? html`<ha-icon class="icon" .icon=${icon} style="${iColor ? `color: ${iColor};` : ''}"></ha-icon>` : ''}        <span class="content" style="color: ${cColor};">${content}</span>
         ${label ? html`<span class="label" style="color: ${lColor};">${label}</span>` : ''}
         <span class="sep">${this._config.separator}</span>
       </div>
@@ -440,7 +429,10 @@ class HeaderAndBadgesStripCard extends LitElement {
     .header-badges-wrapper.full-width ha-card { width: 100% !important; max-width: 100% !important; }
     ha-card { overflow: hidden; border-radius: var(--radius, 0); height: var(--height, auto); width: 100%; display: flex; flex-direction: column; }
     ha-card.custom-width { flex-shrink: 0; }
-    .header { padding: 16px; font-size: 16px; font-weight: 400; color: var(--primary-text-color); display: flex; align-items: center; gap: 0; }
+    .pad-md { padding: 12px 16px; }
+    .pad-sm { padding: 12px; }
+    .header { font-size: 16px; font-weight: 400; color: var(--primary-text-color); display: flex; align-items: center; gap: 0; }
+    .header { padding: 16px; }
     .title { flex: 0 1 auto; font-size: var(--title-font, 16px); }
     .title p { margin: 0 0 0.5em 0; line-height: 1.4; }
     .title p:last-child { margin-bottom: 0; }
@@ -597,7 +589,7 @@ class HeaderAndBadgesStripCardEditor extends LitElement {
       <div class="panel">
         ${!entities.length ? html`<p class="empty">Keine Entitäten</p>` : ''}
         ${entities.map((e, i) => this._renderEntity(e, i))}
-        <mwc-button raised @click=${() => this._addEntity()}>Entität hinzufügen</mwc-button>
+        <mwc-button raised @click=${this._addEntity}>Entität hinzufügen</mwc-button>
       </div>
     `;
   }
@@ -786,7 +778,8 @@ class HeaderAndBadgesStripCardEditor extends LitElement {
   static styles = css`
     .config { display: flex; flex-direction: column; }
     .tabs { display: flex; border-bottom: 2px solid var(--divider-color); background: var(--card-background-color); }
-    .tab { padding: 12px 16px; background: none; border: none; border-bottom: 2px solid transparent; margin-bottom: -2px; cursor: pointer; font-size: 14px; color: var(--primary-text-color); transition: all .2s; white-space: nowrap; flex-shrink: 0; }
+    .tab { background: none; border: none; border-bottom: 2px solid transparent; margin-bottom: -2px; cursor: pointer; font-size: 14px; color: var(--primary-text-color); transition: all .2s; white-space: nowrap; flex-shrink: 0; }
+    .tab { padding: 12px 16px; }
     .tab:hover { background: var(--secondary-background-color); }
     .tab.active { border-bottom-color: var(--primary-color); color: var(--primary-color); font-weight: 500; }
     .content { flex: 1; overflow-y: auto; }
@@ -801,15 +794,18 @@ class HeaderAndBadgesStripCardEditor extends LitElement {
     ha-formfield { display: block; margin: 12px 0; padding: 8px 0; }
     .empty { text-align: center; padding: 24px; color: var(--secondary-text-color); }
     .entity { border: 1px solid var(--divider-color); border-radius: 8px; margin: 12px 0; overflow: hidden; background: var(--card-background-color); }
-    .entity-head { display: flex; justify-content: space-between; align-items: center; padding: 12px 16px; background: var(--secondary-background-color); user-select: none; font-weight: 500; }
+    .entity-head { display: flex; justify-content: space-between; align-items: center; background: var(--secondary-background-color); user-select: none; font-weight: 500; }
+    .entity-head { padding: 12px 16px; }
     .entity-head span { flex: 1; cursor: pointer; }
     .entity-head:hover span { color: var(--primary-color); }
     .controls { display: flex; gap: 4px; }
     .entity-edit { padding: 16px; border-top: 1px solid var(--divider-color); }
-    .preview { background: var(--secondary-background-color); padding: 8px 12px; border-radius: 4px; margin-bottom: 12px; display: flex; gap: 8px; align-items: center; font-size: 14px; }
+    .preview { background: var(--secondary-background-color); border-radius: 4px; display: flex; gap: 8px; align-items: center; font-size: 14px; }
+    .preview { padding: 8px 12px; margin-bottom: 12px; }
     .preview span { color: var(--secondary-text-color); }
     .preview b { color: var(--primary-color); }
-    .visibility { background: var(--secondary-background-color); padding: 12px; border-radius: 8px; margin-bottom: 12px; }
+    .visibility { background: var(--secondary-background-color); border-radius: 8px; }
+    .visibility { padding: 12px; margin-bottom: 12px; }
     .vis-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; font-weight: 500; }
     mwc-button { margin-top: 16px; width: 100%; }
   `;
