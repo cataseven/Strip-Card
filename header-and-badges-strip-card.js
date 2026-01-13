@@ -51,7 +51,7 @@ class HeaderAndBadgesStripCard extends LitElement {
   setConfig(config) {
     if (!config.entities?.length) throw new Error("entities required");
     
-    let finalConfig = { 
+    this._config = { 
       scroll_speed: 50, pause_duration: 2, separator: "•", font_size: "14px", title_font_size: "16px", title_alignment: "left",
       title_icon_spacing: "4px", title_left_icon_size: "24px", title_right_icon_size: "24px", content_color: "var(--primary-text-color)",
       label_color: "var(--secondary-text-color)", chip_background: "var(--primary-background-color)", border_radius: "0px",
@@ -61,13 +61,6 @@ class HeaderAndBadgesStripCard extends LitElement {
       title_right_action: "", ...config 
     };
     
-    // Migration: duration -> scroll_speed
-    if (config.duration !== undefined && config.scroll_speed === undefined) {
-      finalConfig.scroll_speed = 50;
-      console.info("Header-and-Badges-Strip-Card: Migrated from duration to scroll_speed");
-    }
-    
-    this._config = finalConfig;
     this._cache = { animation: null, templates: new Map() };
   }
 
