@@ -3,7 +3,7 @@ const html = LitElement.prototype.html;
 const css = LitElement.prototype.css;
 
 console.info(
-  `%c HEADER AND BADGES STRIP CARD %c v3.1.2 `,
+  `%c HEADER AND BADGES STRIP CARD %c v3.2.0 `,
   "color: orange; font-weight: bold; background: black",
   "color: white; font-weight: bold; background: dimgray"
 );
@@ -20,7 +20,6 @@ const DEBOUNCE_DELAY = 150;
 const MIN_WIDTH = 400;
 const ANIMATION_ID = 'header-badges-animation';
 
-// Mushroom-Style: Dynamisches Laden von HA-Components
 const loadHaComponents = () => {
   if (!customElements.get("ha-entity-picker")) {
     customElements.get("hui-entities-card")?.getConfigElement();
@@ -35,7 +34,7 @@ class HeaderAndBadgesStripCard extends LitElement {
   };
 
   static getStubConfig() {
-    return { type: "custom:header-and-badges-strip-card", entities: [{ entity: "sun.sun" }, { entity: "zone.home" }], duration: 20, separator: "•" };
+    return { type: "custom:header-and-badges-strip-card", entities: [{ entity: "sun.sun" }, { entity: "zone.home" }], scroll_speed: 50, separator: "•" };
   }
 
   static getConfigElement() {
@@ -51,8 +50,9 @@ class HeaderAndBadgesStripCard extends LitElement {
 
   setConfig(config) {
     if (!config.entities?.length) throw new Error("entities required");
+    
     this._config = { 
-      duration: 20, pause_duration: 2, separator: "•", font_size: "14px", title_font_size: "16px", title_alignment: "left",
+      scroll_speed: 50, pause_duration: 2, separator: "•", font_size: "14px", title_font_size: "16px", title_alignment: "left",
       title_icon_spacing: "4px", title_left_icon_size: "24px", title_right_icon_size: "24px", content_color: "var(--primary-text-color)",
       label_color: "var(--secondary-text-color)", chip_background: "var(--primary-background-color)", border_radius: "0px",
       card_height: "auto", card_width: "100%", show_icon: false, pause_on_hover: false,
@@ -60,6 +60,7 @@ class HeaderAndBadgesStripCard extends LitElement {
       transparent: false, badge_style: false, title: "", title_left_icon: "", title_left_action: "", title_right_icon: "",
       title_right_action: "", ...config 
     };
+    
     this._cache = { animation: null, templates: new Map() };
   }
 
@@ -86,7 +87,6 @@ class HeaderAndBadgesStripCard extends LitElement {
         this.requestUpdate();
       }
     }
-    // Wiederhole Prüfung bei jedem Render
     requestAnimationFrame(() => this._updateSidebarWidth());
   }
 
@@ -123,8 +123,11 @@ class HeaderAndBadgesStripCard extends LitElement {
     if (!move || !wrap) return;
 
     if (this._config.continuous_scroll) {
-      const dur = this._evalTemplate(this._config.duration);
-      move.style.animation = `ticker ${dur}s linear infinite`;
+      const speed = parseFloat(this._evalTemplate(this._config.scroll_speed) || 50);
+      const contentWidth = move.scrollWidth / 2;
+      const duration = contentWidth / speed;
+      
+      move.style.animation = `ticker ${duration}s linear infinite`;
       wrap.style.justifyContent = 'flex-start';
     } else {
       this._setupReturnAnim(move, wrap);
@@ -133,22 +136,21 @@ class HeaderAndBadgesStripCard extends LitElement {
 
   _setupReturnAnim(move, wrap) {
     const dist = Math.max(0, move.scrollWidth - wrap.offsetWidth);
-    const dur = parseFloat(this._evalTemplate(this._config.duration));
+    const speed = parseFloat(this._evalTemplate(this._config.scroll_speed) || 50);
     const pause = parseFloat(this._evalTemplate(this._config.pause_duration));
-    const cacheKey = `${dist}-${dur}-${pause}`;
+    
+    const dur = dist / speed;
+    const cacheKey = `${dist}-${speed}-${pause}`;
     
     if (this._cache.animation === cacheKey) return;
     this._cache.animation = cacheKey;
 
-    // Ausrichtung basierend auf title_alignment, aber nur wenn Inhalt auf Bildschirm passt
     if (dist === 0) {
-      // Content passt auf Bildschirm - Ausrichtung wie title_alignment
       const align = this._config.title_alignment === 'center' ? 'center' : 
                     this._config.title_alignment === 'right' ? 'flex-end' : 'flex-start';
       wrap.style.justifyContent = align;
       move.style.animation = 'none';
     } else {
-      // Content muss scrollen - linksbündig
       wrap.style.justifyContent = 'flex-start';
       
       const total = dur + pause + dur + pause;
@@ -281,15 +283,11 @@ class HeaderAndBadgesStripCard extends LitElement {
 
     let content = entities;
     if (this._config.continuous_scroll) {
-      // Für nahtloses Scrollen: Content immer 2x duplizieren
-      // Animation scrollt -50%, also genau eine Kopie
       content = [...entities, ...entities];
     }
 
     const wrapClass = [this._config.pause_on_hover && 'pausable', this._config.fading && this._config.continuous_scroll && 'fading',
       this._config.badge_style && 'chips'].filter(Boolean).join(' ');
-    const animStyle = this._config.continuous_scroll ? 
-      `animation: ticker ${this._evalTemplate(this._config.duration)}s linear infinite;` : '';
 
     return html`
       <div class="header-badges-wrapper ${this._config.full_width ? 'full-width' : ''}" style="${this._config.full_width ? `--sidebar-width: ${this._sidebarWidth}px;` : ''}">
@@ -310,7 +308,7 @@ class HeaderAndBadgesStripCard extends LitElement {
             </div>
           ` : ''}
           <div class="ticker-wrap ${wrapClass}">
-            <div class="ticker-move" style="${animStyle}">${content}</div>
+            <div class="ticker-move">${content}</div>
           </div>
         </ha-card>
       </div>
@@ -405,7 +403,7 @@ class HeaderAndBadgesStripCardEditor extends LitElement {
   }
 
   setConfig(config) {
-    this._config = { duration: 20, pause_duration: 2, separator: "•", font_size: "14px", title_font_size: "16px", title_alignment: "left",
+    this._config = { scroll_speed: 50, pause_duration: 2, separator: "•", font_size: "14px", title_font_size: "16px", title_alignment: "left",
       title_icon_spacing: "4px", title_left_icon_size: "24px", title_right_icon_size: "24px", content_color: "var(--primary-text-color)",
       label_color: "var(--secondary-text-color)", chip_background: "var(--primary-background-color)", border_radius: "0px", card_height: "auto",
       card_width: "100%", show_icon: false, pause_on_hover: false, full_width: false, fading: false,
@@ -457,7 +455,7 @@ class HeaderAndBadgesStripCardEditor extends LitElement {
         ] : []
       ],
       scroll: [
-        { type: 'number', key: 'duration', label: 'Scroll-Dauer (Sek)', min: 1 },
+        { type: 'number', key: 'scroll_speed', label: 'Scroll-Geschwindigkeit (px/s)', min: 10, max: 200, step: 5, helper: 'Empfohlen: 30-80 px/s' },
         { type: 'switch', key: 'continuous_scroll', label: 'Kontinuierlich' },
         ...!this._config.continuous_scroll ? [{ type: 'number', key: 'pause_duration', label: 'Pause-Dauer (Sek)', min: 0, step: 0.5, helper: 'Pause am Ende' }] : [],
         { type: 'switch', key: 'pause_on_hover', label: 'Bei Hover pausieren' }
@@ -498,7 +496,7 @@ class HeaderAndBadgesStripCardEditor extends LitElement {
       </div>
     `;
     if (f.type === 'text' || f.type === 'number') return html`
-      <ha-textfield label="${f.label}" .value="${this._config[f.key]}" type="${f.type}" min="${f.min}" step="${f.step}" 
+      <ha-textfield label="${f.label}" .value="${this._config[f.key]}" type="${f.type}" min="${f.min}" max="${f.max}" step="${f.step}" 
         helper-text="${f.helper || ''}" @input=${e => this._change(f.key, e.target.value)}></ha-textfield>
     `;
     if (f.type === 'switch') return html`<ha-formfield label="${f.label}"><ha-switch .checked="${this._config[f.key]}" @change=${e => this._change(f.key, e.target.checked)}></ha-switch></ha-formfield>`;
