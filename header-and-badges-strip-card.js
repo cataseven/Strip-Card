@@ -3,7 +3,7 @@ const html = LitElement.prototype.html;
 const css = LitElement.prototype.css;
 
 console.info(
-  `%c HEADER AND BADGES STRIP CARD %c v3.2.0 `,
+  `%c HEADER AND BADGES STRIP CARD %c v3.2.1 `,
   "color: orange; font-weight: bold; background: black",
   "color: white; font-weight: bold; background: dimgray"
 );
@@ -79,13 +79,21 @@ class HeaderAndBadgesStripCard extends LitElement {
   }
 
   _updateSidebarWidth() {
-    const sidebar = document.querySelector('ha-drawer > ha-sidebar');
-    if (sidebar) {
-      const width = sidebar.offsetWidth || 0;
-      if (width !== this._sidebarWidth) {
-        this._sidebarWidth = width;
-        this.requestUpdate();
+    try {
+      const homeAssistant = document.querySelector('home-assistant');
+      const main = homeAssistant?.shadowRoot?.querySelector('home-assistant-main');
+      const drawer = main?.shadowRoot?.querySelector('ha-drawer');
+      const sidebar = drawer?.querySelector('ha-sidebar');
+      
+      if (sidebar) {
+        const width = Math.ceil(sidebar.getBoundingClientRect().width) || 0;
+        if (width !== this._sidebarWidth) {
+          this._sidebarWidth = width;
+          this.requestUpdate();
+        }
       }
+    } catch (e) {
+      // Silently fail - sidebar detection not critical
     }
     requestAnimationFrame(() => this._updateSidebarWidth());
   }
