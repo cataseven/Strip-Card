@@ -25,165 +25,6 @@ const loadHaComponents = () => {
   }
 };
 
-// Config-Parser für neue Struktur
-function parseConfig(config) {
-  const parsed = {
-    entities: config.entities || [],
-    type: config.type
-  };
-
-  // Title
-  if (config.title) {
-    if (typeof config.title === 'string') {
-      parsed.title = config.title;
-      parsed.title_font_size = '16px';
-      parsed.title_alignment = 'left';
-      parsed.title_icon_spacing = '4px';
-      parsed.title_left_icon = '';
-      parsed.title_left_icon_size = '24px';
-      parsed.title_left_action = '';
-      parsed.title_right_icon = '';
-      parsed.title_right_icon_size = '24px';
-      parsed.title_right_action = '';
-    } else {
-      parsed.title = config.title.text || '';
-      parsed.title_font_size = config.title.font_size || '16px';
-      parsed.title_alignment = config.title.alignment || 'left';
-      
-      if (config.title.left_icon) {
-        parsed.title_left_icon = config.title.left_icon.icon || '';
-        parsed.title_left_icon_size = config.title.left_icon.size || '24px';
-        parsed.title_left_action = config.title.left_icon.action || '';
-        parsed.title_icon_spacing = config.title.left_icon.spacing || '4px';
-      } else {
-        parsed.title_left_icon = '';
-        parsed.title_left_icon_size = '24px';
-        parsed.title_left_action = '';
-        parsed.title_icon_spacing = '4px';
-      }
-      
-      if (config.title.right_icon) {
-        parsed.title_right_icon = config.title.right_icon.icon || '';
-        parsed.title_right_icon_size = config.title.right_icon.size || '24px';
-        parsed.title_right_action = config.title.right_icon.action || '';
-        if (config.title.right_icon.spacing) {
-          parsed.title_icon_spacing = config.title.right_icon.spacing;
-        }
-      } else {
-        parsed.title_right_icon = '';
-        parsed.title_right_icon_size = '24px';
-        parsed.title_right_action = '';
-      }
-    }
-  } else {
-    parsed.title = '';
-    parsed.title_font_size = '16px';
-    parsed.title_alignment = 'left';
-    parsed.title_icon_spacing = '4px';
-    parsed.title_left_icon = '';
-    parsed.title_left_icon_size = '24px';
-    parsed.title_left_action = '';
-    parsed.title_right_icon = '';
-    parsed.title_right_icon_size = '24px';
-    parsed.title_right_action = '';
-  }
-
-  // Scroll
-  const scroll = config.scroll || {};
-  parsed.scroll_speed = scroll.speed || 50;
-  parsed.scroll_direction = scroll.direction || 'left';
-  parsed.continuous_scroll = scroll.continuous !== undefined ? scroll.continuous : true;
-  parsed.pause_on_hover = scroll.pause_on_hover || false;
-  parsed.pause_duration = scroll.pause_duration || 2;
-  parsed.fading = scroll.fading || false;
-
-  // Appearance
-  const appearance = config.appearance || {};
-  parsed.separator = appearance.separator || '•';
-  parsed.font_size = appearance.font_size || '14px';
-  parsed.card_height = appearance.card_height || 'auto';
-  parsed.card_width = appearance.card_width || '100%';
-  parsed.border_radius = appearance.border_radius || '0px';
-  parsed.transparent = appearance.transparent || false;
-  parsed.badge_style = appearance.badge_style || false;
-  parsed.show_icon = appearance.show_icon || false;
-  parsed.full_width = appearance.full_width || false;
-
-  // Colors
-  const colors = config.colors || {};
-  parsed.content_color = colors.content || 'var(--primary-text-color)';
-  parsed.label_color = colors.label || 'var(--secondary-text-color)';
-  parsed.chip_background = colors.chip_background || 'var(--primary-background-color)';
-
-  return parsed;
-}
-
-// Config in neue verschachtelte Struktur umwandeln
-function buildNestedConfig(flatConfig) {
-  const config = {
-    type: flatConfig.type,
-    entities: flatConfig.entities || []
-  };
-
-  // Title-Gruppe
-  if (flatConfig.title) {
-    config.title = {
-      text: flatConfig.title,
-      font_size: flatConfig.title_font_size,
-      alignment: flatConfig.title_alignment
-    };
-
-    if (flatConfig.title_left_icon) {
-      config.title.left_icon = {
-        icon: flatConfig.title_left_icon,
-        size: flatConfig.title_left_icon_size,
-        spacing: flatConfig.title_icon_spacing,
-        action: flatConfig.title_left_action
-      };
-    }
-
-    if (flatConfig.title_right_icon) {
-      config.title.right_icon = {
-        icon: flatConfig.title_right_icon,
-        size: flatConfig.title_right_icon_size,
-        action: flatConfig.title_right_action
-      };
-    }
-  }
-
-  // Scroll-Gruppe
-  config.scroll = {
-    speed: flatConfig.scroll_speed,
-    direction: flatConfig.scroll_direction,
-    continuous: flatConfig.continuous_scroll,
-    pause_on_hover: flatConfig.pause_on_hover,
-    pause_duration: flatConfig.pause_duration,
-    fading: flatConfig.fading
-  };
-
-  // Appearance-Gruppe
-  config.appearance = {
-    separator: flatConfig.separator,
-    font_size: flatConfig.font_size,
-    card_height: flatConfig.card_height,
-    card_width: flatConfig.card_width,
-    border_radius: flatConfig.border_radius,
-    transparent: flatConfig.transparent,
-    badge_style: flatConfig.badge_style,
-    show_icon: flatConfig.show_icon,
-    full_width: flatConfig.full_width
-  };
-
-  // Colors-Gruppe
-  config.colors = {
-    content: flatConfig.content_color,
-    label: flatConfig.label_color,
-    chip_background: flatConfig.chip_background
-  };
-
-  return config;
-}
-
 class HeaderAndBadgesStripCard extends LitElement {
   static properties = {
     hass: { type: Object },
@@ -213,7 +54,51 @@ class HeaderAndBadgesStripCard extends LitElement {
 
   setConfig(config) {
     if (!config.entities?.length) throw new Error("entities required");
-    this._config = parseConfig(config);
+    
+    // Parse nested structure
+    const c = config;
+    const title = typeof c.title === 'string' ? { text: c.title } : (c.title || {});
+    const scroll = c.scroll || {};
+    const appearance = c.appearance || {};
+    const colors = c.colors || {};
+
+    this._config = {
+      entities: c.entities,
+      type: c.type,
+      // Title
+      title: title.text || '',
+      title_font_size: title.font_size || '16px',
+      title_alignment: title.alignment || 'left',
+      title_icon_spacing: title.left_icon?.spacing || title.right_icon?.spacing || '4px',
+      title_left_icon: title.left_icon?.icon || '',
+      title_left_icon_size: title.left_icon?.size || '24px',
+      title_left_action: title.left_icon?.action || '',
+      title_right_icon: title.right_icon?.icon || '',
+      title_right_icon_size: title.right_icon?.size || '24px',
+      title_right_action: title.right_icon?.action || '',
+      // Scroll
+      scroll_speed: scroll.speed || 50,
+      scroll_direction: scroll.direction || 'left',
+      continuous_scroll: scroll.continuous !== undefined ? scroll.continuous : true,
+      pause_on_hover: scroll.pause_on_hover || false,
+      pause_duration: scroll.pause_duration || 2,
+      fading: scroll.fading || false,
+      // Appearance
+      separator: appearance.separator || '•',
+      font_size: appearance.font_size || '14px',
+      card_height: appearance.card_height || 'auto',
+      card_width: appearance.card_width || '100%',
+      border_radius: appearance.border_radius || '0px',
+      transparent: appearance.transparent || false,
+      badge_style: appearance.badge_style || false,
+      show_icon: appearance.show_icon || false,
+      full_width: appearance.full_width || false,
+      // Colors
+      content_color: colors.content || 'var(--primary-text-color)',
+      label_color: colors.label || 'var(--secondary-text-color)',
+      chip_background: colors.chip_background || 'var(--primary-background-color)'
+    };
+    
     this._cache = { animation: null, templates: new Map() };
   }
 
@@ -563,18 +448,23 @@ class HeaderAndBadgesStripCardEditor extends LitElement {
   }
 
   setConfig(config) {
-    this._config = parseConfig(config);
+    this._config = config;
   }
 
   render() {
     if (!this.hass || !this._config) return html``;
+
+    const title = typeof this._config.title === 'string' ? { text: this._config.title } : (this._config.title || {});
+    const scroll = this._config.scroll || {};
+    const appearance = this._config.appearance || {};
+    const colors = this._config.colors || {};
 
     const tabs = [
       { id: 'general', name: 'Titel' },
       { id: 'scroll', name: 'Scroll' },
       { id: 'style', name: 'Stil' },
       { id: 'colors', name: 'Farben' },
-      { id: 'entities', name: `Entitäten (${this._config.entities.length})` }
+      { id: 'entities', name: `Entitäten (${(this._config.entities || []).length})` }
     ];
 
     return html`
@@ -582,62 +472,62 @@ class HeaderAndBadgesStripCardEditor extends LitElement {
         <div class="tabs">
           ${tabs.map(t => html`<button class="tab ${this._tab === t.id ? 'active' : ''}" @click=${() => { this._tab = t.id; this.requestUpdate(); }}>${t.name}</button>`)}
         </div>
-        <div class="content">${this._renderTab()}</div>
+        <div class="content">${this._renderTab(title, scroll, appearance, colors)}</div>
       </div>
     `;
   }
 
-  _renderTab() {
+  _renderTab(title, scroll, appearance, colors) {
     const fields = {
       general: [
-        { type: 'textarea', key: 'title', label: 'Titel (Markdown)', helper: '**Fett**, *Kursiv*, [Link](url)', rows: 4 },
-        ...this._config.title ? [
-          { type: 'text', key: 'title_font_size', label: 'Schriftgröße', helper: '16px, 1.5em' },
-          { type: 'select', key: 'title_alignment', label: 'Ausrichtung', options: [['left', 'Links'], ['center', 'Zentriert'], ['right', 'Rechts']] },
-          ...(this._config.title_left_icon || this._config.title_right_icon) ? [{ type: 'text', key: 'title_icon_spacing', label: 'Icon-Abstand', helper: '4px' }] : [],
+        { type: 'textarea', key: 'title.text', label: 'Titel (Markdown)', helper: '**Fett**, *Kursiv*, [Link](url)', rows: 4, value: title.text },
+        ...title.text ? [
+          { type: 'text', key: 'title.font_size', label: 'Schriftgröße', helper: '16px, 1.5em', value: title.font_size },
+          { type: 'select', key: 'title.alignment', label: 'Ausrichtung', options: [['left', 'Links'], ['center', 'Zentriert'], ['right', 'Rechts']], value: title.alignment },
+          ...(title.left_icon?.icon || title.right_icon?.icon) ? [{ type: 'text', key: 'title.left_icon.spacing', label: 'Icon-Abstand', helper: '4px', value: title.left_icon?.spacing || title.right_icon?.spacing }] : [],
           { type: 'divider', label: 'Linkes Icon' },
-          { type: 'text', key: 'title_left_icon', label: 'Icon links' },
-          ...this._config.title_left_icon ? [
-            { type: 'text', key: 'title_left_icon_size', label: 'Icon-Größe', helper: '24px' },
-            { type: 'text', key: 'title_left_action', label: 'Aktion', helper: 'Entity-ID oder /pfad' }
+          { type: 'text', key: 'title.left_icon.icon', label: 'Icon links', value: title.left_icon?.icon },
+          ...title.left_icon?.icon ? [
+            { type: 'text', key: 'title.left_icon.size', label: 'Icon-Größe', helper: '24px', value: title.left_icon?.size },
+            { type: 'text', key: 'title.left_icon.action', label: 'Aktion', helper: 'Entity-ID oder /pfad', value: title.left_icon?.action }
           ] : [],
           { type: 'divider', label: 'Rechtes Icon' },
-          { type: 'text', key: 'title_right_icon', label: 'Icon rechts' },
-          ...this._config.title_right_icon ? [
-            { type: 'text', key: 'title_right_icon_size', label: 'Icon-Größe', helper: '24px' },
-            { type: 'text', key: 'title_right_action', label: 'Aktion', helper: 'Entity-ID oder /pfad' }
+          { type: 'text', key: 'title.right_icon.icon', label: 'Icon rechts', value: title.right_icon?.icon },
+          ...title.right_icon?.icon ? [
+            { type: 'text', key: 'title.right_icon.size', label: 'Icon-Größe', helper: '24px', value: title.right_icon?.size },
+            { type: 'text', key: 'title.right_icon.action', label: 'Aktion', helper: 'Entity-ID oder /pfad', value: title.right_icon?.action }
           ] : []
         ] : []
       ],
       scroll: [
-        { type: 'number', key: 'scroll_speed', label: 'Scroll-Geschwindigkeit (px/s)', min: 10, max: 200, step: 5, helper: 'Empfohlen: 30-80 px/s' },
-        { type: 'switch', key: 'continuous_scroll', label: 'Kontinuierlich' },
-        ...this._config.continuous_scroll ? [
-          { type: 'select', key: 'scroll_direction', label: 'Scroll-Richtung', options: [['left', 'Nach links'], ['right', 'Nach rechts']] }
+        { type: 'number', key: 'scroll.speed', label: 'Scroll-Geschwindigkeit (px/s)', min: 10, max: 200, step: 5, helper: 'Empfohlen: 30-80 px/s', value: scroll.speed },
+        { type: 'switch', key: 'scroll.continuous', label: 'Kontinuierlich', value: scroll.continuous },
+        ...(scroll.continuous !== false) ? [
+          { type: 'select', key: 'scroll.direction', label: 'Scroll-Richtung', options: [['left', 'Nach links'], ['right', 'Nach rechts']], value: scroll.direction }
         ] : [
-          { type: 'number', key: 'pause_duration', label: 'Pause-Dauer (Sek)', min: 0, step: 0.5, helper: 'Pause am Ende' }
+          { type: 'number', key: 'scroll.pause_duration', label: 'Pause-Dauer (Sek)', min: 0, step: 0.5, helper: 'Pause am Ende', value: scroll.pause_duration }
         ],
-        { type: 'switch', key: 'pause_on_hover', label: 'Bei Hover pausieren' }
+        { type: 'switch', key: 'scroll.pause_on_hover', label: 'Bei Hover pausieren', value: scroll.pause_on_hover },
+        { type: 'switch', key: 'scroll.fading', label: 'Fading', value: scroll.fading }
       ],
       style: [
-        { type: 'switch', key: 'badge_style', label: 'Chips-Stil' },
-        { type: 'switch', key: 'show_icon', label: 'Icons anzeigen' },
-        ...this._config.continuous_scroll ? [{ type: 'switch', key: 'fading', label: 'Fading' }] : [],
-        { type: 'switch', key: 'transparent', label: 'Transparent' },
-        ...!this._config.badge_style ? [
-          { type: 'text', key: 'separator', label: 'Trennzeichen' },
-          { type: 'text', key: 'font_size', label: 'Schriftgröße' }
+        { type: 'switch', key: 'appearance.badge_style', label: 'Chips-Stil', value: appearance.badge_style },
+        { type: 'switch', key: 'appearance.show_icon', label: 'Icons anzeigen', value: appearance.show_icon },
+        { type: 'switch', key: 'appearance.transparent', label: 'Transparent', value: appearance.transparent },
+        ...!appearance.badge_style ? [
+          { type: 'text', key: 'appearance.separator', label: 'Trennzeichen', value: appearance.separator },
+          { type: 'text', key: 'appearance.font_size', label: 'Schriftgröße', value: appearance.font_size }
         ] : [],
-        ...!this._config.transparent ? [{ type: 'text', key: 'border_radius', label: 'Rahmenradius' }] : [],
-        { type: 'text', key: 'card_height', label: 'Kartenhöhe' },
+        ...!appearance.transparent ? [{ type: 'text', key: 'appearance.border_radius', label: 'Rahmenradius', value: appearance.border_radius }] : [],
+        { type: 'text', key: 'appearance.card_height', label: 'Kartenhöhe', value: appearance.card_height },
         { type: 'divider', label: 'Breite' },
-        { type: 'switch', key: 'full_width', label: 'Volle Breite' },
-        ...!this._config.full_width ? [{ type: 'text', key: 'card_width', label: 'Kartenbreite', helper: '100%, 200%, 500px' }] : []
+        { type: 'switch', key: 'appearance.full_width', label: 'Volle Breite', value: appearance.full_width },
+        ...!appearance.full_width ? [{ type: 'text', key: 'appearance.card_width', label: 'Kartenbreite', helper: '100%, 200%, 500px', value: appearance.card_width }] : []
       ],
       colors: [
-        { type: 'text', key: 'content_color', label: 'Content-Farbe', helper: 'Haupttext' },
-        { type: 'text', key: 'label_color', label: 'Label-Farbe', helper: 'Sekundärtext' },
-        ...this._config.badge_style ? [{ type: 'text', key: 'chip_background', label: 'Chip-Hintergrund' }] : []
+        { type: 'text', key: 'colors.content', label: 'Content-Farbe', helper: 'Haupttext', value: colors.content },
+        { type: 'text', key: 'colors.label', label: 'Label-Farbe', helper: 'Sekundärtext', value: colors.label },
+        ...appearance.badge_style ? [{ type: 'text', key: 'colors.chip_background', label: 'Chip-Hintergrund', value: colors.chip_background }] : []
       ]
     };
 
@@ -650,27 +540,28 @@ class HeaderAndBadgesStripCardEditor extends LitElement {
     if (f.type === 'textarea') return html`
       <div class="group">
         <label>${f.label}</label>
-        <textarea .value="${this._config[f.key] || ''}" @input=${e => this._change(f.key, e.target.value)} rows="${f.rows || 4}" placeholder="${f.helper || ''}"></textarea>
+        <textarea .value="${f.value || ''}" @input=${e => this._change(f.key, e.target.value)} rows="${f.rows || 4}" placeholder="${f.helper || ''}"></textarea>
         ${f.helper ? html`<span class="help">${f.helper}</span>` : ''}
       </div>
     `;
     if (f.type === 'text' || f.type === 'number') return html`
-      <ha-textfield label="${f.label}" .value="${this._config[f.key]}" type="${f.type}" min="${f.min}" max="${f.max}" step="${f.step}" 
+      <ha-textfield label="${f.label}" .value="${f.value || ''}" type="${f.type}" min="${f.min}" max="${f.max}" step="${f.step}" 
         helper-text="${f.helper || ''}" @input=${e => this._change(f.key, e.target.value)}></ha-textfield>
     `;
-    if (f.type === 'switch') return html`<ha-formfield label="${f.label}"><ha-switch .checked="${this._config[f.key]}" @change=${e => this._change(f.key, e.target.checked)}></ha-switch></ha-formfield>`;
+    if (f.type === 'switch') return html`<ha-formfield label="${f.label}"><ha-switch .checked="${f.value || false}" @change=${e => this._change(f.key, e.target.checked)}></ha-switch></ha-formfield>`;
     if (f.type === 'select') return html`
-      <ha-select label="${f.label}" .value="${this._config[f.key]}" @selected=${e => this._change(f.key, e.target.value)} @closed=${e => e.stopPropagation()}>
+      <ha-select label="${f.label}" .value="${f.value || f.options[0][0]}" @selected=${e => this._change(f.key, e.target.value)} @closed=${e => e.stopPropagation()}>
         ${f.options.map(([v, l]) => html`<mwc-list-item value="${v}">${l}</mwc-list-item>`)}
       </ha-select>
     `;
   }
 
   _renderEntities() {
+    const entities = this._config.entities || [];
     return html`
       <div class="panel">
-        ${!this._config.entities.length ? html`<p class="empty">Keine Entitäten</p>` : ''}
-        ${this._config.entities.map((e, i) => this._renderEntity(e, i))}
+        ${!entities.length ? html`<p class="empty">Keine Entitäten</p>` : ''}
+        ${entities.map((e, i) => this._renderEntity(e, i))}
         <mwc-button raised @click=${() => this._addEntity()}>Entität hinzufügen</mwc-button>
       </div>
     `;
@@ -801,9 +692,16 @@ class HeaderAndBadgesStripCardEditor extends LitElement {
   }
 
   _change(key, val) {
-    this._config = { ...this._config, [key]: val };
-    const nestedConfig = buildNestedConfig(this._config);
-    this.dispatchEvent(new CustomEvent("config-changed", { bubbles: true, composed: true, detail: { config: nestedConfig } }));
+    const config = { ...this._config };
+    const keys = key.split('.');
+    let obj = config;
+    for (let i = 0; i < keys.length - 1; i++) {
+      if (!obj[keys[i]]) obj[keys[i]] = {};
+      obj = obj[keys[i]];
+    }
+    obj[keys[keys.length - 1]] = val;
+    this._config = config;
+    this.dispatchEvent(new CustomEvent("config-changed", { bubbles: true, composed: true, detail: { config: this._config } }));
   }
 
   _entityChange(i, key, val) {
@@ -830,7 +728,7 @@ class HeaderAndBadgesStripCardEditor extends LitElement {
   }
 
   _addEntity() {
-    this._change('entities', [...this._config.entities, { entity: '', content: '' }]);
+    this._change('entities', [...(this._config.entities || []), { entity: '', content: '' }]);
     this._sel = this._config.entities.length;
   }
 
