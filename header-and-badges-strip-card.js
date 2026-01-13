@@ -54,7 +54,6 @@ class HeaderAndBadgesStripCard extends LitElement {
     this._sidebarResizeObserver = null;
   }
 
-  // Optimized: Helper functions to reduce repeated typeof checks
   _normalizeEntity(e) {
     return typeof e === 'string' ? { entity: e } : e;
   }
@@ -66,14 +65,12 @@ class HeaderAndBadgesStripCard extends LitElement {
   setConfig(config) {
     if (!config.entities?.length) throw new Error("entities required");
     
-    // Optimized: Parse config structure once and store for editor reuse
     const c = config;
     const title = typeof c.title === 'string' ? { text: c.title } : (c.title || {});
     const scroll = c.scroll || {};
     const appearance = c.appearance || {};
     const colors = c.colors || {};
 
-    // Store parsed config for editor
     this._parsedConfig = { title, scroll, appearance, colors };
 
     this._config = {
@@ -248,7 +245,7 @@ class HeaderAndBadgesStripCard extends LitElement {
       if (!old) return true;
       
       const changed = this._config.entities.some(e => {
-        const id = this._getEntityId(e); // Optimized: Use helper
+        const id = this._getEntityId(e);
         if (!id) return false;
         const os = old.states[id], ns = this.hass.states[id];
         if (!os || !ns) return true;
@@ -298,7 +295,7 @@ class HeaderAndBadgesStripCard extends LitElement {
 
   _handleTap(e) {
     const tap = e.tap_action || { action: 'more-info' };
-    const id = this._getEntityId(e); // Optimized: Use helper
+    const id = this._getEntityId(e);
     
     switch (tap.action) {
       case 'more-info':
@@ -387,7 +384,7 @@ class HeaderAndBadgesStripCard extends LitElement {
   }
 
   _renderEntity(e) {
-    const id = this._getEntityId(e); // Optimized: Use helper
+    const id = this._getEntityId(e);
     const state = this.hass.states[id];
     if (!state) return html`<div class="item error">Unknown: ${id}</div>`;
 
@@ -484,7 +481,6 @@ class HeaderAndBadgesStripCardEditor extends LitElement {
   render() {
     if (!this.hass || !this._config) return html``;
 
-    // Optimized: Reuse parsed config from main card if available
     const title = typeof this._config.title === 'string' ? { text: this._config.title } : (this._config.title || {});
     const scroll = this._config.scroll || {};
     const appearance = this._config.appearance || {};
