@@ -25,7 +25,7 @@ const loadHaComponents = () => {
   }
 };
 
-// Vereinfachter Config-Parser nur für neue Struktur
+// Config-Parser für neue Struktur
 function parseConfig(config) {
   const parsed = {
     entities: config.entities || [],
@@ -116,6 +116,72 @@ function parseConfig(config) {
   parsed.chip_background = colors.chip_background || 'var(--primary-background-color)';
 
   return parsed;
+}
+
+// Config in neue verschachtelte Struktur umwandeln
+function buildNestedConfig(flatConfig) {
+  const config = {
+    type: flatConfig.type,
+    entities: flatConfig.entities || []
+  };
+
+  // Title-Gruppe
+  if (flatConfig.title) {
+    config.title = {
+      text: flatConfig.title,
+      font_size: flatConfig.title_font_size,
+      alignment: flatConfig.title_alignment
+    };
+
+    if (flatConfig.title_left_icon) {
+      config.title.left_icon = {
+        icon: flatConfig.title_left_icon,
+        size: flatConfig.title_left_icon_size,
+        spacing: flatConfig.title_icon_spacing,
+        action: flatConfig.title_left_action
+      };
+    }
+
+    if (flatConfig.title_right_icon) {
+      config.title.right_icon = {
+        icon: flatConfig.title_right_icon,
+        size: flatConfig.title_right_icon_size,
+        action: flatConfig.title_right_action
+      };
+    }
+  }
+
+  // Scroll-Gruppe
+  config.scroll = {
+    speed: flatConfig.scroll_speed,
+    direction: flatConfig.scroll_direction,
+    continuous: flatConfig.continuous_scroll,
+    pause_on_hover: flatConfig.pause_on_hover,
+    pause_duration: flatConfig.pause_duration,
+    fading: flatConfig.fading
+  };
+
+  // Appearance-Gruppe
+  config.appearance = {
+    separator: flatConfig.separator,
+    font_size: flatConfig.font_size,
+    card_height: flatConfig.card_height,
+    card_width: flatConfig.card_width,
+    border_radius: flatConfig.border_radius,
+    transparent: flatConfig.transparent,
+    badge_style: flatConfig.badge_style,
+    show_icon: flatConfig.show_icon,
+    full_width: flatConfig.full_width
+  };
+
+  // Colors-Gruppe
+  config.colors = {
+    content: flatConfig.content_color,
+    label: flatConfig.label_color,
+    chip_background: flatConfig.chip_background
+  };
+
+  return config;
 }
 
 class HeaderAndBadgesStripCard extends LitElement {
@@ -736,7 +802,8 @@ class HeaderAndBadgesStripCardEditor extends LitElement {
 
   _change(key, val) {
     this._config = { ...this._config, [key]: val };
-    this.dispatchEvent(new CustomEvent("config-changed", { bubbles: true, composed: true, detail: { config: this._config } }));
+    const nestedConfig = buildNestedConfig(this._config);
+    this.dispatchEvent(new CustomEvent("config-changed", { bubbles: true, composed: true, detail: { config: nestedConfig } }));
   }
 
   _entityChange(i, key, val) {
