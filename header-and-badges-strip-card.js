@@ -3,7 +3,7 @@ const html = LitElement.prototype.html;
 const css = LitElement.prototype.css;
 
 console.info(
-  `%c HEADER AND BADGES STRIP CARD %c v3.2.2 `,
+  `%c HEADER AND BADGES STRIP CARD %c v4.0.0 `,
   "color: orange; font-weight: bold; background: black",
   "color: white; font-weight: bold; background: dimgray"
 );
@@ -26,6 +26,122 @@ const loadHaComponents = () => {
   }
 };
 
+// Config-Parser für neue verschachtelte Struktur
+function parseConfig(config) {
+  // Wenn alte Struktur (flat) erkannt wird, direkt zurückgeben
+  if (config.scroll_speed !== undefined && typeof config.scroll_speed === 'string') {
+    return config;
+  }
+
+  // Neue verschachtelte Struktur parsen
+  const parsed = {
+    entities: config.entities || [],
+    type: config.type
+  };
+
+  // Title-Gruppe
+  if (config.title) {
+    if (typeof config.title === 'string') {
+      parsed.title = config.title;
+    } else {
+      parsed.title = config.title.text || '';
+      parsed.title_font_size = config.title.font_size || '16px';
+      parsed.title_alignment = config.title.alignment || 'left';
+      
+      if (config.title.left_icon) {
+        parsed.title_left_icon = config.title.left_icon.icon || '';
+        parsed.title_left_icon_size = config.title.left_icon.size || '24px';
+        parsed.title_left_action = config.title.left_icon.action || '';
+        parsed.title_icon_spacing = config.title.left_icon.spacing || config.title.right_icon?.spacing || '4px';
+      }
+      
+      if (config.title.right_icon) {
+        parsed.title_right_icon = config.title.right_icon.icon || '';
+        parsed.title_right_icon_size = config.title.right_icon.size || '24px';
+        parsed.title_right_action = config.title.right_icon.action || '';
+        if (!parsed.title_icon_spacing) {
+          parsed.title_icon_spacing = config.title.right_icon.spacing || '4px';
+        }
+      }
+    }
+  }
+
+  // Scroll-Gruppe
+  if (config.scroll) {
+    parsed.scroll_speed = config.scroll.speed || 50;
+    parsed.scroll_direction = config.scroll.direction || 'left';
+    parsed.continuous_scroll = config.scroll.continuous !== undefined ? config.scroll.continuous : true;
+    parsed.reverse = config.scroll.reverse || false;
+    parsed.reverse_scroll = config.scroll.reverse || false;
+    parsed.vertical_scroll = config.scroll.vertical || false;
+    parsed.disable_scroll_if_fits = config.scroll.disable_if_fits !== undefined ? config.scroll.disable_if_fits : false;
+    parsed.auto_disable_scroll = config.scroll.disable_if_fits !== undefined ? config.scroll.disable_if_fits : false;
+    parsed.pause_on_hover = config.scroll.pause_on_hover || false;
+    parsed.pause_duration = config.scroll.pause_duration || 2;
+    parsed.fading = config.scroll.fading || false;
+  }
+
+  // Appearance-Gruppe
+  if (config.appearance) {
+    parsed.separator = config.appearance.separator || '•';
+    parsed.font_size = config.appearance.font_size || '14px';
+    parsed.card_height = config.appearance.card_height || 'auto';
+    parsed.card_width = config.appearance.card_width || '100%';
+    parsed.border_radius = config.appearance.border_radius || '0px';
+    parsed.transparent = config.appearance.transparent || false;
+    parsed.badge_style = config.appearance.badge_style || false;
+    parsed.show_icon = config.appearance.show_icon || false;
+    parsed.full_width = config.appearance.full_width || false;
+    parsed.vertical_alignment = config.appearance.vertical_alignment || 'stack';
+    parsed.width_mode = config.appearance.width_mode || 'custom';
+  }
+
+  // Colors-Gruppe
+  if (config.colors) {
+    parsed.content_color = config.colors.content || 'var(--primary-text-color)';
+    parsed.label_color = config.colors.label || 'var(--secondary-text-color)';
+    parsed.name_color = config.colors.name || 'var(--primary-text-color)';
+    parsed.value_color = config.colors.value || 'var(--primary-color)';
+    parsed.unit_color = config.colors.unit || 'var(--secondary-text-color)';
+    parsed.icon_color = config.colors.icon || 'var(--primary-text-color)';
+    parsed.chip_background = config.colors.chip_background || '#171717';
+    parsed.chip_background_color = config.colors.chip_background || '#171717';
+  }
+
+  // Alte einzelne Werte als Fallback
+  return {
+    scroll_speed: 50,
+    pause_duration: 2,
+    separator: '•',
+    font_size: '14px',
+    title_font_size: '16px',
+    title_alignment: 'left',
+    title_icon_spacing: '4px',
+    title_left_icon_size: '24px',
+    title_right_icon_size: '24px',
+    content_color: 'var(--primary-text-color)',
+    label_color: 'var(--secondary-text-color)',
+    chip_background: 'var(--primary-background-color)',
+    border_radius: '0px',
+    card_height: 'auto',
+    card_width: '100%',
+    show_icon: false,
+    pause_on_hover: false,
+    full_width: false,
+    fading: false,
+    continuous_scroll: true,
+    scroll_direction: 'left',
+    transparent: false,
+    badge_style: false,
+    title: '',
+    title_left_icon: '',
+    title_left_action: '',
+    title_right_icon: '',
+    title_right_action: '',
+    ...parsed
+  };
+}
+
 class HeaderAndBadgesStripCard extends LitElement {
   static properties = {
     hass: { type: Object },
@@ -34,7 +150,7 @@ class HeaderAndBadgesStripCard extends LitElement {
   };
 
   static getStubConfig() {
-    return { type: "custom:header-and-badges-strip-card", entities: [{ entity: "sun.sun" }, { entity: "zone.home" }], scroll_speed: 50, separator: "•" };
+    return { type: "custom:header-and-badges-strip-card", entities: [{ entity: "sun.sun" }, { entity: "zone.home" }], scroll: { speed: "50" }, appearance: { separator: "•" } };
   }
 
   static getConfigElement() {
@@ -50,17 +166,7 @@ class HeaderAndBadgesStripCard extends LitElement {
 
   setConfig(config) {
     if (!config.entities?.length) throw new Error("entities required");
-    
-    this._config = { 
-      scroll_speed: 50, pause_duration: 2, separator: "•", font_size: "14px", title_font_size: "16px", title_alignment: "left",
-      title_icon_spacing: "4px", title_left_icon_size: "24px", title_right_icon_size: "24px", content_color: "var(--primary-text-color)",
-      label_color: "var(--secondary-text-color)", chip_background: "var(--primary-background-color)", border_radius: "0px",
-      card_height: "auto", card_width: "100%", show_icon: false, pause_on_hover: false,
-      full_width: false, fading: false, continuous_scroll: true, scroll_direction: "left",
-      transparent: false, badge_style: false, title: "", title_left_icon: "", title_left_action: "", title_right_icon: "",
-      title_right_action: "", ...config 
-    };
-    
+    this._config = parseConfig(config);
     this._cache = { animation: null, templates: new Map() };
   }
 
@@ -414,12 +520,7 @@ class HeaderAndBadgesStripCardEditor extends LitElement {
   }
 
   setConfig(config) {
-    this._config = { scroll_speed: 50, pause_duration: 2, separator: "•", font_size: "14px", title_font_size: "16px", title_alignment: "left",
-      title_icon_spacing: "4px", title_left_icon_size: "24px", title_right_icon_size: "24px", content_color: "var(--primary-text-color)",
-      label_color: "var(--secondary-text-color)", chip_background: "var(--primary-background-color)", border_radius: "0px", card_height: "auto",
-      card_width: "100%", show_icon: false, pause_on_hover: false, full_width: false, fading: false,
-      continuous_scroll: true, scroll_direction: "left", transparent: false, badge_style: false, title: "",
-      title_left_icon: "", title_left_action: "", title_right_icon: "", title_right_action: "", ...config, entities: config.entities || [] };
+    this._config = parseConfig(config);
   }
 
   render() {
