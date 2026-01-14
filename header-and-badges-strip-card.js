@@ -3,7 +3,7 @@ const html = LitElement.prototype.html;
 const css = LitElement.prototype.css;
 
 console.info(
-  `%c HEADER AND BADGES STRIP CARD %c v4.0.3 `,
+  `%c HEADER AND BADGES STRIP CARD %c v4.0.4 `,
   "color: orange; font-weight: bold; background: black",
   "color: white; font-weight: bold; background: dimgray"
 );
@@ -66,7 +66,7 @@ class HeaderAndBadgesStripCard extends LitElement {
     if (!config.entities?.length) throw new Error("entities required");
     
     const c = config;
-    const title = typeof c.title === 'string' ? { text: c.title } : (c.title || {});
+    const title = c.title || {};
     const scroll = c.scroll || {};
     const appearance = c.appearance || {};
     const colors = c.colors || {};
@@ -344,6 +344,14 @@ class HeaderAndBadgesStripCard extends LitElement {
     }
   }
 
+  _parseMarkdown(text) {
+    if (!text) return '';
+    return text
+      .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+      .replace(/\*(.+?)\*/g, '<em>$1</em>')
+      .replace(/\[(.+?)\]\((.+?)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>');
+  }
+
   render() {
     if (!this._config || !this.hass) return html``;
 
@@ -371,7 +379,7 @@ class HeaderAndBadgesStripCard extends LitElement {
             <div class="header" style="justify-content: ${this._config.title_alignment === 'center' ? 'center' : this._config.title_alignment === 'right' ? 'flex-end' : 'flex-start'};">
               ${this._config.title_left_icon ? html`<ha-icon class="icon left" .icon=${this._config.title_left_icon} @click=${this._handleIconClick.bind(this, this._config.title_left_action)} 
                 style="--mdc-icon-size: ${this._config.title_left_icon_size}; cursor: ${this._config.title_left_action ? 'pointer' : 'default'};"></ha-icon>` : ''}
-              <ha-markdown class="title" .content="${this._config.title}" breaks></ha-markdown>
+              <div class="title" .innerHTML=${this._parseMarkdown(this._config.title)}></div>
               ${this._config.title_right_icon ? html`<ha-icon class="icon right" .icon=${this._config.title_right_icon} @click=${this._handleIconClick.bind(this, this._config.title_right_action)}
                 style="--mdc-icon-size: ${this._config.title_right_icon_size}; cursor: ${this._config.title_right_action ? 'pointer' : 'default'};"></ha-icon>` : ''}
             </div>
@@ -434,7 +442,7 @@ class HeaderAndBadgesStripCard extends LitElement {
     .pad-sm { padding: 12px; }
     .header { font-size: 16px; font-weight: 400; color: var(--primary-text-color); display: flex; align-items: center; gap: 0; }
     .header { padding: 16px; }
-    .title { flex: 0 1 auto; font-size: var(--title-font, 16px); }
+    .title { flex: 1 1 auto; font-size: var(--title-font, 16px); }
     .title p { margin: 0 0 0.5em 0; line-height: 1.4; }
     .title p:last-child { margin-bottom: 0; }
     .header .icon { flex-shrink: 0; color: var(--primary-text-color); transition: color .2s; }
