@@ -442,7 +442,7 @@ class HeaderAndBadgesStripCard extends LitElement {
     .pad-sm { padding: 12px; }
     .header { font-size: 16px; font-weight: 400; color: var(--primary-text-color); display: flex; align-items: center; gap: 0; }
     .header { padding: 16px; }
-    .title { flex: 1 1 auto; font-size: var(--title-font, 16px); }
+    .title { flex: 0 1 auto; font-size: var(--title-font, 16px); min-width: 0; }
     .title p { margin: 0 0 0.5em 0; line-height: 1.4; }
     .title p:last-child { margin-bottom: 0; }
     .header .icon { flex-shrink: 0; color: var(--primary-text-color); transition: color .2s; }
