@@ -3,7 +3,7 @@ const html = LitElement.prototype.html;
 const css = LitElement.prototype.css;
 
 console.info(
-  `%c HEADER AND BADGES STRIP CARD %c v4.0.2 `,
+  `%c HEADER AND BADGES STRIP CARD %c v4.0.3 `,
   "color: orange; font-weight: bold; background: black",
   "color: white; font-weight: bold; background: dimgray"
 );
@@ -96,6 +96,7 @@ class HeaderAndBadgesStripCard extends LitElement {
       font_size: appearance.font_size || '14px',
       card_height: appearance.card_height || 'auto',
       card_width: appearance.card_width || '100%',
+      card_bottom_margin: appearance.card_bottom_margin || '0px',
       border_radius: appearance.border_radius || '0px',
       transparent: appearance.transparent || false,
       badge_style: appearance.badge_style || false,
@@ -358,7 +359,7 @@ class HeaderAndBadgesStripCard extends LitElement {
       this._config.badge_style && 'chips'].filter(Boolean).join(' ');
 
     return html`
-      <div class="header-badges-wrapper ${this._config.full_width ? 'full-width' : ''}" style="${this._config.full_width ? `--sidebar-width: ${this._sidebarWidth}px;` : ''}">
+      <div class="header-badges-wrapper ${this._config.full_width ? 'full-width' : ''}" style="${this._config.full_width ? `--sidebar-width: ${this._sidebarWidth}px;` : ''} margin-bottom: ${this._config.card_bottom_margin};">
         <ha-card class="${this._config.card_width !== '100%' && !this._config.full_width ? 'custom-width' : ''}" style="
           --font: ${this._config.font_size}; --radius: ${this._config.border_radius}; --height: ${this._config.card_height};
           --content-color: ${this._config.content_color}; --label-color: ${this._config.label_color}; --chip-bg: ${this._config.chip_background};
@@ -547,6 +548,7 @@ class HeaderAndBadgesStripCardEditor extends LitElement {
         ] : [],
         ...!appearance.transparent ? [{ type: 'text', key: 'appearance.border_radius', label: 'Rahmenradius', value: appearance.border_radius }] : [],
         { type: 'text', key: 'appearance.card_height', label: 'Kartenhöhe', value: appearance.card_height },
+        { type: 'text', key: 'appearance.card_bottom_margin', label: 'Abstand unten', helper: '0px, 8px, 1em', value: appearance.card_bottom_margin },
         { type: 'divider', label: 'Breite' },
         { type: 'switch', key: 'appearance.full_width', label: 'Volle Breite', value: appearance.full_width },
         ...!appearance.full_width ? [{ type: 'text', key: 'appearance.card_width', label: 'Kartenbreite', helper: '100%, 200%, 500px', value: appearance.card_width }] : []
