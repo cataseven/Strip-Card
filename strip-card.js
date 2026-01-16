@@ -3,7 +3,7 @@ const html = LitElement.prototype.html;
 const css = LitElement.prototype.css;
 
 console.info(
-  `%c STRIP-CARD %c Loaded - Version 1.4.0 (Clean) `,
+  `%c STRIP-CARD %c Loaded - Version 1.4.0 (Enhanced) `,
   "color: orange; font-weight: bold; background: black",
   "color: white; font-weight: bold; background: dimgray"
 );
@@ -21,6 +21,7 @@ class StripCard extends LitElement {
     return {
       hass: { type: Object },
       _config: { type: Object },
+      _animationDuration: { type: Number },
     };
   }
 
@@ -32,13 +33,14 @@ class StripCard extends LitElement {
         { entity: "zone.home", name: "People at Home" },
       ],
       duration: 20,
-      separator: "•"
+      separator: "•",
     };
   }
 
   constructor() {
     super();
     this._nameReplace = [];
+    this._animationDuration = undefined;
   }
 
   setConfig(config) {
@@ -47,6 +49,7 @@ class StripCard extends LitElement {
     }
     const nr = config && config.name_replace ? config.name_replace : [];
     this._nameReplace = Array.isArray(nr) ? nr : [nr];
+
     this._config = {
       title: "",
       duration: 20,
@@ -58,17 +61,21 @@ class StripCard extends LitElement {
       icon_color: "var(--primary-text-color)",
       show_icon: false,
       pause_on_hover: false,
-      unit_position: 'right',
+      unit_position: "right",
       border_radius: "0px",
       card_height: "50px",
       card_width: "400px",
       fading: false,
       vertical_scroll: false,
-      vertical_alignment: 'stack',
+      vertical_alignment: "stack",
       continuous_scroll: true,
       transparent: false,
+      // Yeni: sabit hız (px/s). Tanımlı değilse duration kullanılır.
+      scroll_speed: undefined,
       ...config,
     };
+
+    this._animationDuration = undefined;
   }
 
   getCardSize() {
@@ -79,29 +86,70 @@ class StripCard extends LitElement {
     if (entityConfig.service) {
       const [domain, service] = entityConfig.service.split(".");
       if (!domain || !service) {
-        console.error(`[Strip Card] Invalid service format: ${entityConfig.service}. Must be in 'domain.service' format.`);
+        console.error(
+          `[Strip Card] Invalid service format: ${entityConfig.service}. Must be in 'domain.service' format.`
+        );
         return;
       }
       this.hass.callService(domain, service, entityConfig.data || {});
     } else {
-      const entityId = typeof entityConfig === "string" ? entityConfig : entityConfig.entity;
-      const event = new Event("hass-more-info", { bubbles: true, composed: true });
+      const entityId =
+        typeof entityConfig === "string" ? entityConfig : entityConfig.entity;
+      if (!entityId) return;
+      const event = new Event("hass-more-info", {
+        bubbles: true,
+        composed: true,
+      });
       event.detail = { entityId };
       this.dispatchEvent(event);
     }
   }
 
+  // HA templatelerine yakın davranış: states('foo'), states['foo'].state, state_attr, now()
   evaluateTemplate(template, hass) {
-    if (!template || typeof template !== 'string') return template;
+    if (!template || typeof template !== "string") return template;
     if (!template.includes("{{")) return template;
 
     try {
-      const expression = template.match(/{{(.*?)}}/s)[1];
-      const func = new Function("states", `"use strict"; return (${expression.trim()});`);
-      return func(hass.states);
+      const match = template.match(/{{(.*?)}}/s);
+      if (!match) return template;
+      const expression = match[1];
+
+      const func = new Function(
+        "hass",
+        `
+        "use strict";
+
+        const states = new Proxy(
+          (entity_id) => {
+            const st = hass.states[entity_id];
+            return st ? st.state : undefined;
+          },
+          {
+            get(target, prop) {
+              if (prop in target) return target[prop];
+              const key = String(prop);
+              return hass.states[key];
+            }
+          }
+        );
+
+        const state = states;
+        const state_attr = (entity_id, attr) => {
+          const st = hass.states[entity_id];
+          return st ? st.attributes?.[attr] : undefined;
+        };
+        const now = () => new Date();
+
+        return (${expression.trim()});
+      `
+      );
+
+      return func(hass);
     } catch (e) {
       console.warn("Template evaluation failed:", e, template);
-      return template;
+      // value_template vb. için literal yazmasın
+      return "";
     }
   }
 
@@ -125,46 +173,115 @@ class StripCard extends LitElement {
     return out.trim();
   }
 
+  // scroll_speed varsa içerik boyuna göre dynamic duration
+  updated(changedProps) {
+    super.updated(changedProps);
+    if (!this._config || !this.hass) return;
+
+    // scroll_speed yoksa, duration aynen kullan
+    if (
+      this._config.scroll_speed === undefined ||
+      this._config.scroll_speed === null
+    ) {
+      const dRaw = this.evaluateTemplate(
+        String(this._config.duration),
+        this.hass
+      );
+      const baseDuration = parseFloat(dRaw) || 20;
+      if (
+        !isNaN(baseDuration) &&
+        baseDuration > 0 &&
+        this._animationDuration !== baseDuration
+      ) {
+        this._animationDuration = baseDuration;
+      }
+      return;
+    }
+
+    const sRaw = this.evaluateTemplate(
+      String(this._config.scroll_speed),
+      this.hass
+    );
+    const speed = parseFloat(sRaw);
+    if (isNaN(speed) || speed <= 0) {
+      return;
+    }
+
+    const ticker = this.renderRoot?.querySelector(".ticker-move");
+    if (!ticker) return;
+
+    const isVertical = !!this._config.vertical_scroll;
+    const totalLength = isVertical ? ticker.scrollHeight : ticker.scrollWidth;
+    if (!totalLength || totalLength <= 0) return;
+
+    // keyframe %50'ye kadar gidiyor diye varsayıyoruz
+    const distance = totalLength * 0.5;
+    const newDuration = distance / speed;
+
+    if (!isNaN(newDuration) && newDuration > 0) {
+      if (
+        !this._animationDuration ||
+        Math.abs(this._animationDuration - newDuration) > 0.1
+      ) {
+        this._animationDuration = newDuration;
+      }
+    }
+  }
+
   render() {
     if (!this._config || !this.hass) return html``;
 
-    const duration = this.evaluateTemplate(this._config.duration, this.hass);
-    const cardWidthStyle = this._config.card_width ? `--strip-card-width: ${this._config.card_width};` : '';
-    const fadingClass = this._config.fading ? 'has-fading' : '';
-    const verticalClass = this._config.vertical_scroll ? 'has-vertical-scroll' : '';
-    const verticalAlignmentClass = this._config.vertical_alignment === 'inline' ? 'has-inline-vertical-alignment' : '';
-    const animationIteration = this._config.continuous_scroll ? 'infinite' : '1';
-    
-    let transparentStyle = '';
+    const dRaw = this.evaluateTemplate(
+      String(this._config.duration),
+      this.hass
+    );
+    const baseDuration = parseFloat(dRaw) || 20;
+    const duration = this._animationDuration || baseDuration;
+
+    const cardWidthStyle = this._config.card_width
+      ? `--strip-card-width: ${this._config.card_width};`
+      : "";
+    const fadingClass = this._config.fading ? "has-fading" : "";
+    const verticalClass = this._config.vertical_scroll
+      ? "has-vertical-scroll"
+      : "";
+    const verticalAlignmentClass =
+      this._config.vertical_alignment === "inline"
+        ? "has-inline-vertical-alignment"
+        : "";
+    const animationIteration = this._config.continuous_scroll ? "infinite" : "1";
+
+    let transparentStyle = "";
     if (this._config.transparent) {
-        transparentStyle = `
-            --ha-card-background: transparent;
-            --card-background-color: transparent;
-            background: transparent;
-            box-shadow: none;
-            border: none;
-        `;
+      transparentStyle = `
+        --ha-card-background: transparent;
+        --card-background-color: transparent;
+        background: transparent;
+        box-shadow: none;
+        border: none;
+      `;
     }
 
     const cardStyles = `
       --strip-card-font-size: ${this._config.font_size};
       --strip-card-border-radius: ${this._config.border_radius};
       --strip-card-height: ${this._config.card_height};
+      --strip-card-animation-duration: ${duration}s;
       ${cardWidthStyle}
-      ${transparentStyle} 
+      ${transparentStyle}
     `;
 
     const renderedEntities = this._config.entities
-        .map((entityConfig) => this.renderEntity(entityConfig))
-        .filter(Boolean); 
-    
+      .map((entityConfig) => this.renderEntity(entityConfig))
+      .filter(Boolean);
+
     if (renderedEntities.length === 0) return html``;
 
     let content = renderedEntities;
 
     if (this._config.continuous_scroll) {
       const containerWidth = this.getBoundingClientRect().width || 400;
-      const divisor = (renderedEntities.length * 100) || 100; 
+      const divisor = renderedEntities.length * 100 || 100;
       const minCopies = Math.ceil(containerWidth / divisor) + 2;
       const copies = minCopies > 2 ? minCopies : 2;
       content = [];
@@ -172,11 +289,18 @@ class StripCard extends LitElement {
         content.push(...renderedEntities);
       }
     }
-    
+
     return html`
       <ha-card .header="${this._config.title}" style="${cardStyles}">
-        <div class="ticker-wrap ${this._config.pause_on_hover ? 'pausable' : ''} ${fadingClass} ${verticalClass}">
-          <div class="ticker-move ${verticalAlignmentClass}" style="animation-duration: ${duration}s; animation-iteration-count: ${animationIteration};">
+        <div
+          class="ticker-wrap ${this._config.pause_on_hover
+            ? "pausable"
+            : ""} ${fadingClass} ${verticalClass}"
+        >
+          <div
+            class="ticker-move ${verticalAlignmentClass}"
+            style="animation-iteration-count: ${animationIteration};"
+          >
             ${content}
           </div>
         </div>
@@ -185,66 +309,165 @@ class StripCard extends LitElement {
   }
 
   renderEntity(entityConfig) {
-    const entityId = typeof entityConfig === "string" ? entityConfig : entityConfig.entity;
-    
+    // entity opsiyonel: string ise zorunlu, obje ise olmayabilir
+    let entityId = null;
+    if (typeof entityConfig === "string") {
+      entityId = entityConfig;
+    } else if (entityConfig.entity) {
+      entityId = entityConfig.entity;
+    }
+
+    const hasEntity = !!entityId;
+
     if (entityConfig.visible_if) {
-        let isVisible = this.evaluateTemplate(entityConfig.visible_if, this.hass);
-        if (String(isVisible).toLowerCase() === 'false') {
-            isVisible = false;
-        }
-        if (!isVisible) {
-            return null;
-        }
+      let isVisible = this.evaluateTemplate(
+        entityConfig.visible_if,
+        this.hass
+      );
+      if (String(isVisible).toLowerCase() === "false") {
+        isVisible = false;
+      }
+      if (!isVisible) {
+        return null;
+      }
     }
 
-    const stateObj = this.hass.states[entityId];
-    if (!stateObj) {
-      return html`<div class="ticker-item error">Unknown Entity: ${entityId}</div>`;
+    let stateObj = null;
+    if (hasEntity) {
+      stateObj = this.hass.states[entityId];
+      if (!stateObj) {
+        return html`<div class="ticker-item error">
+          Unknown Entity: ${entityId}
+        </div>`;
+      }
     }
 
-    let value = stateObj.state;
-    if (entityConfig.attribute && stateObj.attributes[entityConfig.attribute] !== undefined) {
-      value = stateObj.attributes[entityConfig.attribute];
+    // Değer hesaplama
+    let value = "";
+    if (stateObj) {
+      value = stateObj.state;
+      if (
+        entityConfig.attribute &&
+        stateObj.attributes[entityConfig.attribute] !== undefined
+      ) {
+        value = stateObj.attributes[entityConfig.attribute];
+      }
     }
+
     if (entityConfig.value_template) {
-        value = this.evaluateTemplate(entityConfig.value_template, this.hass);
+      const templated = this.evaluateTemplate(
+        entityConfig.value_template,
+        this.hass
+      );
+      if (templated !== undefined && templated !== null) {
+        value = templated;
+      }
     }
 
-    if (typeof value === 'string' && value.length > 0) {
+    if (typeof value === "string" && value.length > 0) {
       value = value.charAt(0).toUpperCase() + value.slice(1);
     }
 
-    const rawName = stateObj.attributes.friendly_name || entityId;
-    const name = entityConfig.name ? entityConfig.name : this._sanitizeName(rawName);
-    const unit = entityConfig.unit !== undefined ? entityConfig.unit : (stateObj.attributes.unit_of_measurement || "");
-    let showIcon = entityConfig.show_icon !== undefined ? entityConfig.show_icon : this._config.show_icon;
-    showIcon = this.evaluateTemplate(showIcon, this.hass);
-    const unit_position = entityConfig.unit_position || this._config.unit_position;
+    const rawName =
+      stateObj && !Object.prototype.hasOwnProperty.call(entityConfig, "name")
+        ? stateObj.attributes.friendly_name || entityId
+        : entityConfig.name;
 
-    const nameColor = this.evaluateTemplate(entityConfig.name_color || this._config.name_color, this.hass);
-    const valueColor = this.evaluateTemplate(entityConfig.value_color || this._config.value_color, this.hass);
-    const unitColor = this.evaluateTemplate(entityConfig.unit_color || this._config.unit_color, this.hass);
-    const iconColor = this.evaluateTemplate(entityConfig.icon_color || this._config.icon_color, this.hass);
+    const hasExplicitName = Object.prototype.hasOwnProperty.call(
+      entityConfig,
+      "name"
+    );
+    let name = hasExplicitName ? entityConfig.name : this._sanitizeName(rawName);
+    const nameStr =
+      name === null || name === undefined ? "" : String(name).trim();
+    const hasName = nameStr.length > 0;
+
+    const unit =
+      entityConfig.unit !== undefined
+        ? entityConfig.unit
+        : stateObj?.attributes?.unit_of_measurement || "";
+
+    let showIcon =
+      entityConfig.show_icon !== undefined
+        ? entityConfig.show_icon
+        : this._config.show_icon;
+    showIcon = this.evaluateTemplate(showIcon, this.hass);
+
+    const unit_position =
+      entityConfig.unit_position || this._config.unit_position;
+
+    const nameColor = this.evaluateTemplate(
+      entityConfig.name_color || this._config.name_color,
+      this.hass
+    );
+    const valueColor = this.evaluateTemplate(
+      entityConfig.value_color || this._config.value_color,
+      this.hass
+    );
+    const unitColor = this.evaluateTemplate(
+      entityConfig.unit_color || this._config.unit_color,
+      this.hass
+    );
+    const iconColor = this.evaluateTemplate(
+      entityConfig.icon_color || this._config.icon_color,
+      this.hass
+    );
     const customIcon = this.evaluateTemplate(entityConfig.icon, this.hass);
 
-    const valuePart = html`<span class="value" style="color: ${valueColor};">${value}</span>`;
-    const unitPart = html`<span class="unit" style="color: ${unitColor};">${unit}</span>`;
+    // Entity yoksa ve customIcon da yoksa, state-badge kullanamayız, ikon göstermeyelim
+    if (!stateObj && !customIcon) {
+      showIcon = false;
+    }
 
-    const titleText = unit_position === 'left' ? `${name}: ${unit}${value}` : `${name}: ${value} ${unit}`;
+    const valuePart = html`<span class="value" style="color: ${valueColor};"
+      >${value}</span
+    >`;
+    const unitPart = html`<span class="unit" style="color: ${unitColor};"
+      >${unit}</span
+    >`;
+
+    let titleText;
+    if (hasName) {
+      titleText =
+        unit_position === "left"
+          ? `${nameStr} ${unit}${value}`
+          : `${nameStr} ${value} ${unit}`;
+    } else {
+      titleText =
+        unit_position === "left"
+          ? `${unit}${value}`
+          : `${value} ${unit}`;
+    }
+
+    const clickable = !!(entityConfig.service || hasEntity);
 
     return html`
       <div
         class="ticker-item"
-        @click=${() => this._handleTap(entityConfig)}
+        @click=${clickable ? () => this._handleTap(entityConfig) : null}
         title="${titleText}"
       >
         ${showIcon
           ? customIcon
-            ? html`<ha-icon class="icon" .icon=${customIcon} style="color: ${iconColor};"></ha-icon>`
-            : html`<state-badge class="icon" .hass=${this.hass} .stateObj=${stateObj}></state-badge>`
-          : ''}
-        <span class="name" style="color: ${nameColor};">${name}:</span>
-        ${unit_position === 'left' ? html`${unitPart}${valuePart}` : html`${valuePart}${unitPart}`}
+            ? html`<ha-icon
+                class="icon"
+                .icon=${customIcon}
+                style="color: ${iconColor};"
+              ></ha-icon>`
+            : html`<state-badge
+                class="icon"
+                .hass=${this.hass}
+                .stateObj=${stateObj}
+              ></state-badge>`
+          : ""}
+        ${hasName
+          ? html`<span class="name" style="color: ${nameColor};"
+              >${nameStr}</span
+            >`
+          : ""}
+        ${unit_position === "left"
+          ? html`${unitPart}${valuePart}`
+          : html`${valuePart}${unitPart}`}
         <span class="separator">${this._config.separator}</span>
       </div>
     `;
@@ -267,7 +490,7 @@ class StripCard extends LitElement {
         align-items: center;
         width: 100%;
         overflow: hidden;
-        background-color: var(--card-background-color, white); 
+        background-color: var(--card-background-color, white);
         padding: 0;
         box-sizing: border-box;
         position: relative;
@@ -278,13 +501,15 @@ class StripCard extends LitElement {
         overflow: hidden;
       }
       .ticker-wrap.has-fading {
-        -webkit-mask-image: linear-gradient(to right,
+        -webkit-mask-image: linear-gradient(
+          to right,
           rgba(0, 0, 0, 0) 0%,
           rgba(0, 0, 0, 1) 15%,
           rgba(0, 0, 0, 1) 85%,
           rgba(0, 0, 0, 0) 100%
         );
-        mask-image: linear-gradient(to right,
+        mask-image: linear-gradient(
+          to right,
           rgba(0, 0, 0, 0) 0%,
           rgba(0, 0, 0, 1) 15%,
           rgba(0, 0, 0, 1) 85%,
@@ -292,13 +517,15 @@ class StripCard extends LitElement {
         );
       }
       .ticker-wrap.has-vertical-scroll.has-fading {
-        -webkit-mask-image: linear-gradient(to bottom,
+        -webkit-mask-image: linear-gradient(
+          to bottom,
           rgba(0, 0, 0, 0) 0%,
           rgba(0, 0, 0, 1) 15%,
           rgba(0, 0, 0, 1) 85%,
           rgba(0, 0, 0, 0) 100%
         );
-        mask-image: linear-gradient(to bottom,
+        mask-image: linear-gradient(
+          to bottom,
           rgba(0, 0, 0, 0) 0%,
           rgba(0, 0, 0, 1) 15%,
           rgba(0, 0, 0, 1) 85%,
@@ -316,6 +543,7 @@ class StripCard extends LitElement {
         animation-name: ticker;
         animation-timing-function: linear;
         animation-iteration-count: infinite;
+        animation-duration: var(--strip-card-animation-duration, 20s);
       }
       .ticker-move.has-inline-vertical-alignment {
         display: block;
@@ -372,16 +600,28 @@ class StripCard extends LitElement {
         font-weight: bold;
       }
       @keyframes ticker {
-        0% { transform: translateX(0); }
-        100% { transform: translateX(-50%); }
+        0% {
+          transform: translateX(0);
+        }
+        100% {
+          transform: translateX(-50%);
+        }
       }
       @keyframes vertical-ticker {
-        0% { transform: translateY(0); }
-        100% { transform: translateY(-50%); }
+        0% {
+          transform: translateY(0);
+        }
+        100% {
+          transform: translateY(-50%);
+        }
       }
       @keyframes vertical-ticker-inline {
-        0% { transform: translateY(0); }
-        100% { transform: translateY(-50%); }
+        0% {
+          transform: translateY(0);
+        }
+        100% {
+          transform: translateY(-50%);
+        }
       }
     `;
   }
