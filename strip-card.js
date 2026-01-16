@@ -377,7 +377,17 @@ class StripCard extends LitElement {
       entityConfig,
       "name"
     );
+
     let name = hasExplicitName ? entityConfig.name : this._sanitizeName(rawName);
+
+    // name string ise, içinde template varsa evaluate et
+    if (hasExplicitName && typeof name === "string") {
+      const templatedName = this.evaluateTemplate(name, this.hass);
+      if (templatedName !== undefined && templatedName !== null) {
+        name = templatedName;
+      }
+    }
+
     const nameStr =
       name === null || name === undefined ? "" : String(name).trim();
     const hasName = nameStr.length > 0;
