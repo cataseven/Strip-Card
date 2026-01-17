@@ -2,10 +2,13 @@
 
 A highly flexible scrolling ticker card for Home Assistant dashboards supporting templates, bidirectional scrolling, badge mode, rich per‑entity styling, entity visibility rules, action handling (tap/hold/double‑tap), and responsive full‑width layouts.
 
+![image1](images/a1.gif)
+
 ---
 
 ## ✨ Features
 * UI Editor
+![image2](images/ui1.png)
 * Horizontal and vertical scrolling layouts
 * Continuous or single‑cycle scrolling
 * Direction control (`left` / `right`)
@@ -45,7 +48,7 @@ lovelace:
     - url: /local/community/strip-card/strip-card.js
       type: module
 ```
-
+![image3](images/picker.png)
 ---
 
 # 🧩 Configuration Options
