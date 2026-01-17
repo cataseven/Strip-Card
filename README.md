@@ -93,9 +93,9 @@ If `badge_style: true`:
 
 | Option             | Default                           |
 | ------------------ | --------------------------------- |
-| `chip_background`  | `var(--primary-background-color)` |
-| `chip_label_color` | `var(--secondary-text-color)`     |
-| `chip_value_color` | `var(--primary-text-color)`       |
+| `badge_background`  | `var(--primary-background-color)` |
+| `badge_label_color` | `var(--secondary-text-color)`     |
+| `badge_value_color` | `var(--primary-text-color)`       |
 | `badge_height`     | `"28px"`                          |
 | `badge_font_size`  | `"12px"`                          |
 | `badge_icon_size`  | `"16px"`                          |
