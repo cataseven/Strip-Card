@@ -188,6 +188,8 @@ Works with:
 ---
 ## Template Almost Everything
 ```yaml
+
+type: custom:strip-card
 title: |
   {{ 'Temperature Strip – ' + states('sensor.temperature') + '°C' }}
 duration: |
@@ -252,7 +254,6 @@ badge_font_size: |
   {{ states('sensor.temperature') > 26 ? '13px' : '12px' }}
 badge_icon_size: |
   {{ states('sensor.temperature') > 26 ? '18px' : '16px' }}
-type: custom:strip-card
 entities:
   - entity: sensor.temperature
     name: |
