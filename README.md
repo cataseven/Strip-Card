@@ -3,6 +3,7 @@
 A highly flexible scrolling ticker card for Home Assistant dashboards supporting templates, bidirectional scrolling, badge mode, rich per‑entity styling, entity visibility rules, action handling (tap/hold/double‑tap), and responsive full‑width layouts.
 
 ![image1](images/a.gif)
+
 ![image2](images/badge.png)
 ---
 
