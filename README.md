@@ -402,7 +402,10 @@ entities:
       action: more-info
   - entity: switch.kitchen
     tap_action:
-      action: toggle
+      action: perform-action
+      perform_action: switch.toggle
+      target:
+        entity_id: switch.zone_11
     hold_action:
       action: assist
 ```
