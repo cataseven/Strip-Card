@@ -3,7 +3,7 @@ const html = LitElement.prototype.html;
 const css = LitElement.prototype.css;
 
 console.info(
-  `%c STRIP-CARD %c Loaded - Version 1.4.0 (Enhanced) `,
+  `%c STRIP-CARD %c Loaded - Version 2.0.0 `,
   "color: orange; font-weight: bold; background: black",
   "color: white; font-weight: bold; background: dimgray"
 );
@@ -21,6 +21,8 @@ class StripCard extends LitElement {
     return {
       hass: { type: Object },
       _config: { type: Object },
+      _sidebarWidth: { type: Number },
+      _scrollbarWidth: { type: Number },
       _animationDuration: { type: Number },
     };
   }
@@ -34,13 +36,34 @@ class StripCard extends LitElement {
       ],
       duration: 20,
       separator: "•",
+      empty_message: "No entities passed the visible_if conditions",
     };
+  }
+
+  static async getConfigElement() {
+    if (!customElements.get("strip-card-editor")) {
+      customElements.define("strip-card-editor", StripCardEditor);
+    }
+    return document.createElement("strip-card-editor");
   }
 
   constructor() {
     super();
     this._nameReplace = [];
+    this._templateCache = new Map();
+    this._sidebarWidth = 0;
+    this._scrollbarWidth = 0;
+    this._sidebarResizeObserver = null;
+    this._scrollbarResizeObserver = null;
     this._animationDuration = undefined;
+
+    this._actionState = {
+      timer: null,
+      held: false,
+      cooldown: null,
+      startX: 0,
+      startY: 0,
+    };
   }
 
   setConfig(config) {
@@ -61,7 +84,6 @@ class StripCard extends LitElement {
       icon_color: "var(--primary-text-color)",
       show_icon: false,
       pause_on_hover: false,
-      unit_position: "right",
       border_radius: "0px",
       card_height: "50px",
       card_width: "400px",
@@ -70,8 +92,18 @@ class StripCard extends LitElement {
       vertical_alignment: "stack",
       continuous_scroll: true,
       transparent: false,
-      // Yeni: sabit hız (px/s). Tanımlı değilse duration kullanılır.
       scroll_speed: undefined,
+      scroll_direction: "left",
+      full_width: false,
+      badge_style: false,
+      badge_background: "var(--primary-background-color)",
+      badge_label_color: "var(--secondary-text-color)",
+      badge_value_color: "var(--primary-text-color)",
+      badge_height: "28px",
+      badge_font_size: "12px",
+      badge_icon_size: "16px",
+      // boş durumda gösterilecek varsayılan mesaj
+      empty_message: "No entities passed the visible_if conditions",
       ...config,
     };
 
@@ -82,30 +114,207 @@ class StripCard extends LitElement {
     return 1;
   }
 
-  _handleTap(entityConfig) {
-    if (entityConfig.service) {
-      const [domain, service] = entityConfig.service.split(".");
-      if (!domain || !service) {
-        console.error(
-          `[Strip Card] Invalid service format: ${entityConfig.service}. Must be in 'domain.service' format.`
-        );
-        return;
+  connectedCallback() {
+    super.connectedCallback();
+    this._setupSidebarObserver();
+    this._setupScrollbarObserver();
+  }
+
+  disconnectedCallback() {
+    super.disconnectedCallback();
+    this._sidebarResizeObserver?.disconnect();
+    this._scrollbarResizeObserver?.disconnect();
+  }
+
+  _setupSidebarObserver() {
+    try {
+      const homeAssistant = document.querySelector("home-assistant");
+      const main = homeAssistant?.shadowRoot?.querySelector("home-assistant-main");
+      const drawer = main?.shadowRoot?.querySelector("ha-drawer");
+      const sidebar = drawer?.querySelector("ha-sidebar");
+
+      if (sidebar) {
+        this._updateSidebarWidth(sidebar);
+        this._sidebarResizeObserver = new ResizeObserver(() => {
+          this._updateSidebarWidth(sidebar);
+        });
+        this._sidebarResizeObserver.observe(sidebar);
+      } else {
+        setTimeout(() => this._setupSidebarObserver(), 1000);
       }
-      this.hass.callService(domain, service, entityConfig.data || {});
-    } else {
-      const entityId =
-        typeof entityConfig === "string" ? entityConfig : entityConfig.entity;
-      if (!entityId) return;
-      const event = new Event("hass-more-info", {
-        bubbles: true,
-        composed: true,
-      });
-      event.detail = { entityId };
-      this.dispatchEvent(event);
+    } catch (e) {
+      console.warn("[Strip Card] Sidebar observer setup failed", e);
     }
   }
 
-  // HA templatelerine yakın davranış: states('foo'), states['foo'].state, state_attr, now()
+  _setupScrollbarObserver() {
+    try {
+      this._updateScrollbarWidth();
+      this._scrollbarResizeObserver = new ResizeObserver(() => {
+        this._updateScrollbarWidth();
+      });
+      this._scrollbarResizeObserver.observe(document.documentElement);
+    } catch (e) {
+      console.warn("[Strip Card] Scrollbar observer setup failed", e);
+    }
+  }
+
+  _updateSidebarWidth(sidebar) {
+    if (!sidebar) return;
+    try {
+      const width = Math.ceil(sidebar.getBoundingClientRect().width) || 0;
+      if (width !== this._sidebarWidth) {
+        this._sidebarWidth = width;
+        this.requestUpdate();
+      }
+    } catch (e) {
+      console.warn("[Strip Card] Sidebar width update failed", e);
+    }
+  }
+
+  _updateScrollbarWidth() {
+    try {
+      const scrollbarWidth =
+        window.innerWidth - document.documentElement.clientWidth;
+      if (scrollbarWidth !== this._scrollbarWidth) {
+        this._scrollbarWidth = scrollbarWidth;
+        this.requestUpdate();
+      }
+    } catch (e) {
+      console.warn("[Strip Card] Scrollbar width update failed", e);
+    }
+  }
+
+  _fireMoreInfo(entityId) {
+    const event = new Event("hass-more-info", {
+      bubbles: true,
+      composed: true,
+    });
+    event.detail = { entityId };
+    this.dispatchEvent(event);
+  }
+
+  _handleDown(e) {
+    this._actionState.held = false;
+    this._actionState.startX = e.touches ? e.touches[0].clientX : e.clientX;
+    this._actionState.startY = e.touches ? e.touches[0].clientY : e.clientY;
+
+    this._actionState.timer = setTimeout(() => {
+      this._actionState.held = true;
+    }, 500);
+  }
+
+  _handleUp(e, entityConfig) {
+    clearTimeout(this._actionState.timer);
+
+    const currentX = e.changedTouches ? e.changedTouches[0].clientX : e.clientX;
+    const currentY = e.changedTouches ? e.changedTouches[0].clientY : e.clientY;
+    const diffX = Math.abs(currentX - this._actionState.startX);
+    const diffY = Math.abs(currentY - this._actionState.startY);
+
+    if (diffX > 10 || diffY > 10) return;
+
+    if (this._actionState.held) {
+      this._handleAction(entityConfig, "hold");
+    } else {
+      if (this._actionState.cooldown) {
+        clearTimeout(this._actionState.cooldown);
+        this._actionState.cooldown = null;
+        this._handleAction(entityConfig, "double_tap");
+      } else {
+        this._actionState.cooldown = setTimeout(() => {
+          this._actionState.cooldown = null;
+          this._handleAction(entityConfig, "tap");
+        }, 250);
+      }
+    }
+  }
+
+  _handleAction(entityConfig, actionType) {
+    if (!this.hass || !entityConfig) return;
+
+    let actionConfig = entityConfig[`${actionType}_action`];
+
+    if (!actionConfig && actionType === "tap") {
+      actionConfig = { action: "more-info" };
+    } else if (!actionConfig) {
+      return;
+    }
+
+    if (actionConfig.action === "none") return;
+
+    switch (actionConfig.action) {
+      case "more-info":
+        if (entityConfig.entity) this._fireMoreInfo(entityConfig.entity);
+        return;
+
+      case "toggle":
+        if (entityConfig.entity) {
+          this.hass.callService("homeassistant", "toggle", {
+            entity_id: entityConfig.entity,
+          });
+        }
+        return;
+
+      case "navigate":
+        if (actionConfig.navigation_path) {
+          window.history.pushState(null, "", actionConfig.navigation_path);
+          window.dispatchEvent(new Event("location-changed"));
+        }
+        return;
+
+      case "url":
+        if (actionConfig.url_path) {
+          window.open(
+            actionConfig.url_path,
+            actionConfig.new_tab === false ? "_self" : "_blank"
+          );
+        }
+        return;
+
+      case "perform-action":
+      case "call-service":
+        const svc = actionConfig.perform_action || actionConfig.service || "";
+        if (!svc) return;
+        const [domain, service] = svc.split(".");
+
+        let data = actionConfig.data || {};
+        const target = actionConfig.target || {};
+
+        if (typeof data === "string") {
+          try {
+            data = JSON.parse(data);
+          } catch (e) {
+            data = {};
+          }
+        } else {
+          data = { ...data };
+        }
+
+        if (target.entity_id) {
+          data.entity_id = target.entity_id;
+        } else if (!data.entity_id && entityConfig.entity) {
+          data.entity_id = entityConfig.entity;
+        }
+
+        this.hass.callService(domain, service, data);
+        return;
+
+      case "assist":
+        const ev = new Event("hass-start-voice-assistant", {
+          bubbles: true,
+          composed: true,
+        });
+        this.dispatchEvent(ev);
+        return;
+
+      default:
+        if (actionType === "tap" && entityConfig.entity)
+          this._fireMoreInfo(entityConfig.entity);
+        return;
+    }
+  }
+
   evaluateTemplate(template, hass) {
     if (!template || typeof template !== "string") return template;
     if (!template.includes("{{")) return template;
@@ -120,25 +329,41 @@ class StripCard extends LitElement {
         `
         "use strict";
 
+        const float = (v) => parseFloat(v) || 0;
+        const int = (v) => parseInt(v, 10) || 0;
+        const user = hass.user;
+
         const states = new Proxy(
           (entity_id) => {
             const st = hass.states[entity_id];
-            return st ? st.state : undefined;
+            return st ? st.state : 'unknown';
           },
           {
             get(target, prop) {
               if (prop in target) return target[prop];
+              if (prop === 'toJSON') return undefined;
               const key = String(prop);
-              return hass.states[key];
-            }
+              const st = hass.states[key];
+              return st || {
+                state: 'unavailable',
+                attributes: {},
+                last_changed: '',
+                last_updated: '',
+              };
+            },
           }
         );
 
-        const state = states;
         const state_attr = (entity_id, attr) => {
           const st = hass.states[entity_id];
           return st ? st.attributes?.[attr] : undefined;
         };
+
+        const is_state = (entity_id, value) => {
+          const st = hass.states[entity_id];
+          return st && st.state === value;
+        };
+
         const now = () => new Date();
 
         return (${expression.trim()});
@@ -147,10 +372,26 @@ class StripCard extends LitElement {
 
       return func(hass);
     } catch (e) {
-      console.warn("Template evaluation failed:", e, template);
-      // value_template vb. için literal yazmasın
+      console.warn("[Strip Card] Template evaluation failed:", e, template);
       return "";
     }
+  }
+
+  _interpolateTemplateString(str, hass) {
+    if (str == null || typeof str !== "string" || !str.includes("{{")) {
+      return str;
+    }
+
+    return str.replace(/{{([\s\S]*?)}}/g, (_, expr) => {
+      try {
+        const value = this.evaluateTemplate(`{{${expr}}}`, hass);
+        if (value === undefined || value === null) return "";
+        return String(value);
+      } catch (e) {
+        console.warn("[Strip Card] Interpolation failed:", e, expr);
+        return "";
+      }
+    });
   }
 
   _sanitizeName(name) {
@@ -173,12 +414,10 @@ class StripCard extends LitElement {
     return out.trim();
   }
 
-  // scroll_speed varsa içerik boyuna göre dynamic duration
   updated(changedProps) {
     super.updated(changedProps);
     if (!this._config || !this.hass) return;
 
-    // scroll_speed yoksa, duration aynen kullan
     if (
       this._config.scroll_speed === undefined ||
       this._config.scroll_speed === null
@@ -214,7 +453,6 @@ class StripCard extends LitElement {
     const totalLength = isVertical ? ticker.scrollHeight : ticker.scrollWidth;
     if (!totalLength || totalLength <= 0) return;
 
-    // keyframe %50'ye kadar gidiyor diye varsayıyoruz
     const distance = totalLength * 0.5;
     const newDuration = distance / speed;
 
@@ -238,9 +476,45 @@ class StripCard extends LitElement {
     const baseDuration = parseFloat(dRaw) || 20;
     const duration = this._animationDuration || baseDuration;
 
-    const cardWidthStyle = this._config.card_width
-      ? `--strip-card-width: ${this._config.card_width};`
-      : "";
+    const title = this._interpolateTemplateString(this._config.title, this.hass);
+    const fontSize = this._interpolateTemplateString(
+      this._config.font_size,
+      this.hass
+    );
+    const borderRadius = this._interpolateTemplateString(
+      this._config.border_radius,
+      this.hass
+    );
+    const cardHeight = this._interpolateTemplateString(
+      this._config.card_height,
+      this.hass
+    );
+    const cardWidth = this._interpolateTemplateString(
+      this._config.card_width,
+      this.hass
+    );
+
+    const badgeHeight =
+      this._interpolateTemplateString(
+        this._config.badge_height,
+        this.hass
+      ) || "28px";
+    const badgeFontSize =
+      this._interpolateTemplateString(
+        this._config.badge_font_size,
+        this.hass
+      ) || "12px";
+    const badgeIconSize =
+      this._interpolateTemplateString(
+        this._config.badge_icon_size,
+        this.hass
+      ) || "16px";
+
+    const cardWidthStyle =
+      cardWidth && !this._config.full_width
+        ? `--strip-card-width: ${cardWidth};`
+        : "";
+
     const fadingClass = this._config.fading ? "has-fading" : "";
     const verticalClass = this._config.vertical_scroll
       ? "has-vertical-scroll"
@@ -263,10 +537,12 @@ class StripCard extends LitElement {
     }
 
     const cardStyles = `
-      --strip-card-font-size: ${this._config.font_size};
-      --strip-card-border-radius: ${this._config.border_radius};
-      --strip-card-height: ${this._config.card_height};
-      --strip-card-animation-duration: ${duration}s;
+      --strip-card-font-size: ${fontSize};
+      --strip-card-border-radius: ${borderRadius};
+      --strip-card-height: ${cardHeight};
+      --strip-card-badge-height: ${badgeHeight};
+      --strip-card-badge-font-size: ${badgeFontSize};
+      --strip-card-badge-icon-size: ${badgeIconSize};
       ${cardWidthStyle}
       ${transparentStyle}
     `;
@@ -275,49 +551,88 @@ class StripCard extends LitElement {
       .map((entityConfig) => this.renderEntity(entityConfig))
       .filter(Boolean);
 
-    if (renderedEntities.length === 0) return html``;
+    const hasEntities = renderedEntities.length > 0;
+    let content;
 
-    let content = renderedEntities;
+    if (hasEntities) {
+      content = renderedEntities;
 
-    if (this._config.continuous_scroll) {
-      const containerWidth = this.getBoundingClientRect().width || 400;
-      const divisor = renderedEntities.length * 100 || 100;
-      const minCopies = Math.ceil(containerWidth / divisor) + 2;
-      const copies = minCopies > 2 ? minCopies : 2;
-      content = [];
-      for (let i = 0; i < copies; i++) {
-        content.push(...renderedEntities);
+      if (this._config.continuous_scroll && !this._config.vertical_scroll) {
+        const containerWidth = this.getBoundingClientRect().width || 400;
+        const divisor = renderedEntities.length * 100 || 100;
+        const minCopies = Math.ceil(containerWidth / divisor) + 2;
+        const copies = minCopies > 2 ? minCopies : 2;
+        content = [];
+        for (let i = 0; i < copies; i++) {
+          content.push(...renderedEntities);
+        }
+      }
+    } else {
+      // Hiç görünür entity yok: kart yine render edilir
+      const msgRaw = this._config.empty_message || "";
+      const emptyMessage =
+        this._interpolateTemplateString(msgRaw, this.hass) ||
+        "";
+
+      if (emptyMessage) {
+        content = [
+          html`
+            <div class="ticker-item empty">
+              <span class="empty-text">${emptyMessage}</span>
+            </div>
+          `,
+        ];
+      } else {
+        // Mesaj yoksa boş içerik, ama ha-card ve ticker yapısı durur
+        content = [];
       }
     }
 
+    let animationName = "";
+    if (this._config.vertical_scroll) {
+      animationName =
+        this._config.vertical_alignment === "inline"
+          ? "vertical-ticker-inline"
+          : "vertical-ticker";
+    } else {
+      const dir = this._config.scroll_direction || "left";
+      animationName = dir === "right" ? "ticker-right" : "ticker";
+    }
+
+    const wrapperClass = this._config.full_width
+      ? "strip-card-wrapper full-width"
+      : "strip-card-wrapper";
+    const wrapperStyle = this._config.full_width
+      ? `--sidebar-width: ${this._sidebarWidth}px; --scrollbar-width: ${this._scrollbarWidth}px;`
+      : "";
+
     return html`
-      <ha-card .header="${this._config.title}" style="${cardStyles}">
-        <div
-          class="ticker-wrap ${this._config.pause_on_hover
-            ? "pausable"
-            : ""} ${fadingClass} ${verticalClass}"
-        >
+      <div class="${wrapperClass}" style="${wrapperStyle}">
+        <ha-card .header="${title}" style="${cardStyles}">
           <div
-            class="ticker-move ${verticalAlignmentClass}"
-            style="animation-iteration-count: ${animationIteration};"
+            class="ticker-wrap ${this._config.pause_on_hover
+              ? "pausable"
+              : ""} ${fadingClass} ${verticalClass}"
           >
-            ${content}
+            <div
+              class="ticker-move ${verticalAlignmentClass}"
+              style="
+                animation-duration: ${duration}s;
+                animation-iteration-count: ${animationIteration};
+                animation-name: ${animationName};
+              "
+            >
+              ${content}
+            </div>
           </div>
-        </div>
-      </ha-card>
+        </ha-card>
+      </div>
     `;
   }
 
   renderEntity(entityConfig) {
-    // entity opsiyonel: string ise zorunlu, obje ise olmayabilir
-    let entityId = null;
-    if (typeof entityConfig === "string") {
-      entityId = entityConfig;
-    } else if (entityConfig.entity) {
-      entityId = entityConfig.entity;
-    }
-
-    const hasEntity = !!entityId;
+    const entityId =
+      typeof entityConfig === "string" ? entityConfig : entityConfig.entity;
 
     if (entityConfig.visible_if) {
       let isVisible = this.evaluateTemplate(
@@ -332,101 +647,108 @@ class StripCard extends LitElement {
       }
     }
 
-    let stateObj = null;
-    if (hasEntity) {
-      stateObj = this.hass.states[entityId];
-      if (!stateObj) {
-        return html`<div class="ticker-item error">
-          Unknown Entity: ${entityId}
-        </div>`;
-      }
+    const stateObj = entityId ? this.hass.states[entityId] : null;
+
+    if (entityId && !stateObj) {
+      return html`<div class="ticker-item error">
+        Unknown Entity: ${entityId}
+      </div>`;
     }
 
-    // Değer hesaplama
-    let value = "";
-    if (stateObj) {
-      value = stateObj.state;
-      if (
-        entityConfig.attribute &&
-        stateObj.attributes[entityConfig.attribute] !== undefined
-      ) {
-        value = stateObj.attributes[entityConfig.attribute];
-      }
+    if (!entityId && !entityConfig.value_template) {
+      return html`<div class="ticker-item error">
+        Must specify entity or value_template
+      </div>`;
+    }
+
+    let value = stateObj ? stateObj.state : "";
+
+    if (
+      stateObj &&
+      entityConfig.attribute &&
+      stateObj.attributes[entityConfig.attribute] !== undefined
+    ) {
+      value = stateObj.attributes[entityConfig.attribute];
     }
 
     if (entityConfig.value_template) {
-      const templated = this.evaluateTemplate(
-        entityConfig.value_template,
-        this.hass
-      );
-      if (templated !== undefined && templated !== null) {
-        value = templated;
-      }
+      value = this.evaluateTemplate(entityConfig.value_template, this.hass);
     }
 
     if (typeof value === "string" && value.length > 0) {
       value = value.charAt(0).toUpperCase() + value.slice(1);
     }
 
-    const rawName =
-      stateObj && !Object.prototype.hasOwnProperty.call(entityConfig, "name")
-        ? stateObj.attributes.friendly_name || entityId
-        : entityConfig.name;
+    const rawName = stateObj
+      ? stateObj.attributes.friendly_name || entityId
+      : "";
 
-    const hasExplicitName = Object.prototype.hasOwnProperty.call(
-      entityConfig,
-      "name"
-    );
-
-    let name = hasExplicitName ? entityConfig.name : this._sanitizeName(rawName);
-
-    // name string ise, içinde template varsa evaluate et
-    if (hasExplicitName && typeof name === "string") {
-      const templatedName = this.evaluateTemplate(name, this.hass);
-      if (templatedName !== undefined && templatedName !== null) {
-        name = templatedName;
-      }
+    let name;
+    if (entityConfig.name === "") {
+      name = "";
+    } else if (entityConfig.name) {
+      name = this._interpolateTemplateString(entityConfig.name, this.hass);
+    } else {
+      name = this._sanitizeName(rawName);
     }
 
-    const nameStr =
-      name === null || name === undefined ? "" : String(name).trim();
-    const hasName = nameStr.length > 0;
+    let unit = "";
+    if (entityConfig.unit !== undefined) {
+      unit = entityConfig.unit;
+    } else if (stateObj && stateObj.attributes.unit_of_measurement) {
+      unit = stateObj.attributes.unit_of_measurement;
+    }
+    unit = this._interpolateTemplateString(unit, this.hass);
 
-    const unit =
-      entityConfig.unit !== undefined
-        ? entityConfig.unit
-        : stateObj?.attributes?.unit_of_measurement || "";
-
-    let showIcon =
-      entityConfig.show_icon !== undefined
-        ? entityConfig.show_icon
-        : this._config.show_icon;
-    showIcon = this.evaluateTemplate(showIcon, this.hass);
-
-    const unit_position =
-      entityConfig.unit_position || this._config.unit_position;
-
-    const nameColor = this.evaluateTemplate(
-      entityConfig.name_color || this._config.name_color,
+    const separatorRaw =
+      entityConfig.separator !== undefined
+        ? entityConfig.separator
+        : this._config.separator;
+    const separator = this._interpolateTemplateString(
+      separatorRaw,
       this.hass
     );
-    const valueColor = this.evaluateTemplate(
-      entityConfig.value_color || this._config.value_color,
-      this.hass
-    );
-    const unitColor = this.evaluateTemplate(
-      entityConfig.unit_color || this._config.unit_color,
-      this.hass
-    );
-    const iconColor = this.evaluateTemplate(
-      entityConfig.icon_color || this._config.icon_color,
-      this.hass
-    );
-    const customIcon = this.evaluateTemplate(entityConfig.icon, this.hass);
 
-    // Entity yoksa ve customIcon da yoksa, state-badge kullanamayız, ikon göstermeyelim
-    if (!stateObj && !customIcon) {
-      showIcon = false;
+    let showIconRaw = entityConfig.show_icon;
+    if (
+      showIconRaw === undefined ||
+      showIconRaw === null ||
+      showIconRaw === ""
+    ) {
+      showIconRaw = this._config.show_icon;
+    }
+    if (showIconRaw === "true") showIconRaw = true;
+    if (showIconRaw === "false") showIconRaw = false;
+
+    let showIcon = this.evaluateTemplate(showIconRaw, this.hass);
+
+    const nameColorRaw = entityConfig.name_color || this._config.name_color;
+    const valueColorRaw = entityConfig.value_color || this._config.value_color;
+    const unitColorRaw = entityConfig.unit_color || this._config.unit_color;
+    const iconColorRaw = entityConfig.icon_color || this._config.icon_color;
+
+    const nameColor = this._interpolateTemplateString(
+      nameColorRaw,
+      this.hass
+    );
+    const valueColor = this._interpolateTemplateString(
+      valueColorRaw,
+      this.hass
+    );
+    const unitColor = this._interpolateTemplateString(
+      unitColorRaw,
+      this.hass
+    );
+    const iconColor = this._interpolateTemplateString(
+      iconColorRaw,
+      this.hass
+    );
+
+    let customIcon = entityConfig.icon;
+    if (typeof customIcon === "string" && customIcon.includes("{{")) {
+      customIcon = this.evaluateTemplate(customIcon, this.hass);
+    } else {
+      customIcon = this._interpolateTemplateString(customIcon, this.hass);
     }
 
     const valuePart = html`<span class="value" style="color: ${valueColor};"
@@ -436,25 +758,91 @@ class StripCard extends LitElement {
       >${unit}</span
     >`;
 
-    let titleText;
-    if (hasName) {
-      titleText =
-        unit_position === "left"
-          ? `${nameStr} ${unit}${value}`
-          : `${nameStr} ${value} ${unit}`;
-    } else {
-      titleText =
-        unit_position === "left"
-          ? `${unit}${value}`
-          : `${value} ${unit}`;
+    const titleName = name || rawName;
+    const titleText = `${titleName}: ${value} ${unit}`;
+
+    const isBadge = this._config.badge_style;
+
+    const eventProps = {
+        '@mousedown': (e) => this._handleDown(e),
+        '@mouseup': (e) => this._handleUp(e, entityConfig),
+        '@touchstart': (e) => this._handleDown(e),
+        '@touchend': (e) => this._handleUp(e, entityConfig),
+    };
+
+    if (isBadge) {
+      const badgeBackground = this._interpolateTemplateString(
+        entityConfig.badge_background || this._config.badge_background,
+        this.hass
+      );
+      const badgeLabelColor = this._interpolateTemplateString(
+        entityConfig.badge_label_color || this._config.badge_label_color,
+        this.hass
+      );
+      const badgeValueColor = this._interpolateTemplateString(
+        entityConfig.badge_value_color || this._config.badge_value_color,
+        this.hass
+      );
+
+      const labelText = name || titleName;
+
+      return html`
+        <div
+          class="ticker-item chip-item"
+          @mousedown=${this._handleDown}
+          @mouseup=${(e) => this._handleUp(e, entityConfig)}
+          @touchstart=${this._handleDown}
+          @touchend=${(e) => this._handleUp(e, entityConfig)}
+          title="${titleText}"
+        >
+          <div
+            class="chip ${labelText ? "has-label" : ""}"
+            style="background: ${badgeBackground};"
+          >
+            ${showIcon
+              ? customIcon
+                ? html`<ha-icon
+                    class="chip-icon"
+                    .icon=${customIcon}
+                    style="color: ${iconColor};"
+                  ></ha-icon>`
+                : stateObj
+                ? html`<state-badge
+                    class="chip-icon"
+                    .hass=${this.hass}
+                    .stateObj=${stateObj}
+                  ></state-badge>`
+                : ""
+              : ""}
+
+            <div class="chip-text">
+              ${labelText
+                ? html`<span
+                    class="chip-label"
+                    style="color: ${badgeLabelColor};"
+                    >${labelText}</span
+                  >`
+                : ""}
+              <span class="chip-value" style="color: ${badgeValueColor};">
+                <span class="value">${value}</span>
+                ${unit
+                  ? html`<span class="unit">${unit}</span>`
+                  : ""}
+              </span>
+            </div>
+          </div>
+        </div>
+      `;
     }
 
-    const clickable = !!(entityConfig.service || hasEntity);
-
+    // NORMAL STRIP MODU
     return html`
       <div
         class="ticker-item"
-        @click=${clickable ? () => this._handleTap(entityConfig) : null}
+        @mousedown=${this._handleDown}
+        @mouseup=${(e) => this._handleUp(e, entityConfig)}
+        @touchstart=${this._handleDown}
+        @touchend=${(e) => this._handleUp(e, entityConfig)}
         title="${titleText}"
       >
         ${showIcon
@@ -464,27 +852,51 @@ class StripCard extends LitElement {
                 .icon=${customIcon}
                 style="color: ${iconColor};"
               ></ha-icon>`
-            : html`<state-badge
+            : stateObj
+            ? html`<state-badge
                 class="icon"
                 .hass=${this.hass}
                 .stateObj=${stateObj}
               ></state-badge>`
+            : ""
           : ""}
-        ${hasName
+        ${name
           ? html`<span class="name" style="color: ${nameColor};"
-              >${nameStr}</span
+              >${name}:</span
             >`
           : ""}
-        ${unit_position === "left"
-          ? html`${unitPart}${valuePart}`
-          : html`${valuePart}${unitPart}`}
-        <span class="separator">${this._config.separator}</span>
+        ${valuePart}${unitPart}
+        <span class="separator">${separator}</span>
       </div>
     `;
   }
 
   static get styles() {
     return css`
+      :host {
+        display: block;
+      }
+
+      .strip-card-wrapper {
+        display: flex;
+        justify-content: center;
+        width: 100%;
+        position: relative;
+      }
+
+      .strip-card-wrapper.full-width {
+        position: relative;
+        margin-left: calc(-50vw + 50% + var(--sidebar-width, 256px) / 2);
+        width: calc(
+          100vw - var(--sidebar-width, 256px) - var(--scrollbar-width, 0px)
+        );
+      }
+
+      .strip-card-wrapper.full-width ha-card {
+        width: 100% !important;
+        max-width: 100% !important;
+      }
+
       ha-card {
         overflow: hidden;
         border-radius: var(--strip-card-border-radius, 0px);
@@ -550,19 +962,15 @@ class StripCard extends LitElement {
         white-space: nowrap;
         will-change: transform;
         transform: translateZ(0);
-        animation-name: ticker;
         animation-timing-function: linear;
         animation-iteration-count: infinite;
-        animation-duration: var(--strip-card-animation-duration, 20s);
       }
       .ticker-move.has-inline-vertical-alignment {
         display: block;
         height: max-content;
-        animation-name: vertical-ticker-inline;
       }
       .ticker-wrap.has-vertical-scroll .ticker-move {
         white-space: normal;
-        animation-name: vertical-ticker;
         animation-direction: normal;
         animation-fill-mode: forwards;
         display: block;
@@ -574,6 +982,7 @@ class StripCard extends LitElement {
         margin: 0 1rem;
         font-size: var(--strip-card-font-size, 14px);
         cursor: pointer;
+        user-select: none;
       }
       .ticker-wrap.has-vertical-scroll .ticker-item {
         display: flex;
@@ -609,12 +1018,102 @@ class StripCard extends LitElement {
         color: var(--error-color);
         font-weight: bold;
       }
+
+      .chip-item {
+        display: inline-flex;
+        align-items: center;
+        margin: 0 0.4rem;
+        font-size: var(--strip-card-font-size, 14px);
+        vertical-align: middle;
+      }
+
+      .chip {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        padding: 4px 10px;
+        margin-right: 8px;
+        height: var(--strip-card-badge-height, 28px);
+        line-height: 1;
+        border-radius: 999px;
+        cursor: pointer;
+        font-size: var(--strip-card-badge-font-size, 12px);
+        white-space: nowrap;
+        box-sizing: border-box;
+        background: var(--primary-background-color);
+        box-shadow: 0 1px 2px rgba(15, 23, 42, 0.06),
+          0 0 0 1px rgba(15, 23, 42, 0.04);
+        transition: background-color 0.2s ease, box-shadow 0.2s ease,
+          transform 0.15s ease;
+      }
+
+      .chip:hover {
+        box-shadow: 0 4px 8px rgba(15, 23, 42, 0.1),
+          0 0 0 1px rgba(15, 23, 42, 0.06);
+        transform: translateY(-1px);
+      }
+
+      .chip:active {
+        transform: translateY(0);
+        box-shadow: 0 1px 3px rgba(15, 23, 42, 0.12),
+          0 0 0 1px rgba(15, 23, 42, 0.08);
+      }
+
+      .chip-icon {
+        --mdc-icon-size: var(--strip-card-badge-icon-size, 16px);
+        width: var(--strip-card-badge-icon-size, 16px);
+        height: var(--strip-card-badge-icon-size, 16px);
+        flex-shrink: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      .chip-text {
+        display: flex;
+        flex-direction: row;
+        gap: 4px;
+        align-items: center;
+        justify-content: center;
+        line-height: 1.1;
+      }
+
+      .chip-label {
+        font-size: 0.8em;
+        font-weight: 500;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+        opacity: 0.75;
+      }
+
+      .chip-value {
+        font-weight: 600;
+        font-size: 1em;
+      }
+
+      .empty {
+        opacity: 0.7;
+      }
+
+      .empty-text {
+        font-style: italic;
+        color: var(--secondary-text-color);
+      }
+
       @keyframes ticker {
         0% {
           transform: translateX(0);
         }
         100% {
           transform: translateX(-50%);
+        }
+      }
+      @keyframes ticker-right {
+        0% {
+          transform: translateX(-50%);
+        }
+        100% {
+          transform: translateX(0);
         }
       }
       @keyframes vertical-ticker {
@@ -638,3 +1137,922 @@ class StripCard extends LitElement {
 }
 
 customElements.define("strip-card", StripCard);
+
+
+class StripCardEditor extends LitElement {
+  static get properties() {
+    return {
+      hass: {},
+      _config: { type: Object },
+      _openGlobal: { type: Boolean },
+      _openColors: { type: Boolean },
+      _openEntities: { type: Boolean },
+      _expandedEntities: { type: Object },
+    };
+  }
+
+  constructor() {
+    super();
+    this._openGlobal = true;
+    this._openColors = false;
+    this._openEntities = true;
+    this._expandedEntities = new Set();
+  }
+
+  setConfig(config) {
+    this._config = {
+      title: "",
+      duration: 20,
+      separator: "•",
+      font_size: "14px",
+      name_color: "var(--primary-text-color)",
+      value_color: "var(--primary-color)",
+      unit_color: "var(--secondary-text-color)",
+      icon_color: "var(--primary-text-color)",
+      show_icon: false,
+      pause_on_hover: false,
+      border_radius: "0px",
+      card_height: "50px",
+      card_width: "400px",
+      fading: false,
+      vertical_scroll: false,
+      vertical_alignment: "stack",
+      continuous_scroll: true,
+      transparent: false,
+      scroll_speed: undefined,
+      scroll_direction: "left",
+      full_width: false,
+      badge_style: false,
+      badge_background: "var(--primary-background-color)",
+      badge_label_color: "var(--secondary-text-color)",
+      badge_value_color: "var(--primary-text-color)",
+      badge_height: "28px",
+      badge_font_size: "12px",
+      badge_icon_size: "16px",
+      ...config,
+    };
+
+    if (!this._config.entities) {
+      this._config.entities = [];
+    }
+  }
+
+  get value() {
+    return this._config;
+  }
+
+  _emitConfigChanged() {
+    this.dispatchEvent(
+      new CustomEvent("config-changed", {
+        detail: { config: this._config },
+        bubbles: true,
+        composed: true,
+      })
+    );
+  }
+
+  _valueChanged(ev) {
+    if (!this._config) return;
+    const target = ev.target;
+    const path = target.configValue;
+    if (!path) return;
+
+    let value;
+    if (ev.detail && ev.detail.value !== undefined) {
+      value = ev.detail.value;
+    } else if ("checked" in target) {
+      value = target.checked;
+    } else {
+      value = target.value;
+    }
+
+    if (path.endsWith(".show_icon") && value === "global") {
+      value = "";
+    }
+
+    const newConfig = { ...this._config };
+    const segments = path.split(".");
+    let obj = newConfig;
+
+    for (let i = 0; i < segments.length - 1; i++) {
+      const seg = segments[i];
+      const idx = Number(seg);
+      if (Array.isArray(obj) && !Number.isNaN(idx)) {
+        if (!obj[idx]) obj[idx] = {};
+        obj = obj[idx];
+      } else {
+        if (!obj[seg]) obj[seg] = {};
+        obj = obj[seg];
+      }
+    }
+
+    const last = segments[segments.length - 1];
+    if (value === "" || value === null || value === undefined) {
+      if (Array.isArray(obj)) {
+        const idx = Number(last);
+        if (!Number.isNaN(idx)) obj.splice(idx, 1);
+      } else {
+        delete obj[last];
+      }
+    } else {
+      if (Array.isArray(obj)) {
+        const idx = Number(last);
+        if (!Number.isNaN(idx)) obj[idx] = value;
+      } else {
+        obj[last] = value;
+      }
+    }
+
+    this._config = newConfig;
+    this._emitConfigChanged();
+  }
+
+  _actionChanged(ev, index, actionType) {
+    ev.stopPropagation();
+    const newActionConfig = ev.detail.value;
+
+    const newConfig = JSON.parse(JSON.stringify(this._config));
+    if (!newConfig.entities[index]) {
+      newConfig.entities[index] = {};
+    }
+    newConfig.entities[index][actionType] = newActionConfig;
+    this._config = newConfig;
+    this._emitConfigChanged();
+  }
+
+  _addEntity() {
+    const newConfig = JSON.parse(JSON.stringify(this._config));
+    if (!Array.isArray(newConfig.entities)) {
+      newConfig.entities = [];
+    }
+    newConfig.entities.push({
+      entity: "",
+      name: "",
+      unit: "",
+      attribute: "",
+      value_template: "",
+    });
+
+    const newIndex = newConfig.entities.length - 1;
+    this._expandedEntities.add(newIndex);
+    this._expandedEntities = new Set(this._expandedEntities);
+
+    this._config = newConfig;
+    this._emitConfigChanged();
+  }
+
+  _removeEntity(index) {
+    const newConfig = JSON.parse(JSON.stringify(this._config));
+    if (!Array.isArray(newConfig.entities)) return;
+    newConfig.entities.splice(index, 1);
+    this._config = newConfig;
+
+    const newSet = new Set();
+    this._expandedEntities.forEach((i) => {
+      if (i < index) newSet.add(i);
+      if (i > index) newSet.add(i - 1);
+    });
+    this._expandedEntities = newSet;
+
+    this._emitConfigChanged();
+  }
+
+  _toggleSection(section) {
+    if (section === "global") {
+      this._openGlobal = !this._openGlobal;
+    } else if (section === "colors") {
+      this._openColors = !this._openColors;
+    } else if (section === "entities") {
+      this._openEntities = !this._openEntities;
+    }
+  }
+
+  _toggleEntity(index) {
+    const newSet = new Set(this._expandedEntities);
+    if (newSet.has(index)) {
+      newSet.delete(index);
+    } else {
+      newSet.add(index);
+    }
+    this._expandedEntities = newSet;
+    this.requestUpdate();
+  }
+
+  render() {
+    if (!this.hass || !this._config) return html``;
+
+    const cfg = this._config;
+
+    return html`
+      <div class="strip-card-editor">
+        <div class="section">
+          <button
+            class="section-header"
+            type="button"
+            @click=${() => this._toggleSection("global")}
+          >
+            <span>✨ Global Settings</span>
+            <ha-icon
+              icon=${this._openGlobal ? "mdi:chevron-up" : "mdi:chevron-down"}
+            ></ha-icon>
+          </button>
+          ${this._openGlobal
+            ? html`
+                <div class="section-body">
+                  <div class="grid grid-global">
+                    <ha-textfield
+                      label="Title"
+                      .value=${cfg.title || ""}
+                      .configValue=${"title"}
+                      @input=${this._valueChanged}
+                      placeholder="Static or {{ template }}"
+                    ></ha-textfield>
+
+                    <ha-textfield
+                      label="Duration (s)"
+                      type="number"
+                      .value=${cfg.duration != null
+                        ? String(cfg.duration)
+                        : ""}
+                      .configValue=${"duration"}
+                      @input=${this._valueChanged}
+                      placeholder="20"
+                    ></ha-textfield>
+
+                    <ha-textfield
+                      label="Scroll speed (px/s)"
+                      type="number"
+                      .value=${cfg.scroll_speed != null
+                        ? String(cfg.scroll_speed)
+                        : ""}
+                      .configValue=${"scroll_speed"}
+                      @input=${this._valueChanged}
+                      placeholder="Empty = use duration"
+                    ></ha-textfield>
+
+                    <ha-select
+                      label="Direction"
+                      .value=${cfg.scroll_direction || "left"}
+                      .configValue=${"scroll_direction"}
+                      @selected=${this._valueChanged}
+                      @closed=${(e) => e.stopPropagation()}
+                    >
+                      <mwc-list-item value="left">Left</mwc-list-item>
+                      <mwc-list-item value="right">Right</mwc-list-item>
+                    </ha-select>
+
+                    <ha-textfield
+                      label="Separator"
+                      .value=${cfg.separator || ""}
+                      .configValue=${"separator"}
+                      @input=${this._valueChanged}
+                      placeholder="• or {{ template }}"
+                    ></ha-textfield>
+
+                    <ha-textfield
+                      label="Font size"
+                      .value=${cfg.font_size || ""}
+                      .configValue=${"font_size"}
+                      @input=${this._valueChanged}
+                      placeholder="14px"
+                    ></ha-textfield>
+
+                    <ha-textfield
+                      label="Card width"
+                      .value=${cfg.card_width || ""}
+                      .configValue=${"card_width"}
+                      @input=${this._valueChanged}
+                      placeholder="400px"
+                    ></ha-textfield>
+
+                    <ha-textfield
+                      label="Card height"
+                      .value=${cfg.card_height || ""}
+                      .configValue=${"card_height"}
+                      @input=${this._valueChanged}
+                      placeholder="50px"
+                    ></ha-textfield>
+
+                    <ha-textfield
+                      label="Border radius"
+                      .value=${cfg.border_radius || ""}
+                      .configValue=${"border_radius"}
+                      @input=${this._valueChanged}
+                      placeholder="0px"
+                    ></ha-textfield>
+                  </div>
+
+                  <h4>Badge Mode Layout</h4>
+                  <div class="grid grid-small">
+                    <ha-textfield
+                      label="Badge Height"
+                      .value=${cfg.badge_height || ""}
+                      .configValue=${"badge_height"}
+                      @input=${this._valueChanged}
+                      placeholder="28px"
+                    ></ha-textfield>
+
+                    <ha-textfield
+                      label="Badge Font Size"
+                      .value=${cfg.badge_font_size || ""}
+                      .configValue=${"badge_font_size"}
+                      @input=${this._valueChanged}
+                      placeholder="12px"
+                    ></ha-textfield>
+
+                    <ha-textfield
+                      label="Badge Icon Size"
+                      .value=${cfg.badge_icon_size || ""}
+                      .configValue=${"badge_icon_size"}
+                      @input=${this._valueChanged}
+                      placeholder="16px"
+                    ></ha-textfield>
+                  </div>
+
+                  <h4>Behavior</h4>
+                  <div class="grid grid-small">
+                    <div class="toggle-row">
+                      <span>Show icon (default)</span>
+                      <ha-switch
+                        .checked=${cfg.show_icon === true}
+                        .configValue=${"show_icon"}
+                        @change=${this._valueChanged}
+                      ></ha-switch>
+                    </div>
+
+                    <div class="toggle-row">
+                      <span>Pause on hover</span>
+                      <ha-switch
+                        .checked=${cfg.pause_on_hover === true}
+                        .configValue=${"pause_on_hover"}
+                        @change=${this._valueChanged}
+                      ></ha-switch>
+                    </div>
+
+                    <div class="toggle-row">
+                      <span>Continuous scroll</span>
+                      <ha-switch
+                        .checked=${cfg.continuous_scroll !== false}
+                        .configValue=${"continuous_scroll"}
+                        @change=${this._valueChanged}
+                      ></ha-switch>
+                    </div>
+
+                    <div class="toggle-row">
+                      <span>Vertical scroll</span>
+                      <ha-switch
+                        .checked=${cfg.vertical_scroll === true}
+                        .configValue=${"vertical_scroll"}
+                        @change=${this._valueChanged}
+                      ></ha-switch>
+                    </div>
+
+                    <div class="toggle-row">
+                      <span>Fading edges</span>
+                      <ha-switch
+                        .checked=${cfg.fading === true}
+                        .configValue=${"fading"}
+                        @change=${this._valueChanged}
+                      ></ha-switch>
+                    </div>
+
+                    <div class="toggle-row">
+                      <span>Transparent card</span>
+                      <ha-switch
+                        .checked=${cfg.transparent === true}
+                        .configValue=${"transparent"}
+                        @change=${this._valueChanged}
+                      ></ha-switch>
+                    </div>
+
+                    <div class="toggle-row">
+                      <span>Full width</span>
+                      <ha-switch
+                        .checked=${cfg.full_width === true}
+                        .configValue=${"full_width"}
+                        @change=${this._valueChanged}
+                      ></ha-switch>
+                    </div>
+
+                    <div class="toggle-row">
+                      <span>Badge Style</span>
+                      <ha-switch
+                        .checked=${cfg.badge_style === true}
+                        .configValue=${"badge_style"}
+                        @change=${this._valueChanged}
+                      ></ha-switch>
+                    </div>
+                  </div>
+
+                  <div class="grid">
+                    <ha-select
+                      label="Vertical alignment"
+                      .value=${cfg.vertical_alignment || "stack"}
+                      .configValue=${"vertical_alignment"}
+                      @selected=${this._valueChanged}
+                      @closed=${(e) => e.stopPropagation()}
+                    >
+                      <mwc-list-item value="stack">Stack</mwc-list-item>
+                      <mwc-list-item value="inline">Inline</mwc-list-item>
+                    </ha-select>
+                  </div>
+                </div>
+              `
+            : ""}
+        </div>
+
+        <div class="section">
+          <button
+            class="section-header"
+            type="button"
+            @click=${() => this._toggleSection("colors")}
+          >
+            <span>🎨 Global Colors</span>
+            <ha-icon
+              icon=${this._openColors ? "mdi:chevron-up" : "mdi:chevron-down"}
+            ></ha-icon>
+          </button>
+          ${this._openColors
+            ? html`
+                <div class="section-body">
+                  <div class="grid">
+                    <ha-textfield
+                      label="Name color"
+                      .value=${cfg.name_color || ""}
+                      .configValue=${"name_color"}
+                      @input=${this._valueChanged}
+                    ></ha-textfield>
+
+                    <ha-textfield
+                      label="Value color"
+                      .value=${cfg.value_color || ""}
+                      .configValue=${"value_color"}
+                      @input=${this._valueChanged}
+                    ></ha-textfield>
+
+                    <ha-textfield
+                      label="Unit color"
+                      .value=${cfg.unit_color || ""}
+                      .configValue=${"unit_color"}
+                      @input=${this._valueChanged}
+                    ></ha-textfield>
+
+                    <ha-textfield
+                      label="Icon color"
+                      .value=${cfg.icon_color || ""}
+                      .configValue=${"icon_color"}
+                      @input=${this._valueChanged}
+                    ></ha-textfield>
+                  </div>
+
+                  ${cfg.badge_style
+                    ? html`
+                        <h4>Badge Colors</h4>
+                        <div class="grid">
+                          <ha-textfield
+                            label="Badge Background"
+                            .value=${cfg.badge_background || ""}
+                            .configValue=${"badge_background"}
+                            @input=${this._valueChanged}
+                          ></ha-textfield>
+
+                          <ha-textfield
+                            label="Badge Label Color"
+                            .value=${cfg.badge_label_color || ""}
+                            .configValue=${"badge_label_color"}
+                            @input=${this._valueChanged}
+                          ></ha-textfield>
+
+                          <ha-textfield
+                            label="Badge Value Color"
+                            .value=${cfg.badge_value_color || ""}
+                            .configValue=${"badge_value_color"}
+                            @input=${this._valueChanged}
+                          ></ha-textfield>
+                        </div>
+                      `
+                    : ""}
+                </div>
+              `
+            : ""}
+        </div>
+
+        <div class="section">
+          <button
+            class="section-header"
+            type="button"
+            @click=${() => this._toggleSection("entities")}
+          >
+            <span>🧸 Entities</span>
+            <ha-icon
+              icon=${this._openEntities
+                ? "mdi:chevron-up"
+                : "mdi:chevron-down"}
+            ></ha-icon>
+          </button>
+          ${this._openEntities
+            ? html`
+                <div class="section-body">
+                  ${(cfg.entities || []).map((ent, i) =>
+                    this._renderEntity(ent, i)
+                  )}
+
+                  <mwc-button
+                    raised
+                    class="add-entity-button"
+                    @click=${this._addEntity}
+                  >
+                    <ha-icon icon="mdi:plus-box-multiple-outline"></ha-icon>
+                    <span style="margin-left: 8px;">ADD NEW ENTITY</span>
+                  </mwc-button>
+                </div>
+              `
+            : ""}
+        </div>
+      </div>
+    `;
+  }
+
+  _renderEntity(entity, index) {
+    const hasIconPicker = !!customElements.get("ha-icon-picker");
+    const hasEntityPicker = !!customElements.get("ha-entity-picker");
+
+    const showIconValue =
+      entity.show_icon === undefined || entity.show_icon === null
+        ? "global"
+        : String(entity.show_icon);
+
+    const isExpanded = this._expandedEntities.has(index);
+    const entityTitle = entity.name || entity.entity || `Entity ${index + 1}`;
+
+    return html`
+      <div class="entity-block">
+        <div class="entity-header">
+          <div
+            class="entity-header-left"
+            @click=${() => this._toggleEntity(index)}
+          >
+            <ha-icon
+              icon=${isExpanded ? "mdi:chevron-up" : "mdi:chevron-down"}
+              style="margin-right: 8px;"
+            ></ha-icon>
+            <h4>${entityTitle}</h4>
+          </div>
+          <ha-icon-button
+            @click=${() => this._removeEntity(index)}
+            .title=${"Remove entity"}
+            class="remove-icon"
+          >
+            <ha-icon icon="mdi:close"></ha-icon>
+          </ha-icon-button>
+        </div>
+
+        ${isExpanded
+          ? html`
+              <div class="entity-content">
+                <div class="grid">
+                  ${hasEntityPicker
+                    ? html`
+                        <ha-entity-picker
+                          .hass=${this.hass}
+                          .value=${entity.entity || ""}
+                          .configValue=${`entities.${index}.entity`}
+                          @value-changed=${this._valueChanged}
+                          allow-custom-entity
+                        ></ha-entity-picker>
+                      `
+                    : html`
+                        <ha-textfield
+                          label="Entity"
+                          .value=${entity.entity || ""}
+                          .configValue=${`entities.${index}.entity`}
+                          @input=${this._valueChanged}
+                          placeholder="sensor.example"
+                        ></ha-textfield>
+                      `}
+
+                  <ha-textfield
+                    label="Name ('' hides label)"
+                    .value=${entity.name != null ? entity.name : ""}
+                    .configValue=${`entities.${index}.name`}
+                    @input=${this._valueChanged}
+                    placeholder="Static or {{ template }}"
+                  ></ha-textfield>
+
+                  <ha-textfield
+                    label="Unit"
+                    .value=${entity.unit || ""}
+                    .configValue=${`entities.${index}.unit`}
+                    @input=${this._valueChanged}
+                  ></ha-textfield>
+
+                  <ha-textfield
+                    label="Attribute"
+                    .value=${entity.attribute || ""}
+                    .configValue=${`entities.${index}.attribute`}
+                    @input=${this._valueChanged}
+                    placeholder="e.g. temperature"
+                  ></ha-textfield>
+                </div>
+
+                <div class="grid">
+                  <ha-textfield
+                    label="Value template"
+                    .value=${entity.value_template || ""}
+                    .configValue=${`entities.${index}.value_template`}
+                    @input=${this._valueChanged}
+                    placeholder="{{ states('sensor.example') }}"
+                  ></ha-textfield>
+
+                  <ha-textfield
+                    label="Visible if (template)"
+                    .value=${entity.visible_if || ""}
+                    .configValue=${`entities.${index}.visible_if`}
+                    @input=${this._valueChanged}
+                    placeholder="{{ int(states('sensor.x')) > 0 }}"
+                  ></ha-textfield>
+                </div>
+
+                <div class="grid">
+                  ${hasIconPicker
+                    ? html`
+                        <ha-icon-picker
+                          label="Custom icon"
+                          .value=${entity.icon || ""}
+                          .configValue=${`entities.${index}.icon`}
+                          @value-changed=${this._valueChanged}
+                        ></ha-icon-picker>
+                      `
+                    : html`
+                        <ha-textfield
+                          label="Custom icon"
+                          .value=${entity.icon || ""}
+                          .configValue=${`entities.${index}.icon`}
+                          @input=${this._valueChanged}
+                          placeholder="mdi:... or {{ template }}"
+                        ></ha-textfield>
+                      `}
+                </div>
+
+                <div class="grid">
+                  <ha-select
+                    label="Show icon (override)"
+                    .value=${showIconValue}
+                    .configValue=${`entities.${index}.show_icon`}
+                    @selected=${this._valueChanged}
+                    @closed=${(e) => e.stopPropagation()}
+                  >
+                    <mwc-list-item value="global">Use Global</mwc-list-item>
+                    <mwc-list-item value="true">Show</mwc-list-item>
+                    <mwc-list-item value="false">Hide</mwc-list-item>
+                  </ha-select>
+                </div>
+
+                <h5>Color overrides</h5>
+                <div class="grid">
+                  <ha-textfield
+                    label="Name color"
+                    .value=${entity.name_color || ""}
+                    .configValue=${`entities.${index}.name_color`}
+                    @input=${this._valueChanged}
+                  ></ha-textfield>
+
+                  <ha-textfield
+                    label="Value color"
+                    .value=${entity.value_color || ""}
+                    .configValue=${`entities.${index}.value_color`}
+                    @input=${this._valueChanged}
+                  ></ha-textfield>
+
+                  <ha-textfield
+                    label="Unit color"
+                    .value=${entity.unit_color || ""}
+                    .configValue=${`entities.${index}.unit_color`}
+                    @input=${this._valueChanged}
+                  ></ha-textfield>
+
+                  <ha-textfield
+                    label="Icon color"
+                    .value=${entity.icon_color || ""}
+                    .configValue=${`entities.${index}.icon_color`}
+                    @input=${this._valueChanged}
+                  ></ha-textfield>
+                </div>
+
+                ${this._config?.badge_style
+                  ? html`
+                      <h5>Badge color overrides</h5>
+                      <div class="grid">
+                        <ha-textfield
+                          label="Badge Background"
+                          .value=${entity.badge_background || ""}
+                          .configValue=${`entities.${index}.badge_background`}
+                          @input=${this._valueChanged}
+                        ></ha-textfield>
+
+                        <ha-textfield
+                          label="Badge Label Color"
+                          .value=${entity.badge_label_color || ""}
+                          .configValue=${`entities.${index}.badge_label_color`}
+                          @input=${this._valueChanged}
+                        ></ha-textfield>
+
+                        <ha-textfield
+                          label="Badge Value Color"
+                          .value=${entity.badge_value_color || ""}
+                          .configValue=${`entities.${index}.badge_value_color`}
+                          @input=${this._valueChanged}
+                        ></ha-textfield>
+                      </div>
+                    `
+                  : ""}
+
+                ${this._renderActionEditor(entity, index)}
+              </div>
+            `
+          : ""}
+      </div>
+    `;
+  }
+
+  _renderActionEditor(entity, index) {
+    const tapAction = entity.tap_action || { action: "more-info" };
+    const holdAction = entity.hold_action || { action: "none" };
+    const doubleTapAction = entity.double_tap_action || { action: "none" };
+
+    const actionSelector = { "ui-action": {} };
+
+    return html`
+      <div class="actions-accordion" style="margin-top:16px;">
+        <h5 style="margin-bottom: 5px;">Tap Action</h5>
+        <ha-selector
+          .hass=${this.hass}
+          .selector=${actionSelector}
+          .value=${tapAction}
+          .label=${"Tap Action"}
+          @value-changed=${(ev) => this._actionChanged(ev, index, "tap_action")}
+        ></ha-selector>
+
+        <h5 style="margin-top: 15px; margin-bottom: 5px;">Hold Action</h5>
+        <ha-selector
+          .hass=${this.hass}
+          .selector=${actionSelector}
+          .value=${holdAction}
+          .label=${"Hold Action"}
+          @value-changed=${(ev) => this._actionChanged(ev, index, "hold_action")}
+        ></ha-selector>
+
+        <h5 style="margin-top: 15px; margin-bottom: 5px;">Double Tap Action</h5>
+        <ha-selector
+          .hass=${this.hass}
+          .selector=${actionSelector}
+          .value=${doubleTapAction}
+          .label=${"Double Tap Action"}
+          @value-changed=${(ev) =>
+            this._actionChanged(ev, index, "double_tap_action")}
+        ></ha-selector>
+      </div>
+    `;
+  }
+
+  static get styles() {
+    return css`
+      .strip-card-editor {
+        padding: 8px 0 16px;
+      }
+      h3,
+      h4,
+      h5 {
+        margin: 0;
+        font-weight: 500;
+        color: var(--primary-text-color);
+      }
+      h4 {
+        margin: 0;
+        font-size: 1em;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        opacity: 0.9;
+      }
+      h5 {
+        margin: 12px 0 4px;
+        font-size: 0.9em;
+        opacity: 0.7;
+      }
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        gap: 12px;
+        margin-bottom: 12px;
+      }
+      .grid-global {
+        grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+      }
+      .grid-small {
+        grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      }
+      ha-textfield,
+      ha-select,
+      ha-entity-picker,
+      ha-service-picker,
+      ha-icon-picker,
+      ha-entities-picker,
+      ha-selector {
+        width: 100%;
+      }
+      .toggle-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 8px 0;
+        border-bottom: 1px solid var(--divider-color);
+      }
+      .toggle-row:last-child {
+        border-bottom: none;
+      }
+
+      .entity-block {
+        border: 1px solid white;
+        border-radius: 6px;
+        padding: 0;
+        margin-bottom: 16px;
+        background: var(--secondary-background-color);
+        overflow: hidden;
+      }
+      .entity-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        background: rgba(0, 0, 0, 0.03);
+        padding: 0px 16px;
+        min-height: 48px;
+      }
+      .entity-header-left {
+        display: flex;
+        align-items: center;
+        flex-grow: 1;
+        cursor: pointer;
+        padding: 8px 0;
+      }
+      .entity-header h4 {
+        color: var(--primary-color);
+      }
+      .entity-content {
+        padding: 16px;
+        border-top: 1px solid var(--divider-color);
+      }
+      .remove-icon {
+        color: var(--error-color);
+      }
+
+      mwc-button.add-entity-button {
+        width: 100%;
+        margin-top: 16px;
+        --mdc-theme-primary: var(--primary-color);
+        --mdc-button-outline-color: var(--primary-color);
+        height: 48px;
+        font-weight: bold;
+      }
+
+      .section {
+        margin-bottom: 16px;
+        border-radius: 8px;
+        border: 1px solid white;
+        overflow: hidden;
+        background: var(--card-background-color, #fff);
+      }
+      .section-header {
+        width: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 12px 16px;
+        background: var(--secondary-background-color);
+        border: none;
+        cursor: pointer;
+        font-size: 1rem;
+        font-weight: 500;
+        text-align: left;
+        box-sizing: border-box;
+        transition: background-color 0.2s;
+      }
+      .section-header:hover {
+        background: var(--secondary-text-color);
+        color: var(--primary-background-color);
+      }
+      .section-header:hover ha-icon {
+        color: var(--primary-background-color);
+      }
+      .section-header ha-icon {
+        --mdc-icon-size: 24px;
+        color: var(--secondary-text-color);
+        transition: transform 0.2s;
+      }
+      .section-body {
+        padding: 16px;
+      }
+    `;
+  }
+}
+
+customElements.define("strip-card-editor", StripCardEditor);
