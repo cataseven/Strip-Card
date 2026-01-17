@@ -3,7 +3,7 @@ const html = LitElement.prototype.html;
 const css = LitElement.prototype.css;
 
 console.info(
-  `%c STRIP-CARD %c Loaded - Version 2.0.0 `,
+  `%c STRIP-CARD %c Loaded - Version 2.2.0 `,
   "color: orange; font-weight: bold; background: black",
   "color: white; font-weight: bold; background: dimgray"
 );
@@ -1442,34 +1442,39 @@ class StripCardEditor extends LitElement {
                     ></ha-textfield>
                   </div>
 
-                  <h4>Badge Mode Layout</h4>
-                  <div class="grid grid-small">
-                    <ha-textfield
-                      label="Badge Height"
-                      .value=${cfg.badge_height || ""}
-                      .configValue=${"badge_height"}
-                      @input=${this._valueChanged}
-                      placeholder="28px"
-                    ></ha-textfield>
+                  ${cfg.badge_style
+                    ? html`
+                        <h4>Badge Mode Layout</h4>
+                        <div class="grid grid-small">
+                          <ha-textfield
+                            label="Badge Height"
+                            .value=${cfg.badge_height || ""}
+                            .configValue=${"badge_height"}
+                            @input=${this._valueChanged}
+                            placeholder="28px"
+                          ></ha-textfield>
 
-                    <ha-textfield
-                      label="Badge Font Size"
-                      .value=${cfg.badge_font_size || ""}
-                      .configValue=${"badge_font_size"}
-                      @input=${this._valueChanged}
-                      placeholder="12px"
-                    ></ha-textfield>
+                          <ha-textfield
+                            label="Badge Font Size"
+                            .value=${cfg.badge_font_size || ""}
+                            .configValue=${"badge_font_size"}
+                            @input=${this._valueChanged}
+                            placeholder="12px"
+                          ></ha-textfield>
 
-                    <ha-textfield
-                      label="Badge Icon Size"
-                      .value=${cfg.badge_icon_size || ""}
-                      .configValue=${"badge_icon_size"}
-                      @input=${this._valueChanged}
-                      placeholder="16px"
-                    ></ha-textfield>
-                  </div>
+                          <ha-textfield
+                            label="Badge Icon Size"
+                            .value=${cfg.badge_icon_size || ""}
+                            .configValue=${"badge_icon_size"}
+                            @input=${this._valueChanged}
+                            placeholder="16px"
+                          ></ha-textfield>
+                        </div>
+                      `
+                    : ""}
 
-                  <h4>Behavior</h4>
+
+                  <h4>Other Settings</h4>
                   <div class="grid grid-small">
                     <div class="toggle-row">
                       <span>Show icon (default)</span>
