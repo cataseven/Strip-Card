@@ -74,6 +74,7 @@ class StripCard extends LitElement {
     this._nameReplace = Array.isArray(nr) ? nr : [nr];
 
     this._config = {
+      type: "custom:strip-card",
       title: "",
       duration: 20,
       separator: "•",
@@ -315,7 +316,7 @@ class StripCard extends LitElement {
     }
   }
 
-  evaluateTemplate(template, hass) {
+  evaluateTemplate(template, hass, vars = {}) {
     if (!template || typeof template !== "string") return template;
     if (!template.includes("{{")) return template;
 
@@ -326,8 +327,11 @@ class StripCard extends LitElement {
 
       const func = new Function(
         "hass",
+        "vars",
         `
         "use strict";
+
+        const { item, entity, index, stateObj } = vars || {};
 
         const float = (v) => parseFloat(v) || 0;
         const int = (v) => parseInt(v, 10) || 0;
@@ -370,21 +374,21 @@ class StripCard extends LitElement {
       `
       );
 
-      return func(hass);
+      return func(hass, vars);
     } catch (e) {
       console.warn("[Strip Card] Template evaluation failed:", e, template);
       return "";
     }
   }
 
-  _interpolateTemplateString(str, hass) {
+  _interpolateTemplateString(str, hass, vars = {}) {
     if (str == null || typeof str !== "string" || !str.includes("{{")) {
       return str;
     }
 
     return str.replace(/{{([\s\S]*?)}}/g, (_, expr) => {
       try {
-        const value = this.evaluateTemplate(`{{${expr}}}`, hass);
+        const value = this.evaluateTemplate(`{{${expr}}}`, hass, vars);
         if (value === undefined || value === null) return "";
         return String(value);
       } catch (e) {
@@ -412,6 +416,44 @@ class StripCard extends LitElement {
       }
     }
     return out.trim();
+  }
+
+  _expandEntityConfig(entityConfig) {
+    const entityId =
+      typeof entityConfig === "string" ? entityConfig : entityConfig.entity;
+
+    // repeat_on yoksa tekil davranış
+    if (!entityConfig || !entityConfig.repeat_on) {
+      return [
+        {
+          entityConfig,
+          vars: {
+            entity: entityId,
+            index: 0,
+            item: undefined,
+            stateObj: entityId ? this.hass.states[entityId] : null,
+          },
+        },
+      ];
+    }
+
+    const varsBase = {
+      entity: entityId,
+      stateObj: entityId ? this.hass.states[entityId] : null,
+    };
+
+    const raw = this.evaluateTemplate(entityConfig.repeat_on, this.hass, varsBase);
+
+    // undefined / null / false / "" => entity görünmesin
+    if (!raw) return [];
+
+    const arr = Array.isArray(raw) ? raw : [raw];
+    if (arr.length === 0) return [];
+
+    return arr.map((item, index) => ({
+      entityConfig,
+      vars: { ...varsBase, item, index },
+    }));
   }
 
   updated(changedProps) {
@@ -515,7 +557,7 @@ class StripCard extends LitElement {
         ? `--strip-card-width: ${cardWidth};`
         : "";
 
-    const fadingClass = this._config.fading ? "has-fading" : "";
+    let fadingClass = this._config.fading ? "has-fading" : "";
     const verticalClass = this._config.vertical_scroll
       ? "has-vertical-scroll"
       : "";
@@ -547,12 +589,17 @@ class StripCard extends LitElement {
       ${transparentStyle}
     `;
 
-    const renderedEntities = this._config.entities
-      .map((entityConfig) => this.renderEntity(entityConfig))
+    const renderedEntities = (this._config.entities || [])
+      .flatMap((entityConfig) => this._expandEntityConfig(entityConfig))
+      .map(({ entityConfig, vars }) => this.renderEntity(entityConfig, vars))
       .filter(Boolean);
-
     const hasEntities = renderedEntities.length > 0;
+    const isEmptyState = !hasEntities;
+    // Fade makes empty-state messages hard to read; disable fading when there are no visible entities.
+    if (isEmptyState) fadingClass = "";
+
     let content;
+    let emptyMessage = "";
 
     if (hasEntities) {
       content = renderedEntities;
@@ -569,19 +616,36 @@ class StripCard extends LitElement {
       }
     } else {
       // Hiç görünür entity yok: kart yine render edilir
-      const msgRaw = this._config.empty_message || "";
-      const emptyMessage =
-        this._interpolateTemplateString(msgRaw, this.hass) ||
-        "";
+      const msgRaw = this._config.empty_message;
+
+      // Support disabling via empty_message: false/null/""
+      if (msgRaw !== false && msgRaw !== null && msgRaw !== undefined) {
+        emptyMessage =
+          this._interpolateTemplateString(String(msgRaw), this.hass) ||
+          "";
+      }
 
       if (emptyMessage) {
-        content = [
-          html`
-            <div class="ticker-item empty">
-              <span class="empty-text">${emptyMessage}</span>
-            </div>
-          `,
-        ];
+        const emptyItem = html`
+          <div class="ticker-item empty">
+            <span class="empty-text">${emptyMessage}</span>
+          </div>
+        `;
+
+        // If continuous horizontal scroll is enabled, duplicate the empty item so it loops smoothly
+        // (otherwise it scrolls off-screen and leaves a blank gap).
+        if (this._config.continuous_scroll && !this._config.vertical_scroll) {
+          const containerWidth = this.getBoundingClientRect().width || 400;
+          const approxItemWidth = 200;
+          const minCopies = Math.ceil(containerWidth / approxItemWidth) + 2;
+          const copies = minCopies > 2 ? minCopies : 2;
+          content = [];
+          for (let i = 0; i < copies; i++) {
+            content.push(emptyItem);
+          }
+        } else {
+          content = [emptyItem];
+        }
       } else {
         // Mesaj yoksa boş içerik, ama ha-card ve ticker yapısı durur
         content = [];
@@ -599,6 +663,13 @@ class StripCard extends LitElement {
       animationName = dir === "right" ? "ticker-right" : "ticker";
     }
 
+
+    const disableAnimation = !hasEntities && this._config.continuous_scroll === false;
+    const effectiveAnimationName = disableAnimation ? "none" : animationName;
+    const effectiveDuration = disableAnimation ? 0 : duration;
+    const effectiveIteration = disableAnimation ? "1" : animationIteration;
+    const emptyStateClass = !hasEntities ? " empty-state" : "";
+
     const wrapperClass = this._config.full_width
       ? "strip-card-wrapper full-width"
       : "strip-card-wrapper";
@@ -612,14 +683,14 @@ class StripCard extends LitElement {
           <div
             class="ticker-wrap ${this._config.pause_on_hover
               ? "pausable"
-              : ""} ${fadingClass} ${verticalClass}"
+              : ""} ${fadingClass} ${verticalClass}${emptyStateClass}"
           >
             <div
               class="ticker-move ${verticalAlignmentClass}"
               style="
-                animation-duration: ${duration}s;
-                animation-iteration-count: ${animationIteration};
-                animation-name: ${animationName};
+                animation-duration: ${effectiveDuration}s;
+                animation-iteration-count: ${effectiveIteration};
+                animation-name: ${effectiveAnimationName};
               "
             >
               ${content}
@@ -630,14 +701,22 @@ class StripCard extends LitElement {
     `;
   }
 
-  renderEntity(entityConfig) {
+  renderEntity(entityConfig, vars = {}) {
     const entityId =
       typeof entityConfig === "string" ? entityConfig : entityConfig.entity;
+
+    const stateObj = vars.stateObj ?? (entityId ? this.hass.states[entityId] : null);
+    const templateVars = {
+      ...vars,
+      entity: vars.entity !== undefined ? vars.entity : entityId,
+      stateObj,
+    };
 
     if (entityConfig.visible_if) {
       let isVisible = this.evaluateTemplate(
         entityConfig.visible_if,
-        this.hass
+        this.hass,
+        templateVars
       );
       if (String(isVisible).toLowerCase() === "false") {
         isVisible = false;
@@ -646,8 +725,6 @@ class StripCard extends LitElement {
         return null;
       }
     }
-
-    const stateObj = entityId ? this.hass.states[entityId] : null;
 
     if (entityId && !stateObj) {
       return html`<div class="ticker-item error">
@@ -672,7 +749,7 @@ class StripCard extends LitElement {
     }
 
     if (entityConfig.value_template) {
-      value = this.evaluateTemplate(entityConfig.value_template, this.hass);
+      value = this.evaluateTemplate(entityConfig.value_template, this.hass, templateVars);
     }
 
     if (typeof value === "string" && value.length > 0) {
@@ -687,7 +764,7 @@ class StripCard extends LitElement {
     if (entityConfig.name === "") {
       name = "";
     } else if (entityConfig.name) {
-      name = this._interpolateTemplateString(entityConfig.name, this.hass);
+      name = this._interpolateTemplateString(entityConfig.name, this.hass, templateVars);
     } else {
       name = this._sanitizeName(rawName);
     }
@@ -698,7 +775,7 @@ class StripCard extends LitElement {
     } else if (stateObj && stateObj.attributes.unit_of_measurement) {
       unit = stateObj.attributes.unit_of_measurement;
     }
-    unit = this._interpolateTemplateString(unit, this.hass);
+    unit = this._interpolateTemplateString(unit, this.hass, templateVars);
 
     const separatorRaw =
       entityConfig.separator !== undefined
@@ -706,7 +783,8 @@ class StripCard extends LitElement {
         : this._config.separator;
     const separator = this._interpolateTemplateString(
       separatorRaw,
-      this.hass
+      this.hass,
+      templateVars
     );
 
     let showIconRaw = entityConfig.show_icon;
@@ -720,7 +798,7 @@ class StripCard extends LitElement {
     if (showIconRaw === "true") showIconRaw = true;
     if (showIconRaw === "false") showIconRaw = false;
 
-    let showIcon = this.evaluateTemplate(showIconRaw, this.hass);
+    let showIcon = this.evaluateTemplate(showIconRaw, this.hass, templateVars);
 
     const nameColorRaw = entityConfig.name_color || this._config.name_color;
     const valueColorRaw = entityConfig.value_color || this._config.value_color;
@@ -729,26 +807,30 @@ class StripCard extends LitElement {
 
     const nameColor = this._interpolateTemplateString(
       nameColorRaw,
-      this.hass
+      this.hass,
+      templateVars
     );
     const valueColor = this._interpolateTemplateString(
       valueColorRaw,
-      this.hass
+      this.hass,
+      templateVars
     );
     const unitColor = this._interpolateTemplateString(
       unitColorRaw,
-      this.hass
+      this.hass,
+      templateVars
     );
     const iconColor = this._interpolateTemplateString(
       iconColorRaw,
-      this.hass
+      this.hass,
+      templateVars
     );
 
     let customIcon = entityConfig.icon;
     if (typeof customIcon === "string" && customIcon.includes("{{")) {
-      customIcon = this.evaluateTemplate(customIcon, this.hass);
+      customIcon = this.evaluateTemplate(customIcon, this.hass, templateVars);
     } else {
-      customIcon = this._interpolateTemplateString(customIcon, this.hass);
+      customIcon = this._interpolateTemplateString(customIcon, this.hass, templateVars);
     }
 
     const valuePart = html`<span class="value" style="color: ${valueColor};"
@@ -763,25 +845,21 @@ class StripCard extends LitElement {
 
     const isBadge = this._config.badge_style;
 
-    const eventProps = {
-        '@mousedown': (e) => this._handleDown(e),
-        '@mouseup': (e) => this._handleUp(e, entityConfig),
-        '@touchstart': (e) => this._handleDown(e),
-        '@touchend': (e) => this._handleUp(e, entityConfig),
-    };
-
     if (isBadge) {
       const badgeBackground = this._interpolateTemplateString(
         entityConfig.badge_background || this._config.badge_background,
-        this.hass
+        this.hass,
+        templateVars
       );
       const badgeLabelColor = this._interpolateTemplateString(
         entityConfig.badge_label_color || this._config.badge_label_color,
-        this.hass
+        this.hass,
+        templateVars
       );
       const badgeValueColor = this._interpolateTemplateString(
         entityConfig.badge_value_color || this._config.badge_value_color,
-        this.hass
+        this.hass,
+        templateVars
       );
 
       const labelText = name || titleName;
@@ -917,6 +995,23 @@ class StripCard extends LitElement {
         box-sizing: border-box;
         position: relative;
       }
+
+      .ticker-wrap.empty-state {
+        justify-content: center;
+      }
+
+      .ticker-item.empty {
+        cursor: default;
+        opacity: 0.7;
+      }
+
+      .ticker-item.empty .empty-text {
+        display: inline-block;
+        max-width: 100%;
+        white-space: normal;
+        text-align: center;
+      }
+
       .ticker-wrap.has-vertical-scroll {
         flex-direction: column;
         height: var(--strip-card-height, 50px);
@@ -1091,15 +1186,6 @@ class StripCard extends LitElement {
         font-size: 1em;
       }
 
-      .empty {
-        opacity: 0.7;
-      }
-
-      .empty-text {
-        font-style: italic;
-        color: var(--secondary-text-color);
-      }
-
       @keyframes ticker {
         0% {
           transform: translateX(0);
@@ -1137,7 +1223,6 @@ class StripCard extends LitElement {
 }
 
 customElements.define("strip-card", StripCard);
-
 
 class StripCardEditor extends LitElement {
   static get properties() {
@@ -1201,10 +1286,72 @@ class StripCardEditor extends LitElement {
     return this._config;
   }
 
+  _orderConfig(cfg) {
+    if (!cfg) return cfg;
+
+    // İstediğiniz ana sıralama
+    const order = [
+      "type",
+      "title",
+      "entities",
+
+      // sonra global ayarlar (kendi tercihinize göre genişletebilirsiniz)
+      "duration",
+      "scroll_speed",
+      "scroll_direction",
+      "separator",
+      "empty_message",
+
+      "font_size",
+      "card_width",
+      "card_height",
+      "border_radius",
+
+      "show_icon",
+      "pause_on_hover",
+      "continuous_scroll",
+      "vertical_scroll",
+      "vertical_alignment",
+      "fading",
+      "transparent",
+      "full_width",
+
+      "badge_style",
+      "badge_background",
+      "badge_label_color",
+      "badge_value_color",
+      "badge_height",
+      "badge_font_size",
+      "badge_icon_size",
+
+      // name_replace vb. eklemek isterseniz buraya koyun:
+      "name_replace",
+    ];
+
+    const out = {};
+
+    // 1) Öncelikli anahtarları sırayla koy
+    for (const k of order) {
+      if (k in cfg) out[k] = cfg[k];
+    }
+
+    // 2) Listede olmayan ama config'de bulunan anahtarları en sona ekle
+    for (const k of Object.keys(cfg)) {
+      if (!(k in out)) out[k] = cfg[k];
+    }
+
+    // type yoksa yine de garanti et
+    if (!("type" in out)) out.type = "custom:strip-card";
+
+    return out;
+  }
+
+
   _emitConfigChanged() {
+    const ordered = this._orderConfig(this._config);
     this.dispatchEvent(
       new CustomEvent("config-changed", {
-        detail: { config: this._config },
+        detail: { config: ordered },
         bubbles: true,
         composed: true,
       })
@@ -1291,6 +1438,7 @@ class StripCardEditor extends LitElement {
       unit: "",
       attribute: "",
       value_template: "",
+      repeat_on: "",
     });
 
     const newIndex = newConfig.entities.length - 1;
@@ -1326,6 +1474,24 @@ class StripCardEditor extends LitElement {
       this._openEntities = !this._openEntities;
     }
   }
+
+  _toggleEmptyMessage(ev) {
+    if (!this._config) return;
+    const checked = ev.target?.checked === true;
+    const newConfig = { ...this._config };
+
+    if (!checked) {
+      newConfig.empty_message = false;
+    } else {
+      if (newConfig.empty_message === false || newConfig.empty_message === null || newConfig.empty_message === undefined) {
+        newConfig.empty_message = "No entities passed the visible_if conditions";
+      }
+    }
+
+    this._config = newConfig;
+    this._emitConfigChanged();
+  }
+
 
   _toggleEntity(index) {
     const newSet = new Set(this._expandedEntities);
@@ -1410,6 +1576,15 @@ class StripCardEditor extends LitElement {
                     ></ha-textfield>
 
                     <ha-textfield
+                      label="Empty message"
+                      .value=${cfg.empty_message === false ? "" : (cfg.empty_message || "")}
+                      .configValue=${"empty_message"}
+                      @input=${this._valueChanged}
+                      placeholder="Leave empty to disable; supports {{ template }}"
+                      ?disabled=${cfg.empty_message === false}
+                    ></ha-textfield>
+
+                    <ha-textfield
                       label="Font size"
                       .value=${cfg.font_size || ""}
                       .configValue=${"font_size"}
@@ -1439,7 +1614,14 @@ class StripCardEditor extends LitElement {
                       .configValue=${"border_radius"}
                       @input=${this._valueChanged}
                       placeholder="0px"
-                    ></ha-textfield>
+                    ></ha-textfield>          </div>
+
+                  <div class="toggle-row">
+                    <span>Show empty message</span>
+                    <ha-switch
+                      .checked=${cfg.empty_message !== false}
+                      @change=${this._toggleEmptyMessage}
+                    ></ha-switch>
                   </div>
 
                   ${cfg.badge_style
@@ -1472,7 +1654,6 @@ class StripCardEditor extends LitElement {
                         </div>
                       `
                     : ""}
-
 
                   <h4>Other Settings</h4>
                   <div class="grid grid-small">
@@ -1735,6 +1916,14 @@ class StripCardEditor extends LitElement {
                           placeholder="sensor.example"
                         ></ha-textfield>
                       `}
+
+                  <ha-textfield
+                    label="Repeat on (template returns array)"
+                    .value=${entity.repeat_on || ""}
+                    .configValue=${`entities.${index}.repeat_on`}
+                    @input=${this._valueChanged}
+                    placeholder="{{ state_attr(entity, 'Alerts') }}"
+                  ></ha-textfield>
 
                   <ha-textfield
                     label="Name ('' hides label)"
