@@ -61,25 +61,26 @@ lovelace:
 
 ## Global Options
 
-| Option               | Type          | Default   | Description                                          |
-| -------------------- | ------------- | --------- | ---------------------------------------------------- |
-| `title`              | string        | `""`      | Card header title (templatable)                      |
-| `duration`           | number/string | `20`      | Scroll duration (one full cycle), templatable        |
-| `scroll_speed`       | number/string | —         | px/s movement speed. Overrides `duration` when set   |
-| `scroll_direction`   | string        | `"left"`  | `left` or `right`                                    |
-| `continuous_scroll`  | boolean       | `true`    | Continuous loop or one‑shot                          |
-| `pause_on_hover`     | boolean       | `false`   | Hover to pause animation                             |
-| `vertical_scroll`    | boolean       | `false`   | Enables vertical scrolling                           |
-| `vertical_alignment` | string        | `"stack"` | `stack` or `inline`                                  |
-| `fading`             | boolean       | `false`   | Edge fade effect                                     |
-| `font_size`          | string        | `"14px"`  | Text size                                            |
-| `separator`          | string        | `"•"`     | Separator between items                              |
-| `border_radius`      | string        | `"0px"`   | Card border radius                                   |
-| `card_height`        | string        | `"50px"`  | Fixed card height                                    |
-| `card_width`         | string        | `"400px"` | Fixed width; ignored when `full_width=true`          |
-| `transparent`        | boolean       | `false`   | Removes card background & border                     |
-| `full_width`         | boolean       | `false`   | Expands card across viewport minus sidebar/scrollbar |
-| `badge_style`        | boolean       | `false`   | Switch to chip/badge layout                          |
+| Option               | Type           | Default                                          | Description                                                                                                |
+| -------------------- | -------------- | ------------------------------------------------ | ---------------------------------------------------------------------------------------------------------- |
+| `title`              | string         | `""`                                             | Card header title (templatable)                                                                            |
+| `duration`           | number/string  | `20`                                             | Scroll duration (one full cycle), templatable                                                              |
+| `scroll_speed`       | number/string  | —                                                | px/s movement speed. Overrides `duration` when set                                                         |
+| `scroll_direction`   | string         | `"left"`                                         | `left` or `right`                                                                                          |
+| `continuous_scroll`  | boolean        | `true`                                           | Continuous loop or one‑shot                                                                                |
+| `pause_on_hover`     | boolean        | `false`                                          | Hover to pause animation                                                                                   |
+| `vertical_scroll`    | boolean        | `false`                                          | Enables vertical scrolling                                                                                 |
+| `vertical_alignment` | string         | `"stack"`                                        | `stack` or `inline`                                                                                        |
+| `fading`             | boolean        | `false`                                          | Edge fade effect                                                                                           |
+| `font_size`          | string         | `"14px"`                                         | Text size                                                                                                  |
+| `separator`          | string         | `"•"`                                            | Separator between items                                                                                    |
+| `empty_message`      | string/boolean | `"No entities passed the visible_if conditions"` | Message shown when no entities remain after filtering (`visible_if` / `repeat_on`). Set `false` to disable |
+| `border_radius`      | string         | `"0px"`                                          | Card border radius                                                                                         |
+| `card_height`        | string         | `"50px"`                                         | Fixed card height                                                                                          |
+| `card_width`         | string         | `"400px"`                                        | Fixed width; ignored when `full_width=true`                                                                |
+| `transparent`        | boolean        | `false`                                          | Removes card background & border                                                                           |
+| `full_width`         | boolean        | `false`                                          | Expands card across viewport minus sidebar/scrollbar                                                       |
+| `badge_style`        | boolean        | `false`                                          | Switch to chip/badge layout                                                                                |
 
 ---
 
@@ -107,9 +108,7 @@ If `badge_style: true`:
 
 ---
 
-## Entity‑Level Options
-
-Each entity may override global style & behavior.
+## Entity‑Level Options (repeat_on satırı düzeltilmiş)
 
 | Option           | Type                    | Description                                          |
 | ---------------- | ----------------------- | ---------------------------------------------------- |
