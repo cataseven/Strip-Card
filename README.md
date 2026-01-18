@@ -5,11 +5,13 @@ A highly flexible scrolling ticker card for Home Assistant dashboards supporting
 ![image1](images/a.gif)
 
 ![image2](images/badge.png)
+
 ---
 
 ## ✨ Features
+
 * UI Editor
-![image3](images/ui1.png)
+  ![image3](images/ui1.png)
 * Horizontal and vertical scrolling layouts
 * Continuous or single‑cycle scrolling
 * Direction control (`left` / `right`)
@@ -19,6 +21,7 @@ A highly flexible scrolling ticker card for Home Assistant dashboards supporting
 * Full template support for value, colors, icons, titles, visibility & more
 * Per‑entity color, icon, attribute & unit overrides
 * Conditional rendering via `visible_if`
+* 🔁 **Repeat items from attribute arrays via `repeat_on`** (alerts, todos, forecasts)
 * Regex‑based friendly name replacement
 * Full‑width responsive mode with sidebar & scrollbar compensation
 * Optional fading edges and hover‑pause
@@ -49,7 +52,9 @@ lovelace:
     - url: /local/community/strip-card/strip-card.js
       type: module
 ```
+
 ![image4](images/picker.png)
+
 ---
 
 # 🧩 Configuration Options
@@ -91,14 +96,14 @@ lovelace:
 
 If `badge_style: true`:
 
-| Option             | Default                           |
-| ------------------ | --------------------------------- |
+| Option              | Default                           |
+| ------------------- | --------------------------------- |
 | `badge_background`  | `var(--primary-background-color)` |
 | `badge_label_color` | `var(--secondary-text-color)`     |
 | `badge_value_color` | `var(--primary-text-color)`       |
-| `badge_height`     | `"28px"`                          |
-| `badge_font_size`  | `"12px"`                          |
-| `badge_icon_size`  | `"16px"`                          |
+| `badge_height`      | `"28px"`                          |
+| `badge_font_size`   | `"12px"`                          |
+| `badge_icon_size`   | `"16px"`                          |
 
 ---
 
@@ -109,6 +114,7 @@ Each entity may override global style & behavior.
 | Option           | Type                    | Description                                          |
 | ---------------- | ----------------------- | ---------------------------------------------------- |
 | `entity`         | string                  | HA entity id (required unless `value_template` used) |
+| `repeat_on`      | template                | 🔁 Template returning an array to repeat this entry  |
 | `name`           | string                  | Override label (templatable)                         |
 | `attribute`      | string                  | Use attribute instead of state                       |
 | `value_template` | string                  | HA template for value (`states()` supported)         |
@@ -121,7 +127,27 @@ Each entity may override global style & behavior.
 | `unit_color`     | template                | Override color                                       |
 | `icon_color`     | template                | Override color                                       |
 
-### Action Options
+---
+
+## 🔁 Repeat Over Attribute Arrays (`repeat_on`)
+
+Use `repeat_on` when an entity attribute (or any template) returns an **array** and you want to render **one strip item per element**.
+
+### Template variables available when `repeat_on` is used
+
+When repeating, these variables are injected into templates:
+
+* 🧱 `item` — current array element
+* 🔢 `index` — 0‑based index of the element
+* 🏷️ `entity` — source entity id (string)
+* 📦 `stateObj` — full HA state object of the source entity
+
+These can be used in `visible_if`, `value_template`, `name`, `unit`, colors, and `icon`.
+
+
+---
+
+## Action Options
 
 Entities support 3 gesture bindings:
 
@@ -155,6 +181,10 @@ Example:
 
 ---
 
+### Visibility behavior
+
+* `visible_if` is evaluated **per repeated item**.
+* If `repeat_on` returns `undefined`, `null`, `false`, an empty string, or an empty array, the entry produces **no items** (nothing is shown for that entry).
 ## Visibility Rules
 
 `visible_if` allows conditional rendering:
@@ -186,9 +216,10 @@ Works with:
 * conditional icon rendering
 
 ---
-## Template Almost Everything
-```yaml
 
+## Template Almost Everything
+
+```yaml
 type: custom:strip-card
 title: |
   {{ 'Temperature Strip – ' + states('sensor.temperature') + '°C' }}
@@ -312,10 +343,156 @@ entities:
       action: perform-action
       perform_action: ""
       target: {}
-
-
 ```
 
+---
+
+## ✅ Example: NWS Alerts (Repeat Over Array)
+
+If your sensor returns below attributes
+```yaml
+Alerts:
+  - Event: Cold Weather Advisory
+    ID: 66aebbdf-c1cf-7004-04ac-7946e90c7c17
+    URL: >-
+      https://api.weather.gov/alerts/urn:oid:2.49.0.1.840.0.c9655a94fdf1f8075e3ee0334a04035d67c91766.001.1
+    Headline: COLD WEATHER ADVISORY REMAINS IN EFFECT UNTIL NOON CST MONDAY
+    Type: Update
+    Status: Actual
+    Severity: Moderate
+    Certainty: Likely
+    Sent: "2026-01-18T13:41:00-06:00"
+    Onset: "2026-01-18T13:41:00-06:00"
+    Expires: "2026-01-18T21:45:00-06:00"
+    Ends: "2026-01-19T12:00:00-06:00"
+    AreasAffected: >-
+      West Polk; Norman; Clay; Kittson; Roseau; Lake Of The Woods; West
+      Marshall; East Marshall; North Beltrami; Pennington; Red Lake; East Polk;
+      North Clearwater; South Beltrami; Mahnomen; South Clearwater; Hubbard;
+      West Becker; East Becker; Wilkin; West Otter Tail; East Otter Tail;
+      Wadena; Grant; Towner; Cavalier; Pembina; Benson; Ramsey; Eastern Walsh
+      County; Eddy; Nelson; Grand Forks; Griggs; Steele; Traill; Barnes; Cass;
+      Ransom; Sargent; Richland; Western Walsh County
+    Description: |-
+      * WHAT...Very cold wind chills as low as 40 below expected.
+
+      * WHERE...Portions of central, north central, northwest, and west
+      central Minnesota and northeast and southeast North Dakota.
+
+      * WHEN...Until noon CST Monday.
+
+      * IMPACTS...The dangerously cold wind chills as low as 40 below zero
+      could cause frostbite on exposed skin in as little as 10 minutes.
+    Instruction: |-
+      Use caution while traveling outside. Wear appropriate clothing, a
+      hat, and gloves.
+  - Event: Blizzard Warning
+    ID: 2274a010-f718-6266-76a7-5af3756f64ab
+    URL: >-
+      https://api.weather.gov/alerts/urn:oid:2.49.0.1.840.0.713fd1c091afc8d7b3dfdd2926996c99e484b2d7.002.1
+    Headline: BLIZZARD WARNING REMAINS IN EFFECT UNTIL 9 PM CST THIS EVENING
+    Type: Update
+    Status: Actual
+    Severity: Extreme
+    Certainty: Likely
+    Sent: "2026-01-18T13:40:00-06:00"
+    Onset: "2026-01-18T13:40:00-06:00"
+    Expires: "2026-01-18T21:00:00-06:00"
+    Ends: "2026-01-18T21:00:00-06:00"
+    AreasAffected: >-
+      Norman; Clay; Roseau; East Marshall; Pennington; Red Lake; East Polk;
+      Mahnomen; West Becker; Wilkin; West Otter Tail; Grant; Barnes; Cass;
+      Ransom; Sargent; Richland
+    Description: |-
+      * WHAT...Blizzard conditions. Additional snow accumulations up to
+      one inch. Winds gusting as high as 55 mph.
+
+      * WHERE...Portions of northwest and west central Minnesota and
+      southeast North Dakota.
+
+      * WHEN...Until 9 PM CST this evening.
+
+      * IMPACTS...Whiteout conditions are expected and will make travel
+      treacherous and potentially life-threatening.
+    Instruction: |-
+      Persons should consider delaying all travel. Motorists should use
+      extreme caution if travel is absolutely necessary.
+configuration_type: GPS Location
+gps_location: 46.7258996,-97.1193751
+attribution: Data provided by Weather.gov
+icon: mdi:alert
+friendly_name: NWS Alerts Alerts
+```
+
+![image1](images/w2.gif)
+
+```yaml
+type: custom:strip-card
+entities:
+  - entity: sensor.nws_alerts
+    repeat_on: "{{ state_attr(entity, 'Alerts') }}"
+    value_template: "{{ item.Description }}"
+    name: "{{ item.Headline  }}"
+    visible_if: "{{ item.Status == 'Actual' }}"
+duration: "0"
+separator: "|"
+font_size: 20px
+scroll_speed: "100"
+grid_options:
+  columns: full
+  rows: auto
+```
+---
+## ✅ Example: Weather Attributes Strip
+
+![image1](images/w1.gif)
+
+```yaml
+type: custom:strip-card
+entities:
+  - entity: weather.home
+    name: Temp
+    attribute: temperature
+    unit: "{{ state_attr(entity, 'temperature_unit') }}"
+  - entity: weather.home
+    name: Feels
+    attribute: apparent_temperature
+    unit: "{{ state_attr(entity, 'temperature_unit') }}"
+  - entity: weather.home
+    name: Dew
+    attribute: dew_point
+    unit: "{{ state_attr(entity, 'temperature_unit') }}"
+  - entity: weather.home
+    name: Humidity
+    attribute: humidity
+    unit: "%"
+  - entity: weather.home
+    name: Clouds
+    attribute: cloud_coverage
+    unit: "%"
+  - entity: weather.home
+    name: UV
+    attribute: uv_index
+  - entity: weather.home
+    name: Pressure
+    attribute: pressure
+    unit: "{{ state_attr(entity, 'pressure_unit') }}"
+  - entity: weather.home
+    name: Wind
+    value_template: >-
+      {{ state_attr(entity, 'wind_speed') }} {{ state_attr(entity,
+      'wind_speed_unit') }}
+  - entity: weather.home
+    name: Gust
+    value_template: >-
+      {{ state_attr(entity, 'wind_gust_speed') }} {{ state_attr(entity,
+      'wind_speed_unit') }}
+  - entity: weather.home
+    name: Visibility
+    attribute: visibility
+    unit: "{{ state_attr(entity, 'visibility_unit') }}"
+```
+---
 ## Full Width Responsive Mode
 
 Enabling:
@@ -411,8 +588,6 @@ entities:
     hold_action:
       action: assist
 ```
-
----
 
 ## Developer Notes
 
