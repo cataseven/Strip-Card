@@ -108,7 +108,7 @@ If `badge_style: true`:
 
 ---
 
-## Entity‑Level Options (repeat_on satırı düzeltilmiş)
+## Entity‑Level Options
 
 | Option           | Type                    | Description                                          |
 | ---------------- | ----------------------- | ---------------------------------------------------- |
