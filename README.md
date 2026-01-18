@@ -1,3 +1,7 @@
+<a href="https://www.buymeacoffee.com/cataseven" target="_blank">
+  <img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Buy Me a Coffee" style="height: 60px !important;width: 217px !important;" >
+</a>
+
 # 🔶 Strip Card for Home Assistant
 
 A highly flexible scrolling ticker card for Home Assistant dashboards supporting templates, bidirectional scrolling, badge mode, rich per‑entity styling, entity visibility rules, action handling (tap/hold/double‑tap), and responsive full‑width layouts.
@@ -607,4 +611,6 @@ MIT
 
 If you enjoy this card, consider supporting the author:
 
-[https://www.buymeacoffee.com/cataseven](https://www.buymeacoffee.com/cataseven)
+<a href="https://www.buymeacoffee.com/cataseven" target="_blank">
+  <img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Buy Me a Coffee" style="height: 60px !important;width: 217px !important;" >
+</a>
