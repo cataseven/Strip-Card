@@ -1,5 +1,5 @@
 <a href="https://www.buymeacoffee.com/cataseven" target="_blank">
-  <img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Buy Me a Coffee" style="height: 60px !important;width: 180px !important;" >
+  <img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Buy Me a Coffee" style="height: 50px !important;width: 180px !important;" >
 </a>
 
 # 🔶 Strip Card for Home Assistant
