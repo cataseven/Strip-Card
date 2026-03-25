@@ -4,6 +4,15 @@
 
 # 🔶 Strip Card for Home Assistant
 
+![Downloads](https://img.shields.io/github/downloads/cataseven/Strip-Card/total?color=41BDF5&logo=home-assistant&label=Downloads&suffix=%20downloads&style=for-the-badge)
+[![hacs_badge](https://img.shields.io/badge/HACS-Custom-orange.svg)](https://github.com/hacs/frontend)
+[![GitHub Release](https://img.shields.io/github/release/cataseven/Strip-Card.svg)](https://github.com/cataseven/Strip-Card/releases)
+[![License](https://img.shields.io/github/license/cataseven/Strip-Card.svg)](LICENSE)
+![Home Assistant](https://img.shields.io/badge/Home%20Assistant-2024.1.0%2B-blue.svg)
+![Maintenance](https://img.shields.io/maintenance/yes/2026.svg)
+[![GitHub Stars](https://img.shields.io/github/stars/cataseven/Strip-Card?style=social)](https://github.com/cataseven/Strip-Card)
+[![GitHub Issues](https://img.shields.io/github/issues/cataseven/Strip-Card?style=flat-square)](https://github.com/cataseven/Strip-Card/issues)
+
 A highly flexible scrolling ticker card for Home Assistant dashboards supporting templates, bidirectional scrolling, badge mode, rich per‑entity styling, entity visibility rules, action handling (tap/hold/double‑tap), and responsive full‑width layouts.
 
 ![image1](images/a.gif)
