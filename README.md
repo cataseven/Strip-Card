@@ -23,8 +23,9 @@ A highly flexible scrolling ticker card for Home Assistant dashboards supporting
 
 ## ✨ Features
 
-* UI Editor
-  ![image3](images/ui1.png)
+* **Redesigned tabbed UI Editor** — Settings organized into Layout, Toggles, Sizing, and Colors tabs. Entity settings split into General, Display, Colors, and Actions tabs.
+  ![image3](images/ui2.png)
+* **HA 2026.4 compatible** — Works with the Web Awesome frontend migration
 * Horizontal and vertical scrolling layouts
 * Continuous or single‑cycle scrolling
 * Direction control (`left` / `right`)
@@ -33,6 +34,7 @@ A highly flexible scrolling ticker card for Home Assistant dashboards supporting
 * Supports `more-info`, `toggle`, `navigate`, `url`, `assist`, `call-service`
 * Full template support for value, colors, icons, titles, visibility & more
 * Per‑entity color, icon, attribute & unit overrides
+* **Separator styling** — Independent color, font size, and font weight for the separator character
 * Conditional rendering via `visible_if`
 * 🔁 **Repeat items from attribute arrays via `repeat_on`** (alerts, todos, forecasts)
 * Regex‑based friendly name replacement
@@ -84,9 +86,13 @@ lovelace:
 | `pause_on_hover`     | boolean        | `false`                                          | Hover to pause animation                                                                                   |
 | `vertical_scroll`    | boolean        | `false`                                          | Enables vertical scrolling                                                                                 |
 | `vertical_alignment` | string         | `"stack"`                                        | `stack` or `inline`                                                                                        |
-| `fading`             | boolean        | `false`                                          | Edge fade effect                                                                                           |
+| `fading`             | boolean        | `true`                                           | Edge fade effect                                                                                           |
+| `show_icon`          | boolean        | `true`                                           | Show entity icons                                                                                          |
 | `font_size`          | string         | `"14px"`                                         | Text size                                                                                                  |
 | `separator`          | string         | `"•"`                                            | Separator between items                                                                                    |
+| `separator_color`    | string         | `var(--disabled-text-color)`                     | Separator color (templatable)                                                                              |
+| `separator_font_size`| string         | `"14px"`                                         | Separator font size, independent from main font size                                                       |
+| `separator_font_weight`| string       | `"normal"`                                       | Separator font weight (`normal`, `bold`, `300`–`900`)                                                      |
 | `empty_message`      | string/boolean | `"No entities passed the visible_if conditions"` | Message shown when no entities remain after filtering (`visible_if` / `repeat_on`). Set `false` to disable |
 | `border_radius`      | string         | `"0px"`                                          | Card border radius                                                                                         |
 | `card_height`        | string         | `"50px"`                                         | Fixed card height                                                                                          |
@@ -112,9 +118,9 @@ If `badge_style: true`:
 
 | Option              | Default                           |
 | ------------------- | --------------------------------- |
-| `badge_background`  | `var(--primary-background-color)` |
-| `badge_label_color` | `var(--secondary-text-color)`     |
-| `badge_value_color` | `var(--primary-text-color)`       |
+| `badge_background`  | `var(--primary-color)`            |
+| `badge_label_color` | `var(--primary-text-color)`       |
+| `badge_value_color` | `var(--primary-color)`            |
 | `badge_height`      | `"28px"`                          |
 | `badge_font_size`   | `"12px"`                          |
 | `badge_icon_size`   | `"16px"`                          |
