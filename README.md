@@ -40,6 +40,8 @@ A highly flexible scrolling ticker card for Home Assistant dashboards supporting
 * Regex‑based friendly name replacement
 * Full‑width responsive mode with sidebar & scrollbar compensation
 * Optional fading edges and hover‑pause
+* **Click to pause/resume** — Toggle scrolling with a click
+* **Hide when empty** — Automatically hide the card when no entities pass visibility filters
 * Transparent mode
 * Works with `states()` style HA templating
 
@@ -84,6 +86,8 @@ lovelace:
 | `scroll_direction`   | string         | `"left"`                                         | `left` or `right`                                                                                          |
 | `continuous_scroll`  | boolean        | `true`                                           | Continuous loop or one‑shot                                                                                |
 | `pause_on_hover`     | boolean        | `false`                                          | Hover to pause animation                                                                                   |
+| `pause_on_click`     | boolean        | `false`                                          | Click the card to toggle scrolling on/off                                                                  |
+| `hide_when_empty`    | boolean        | `false`                                          | Completely hide the card when all entities are filtered out by `visible_if`                                 |
 | `vertical_scroll`    | boolean        | `false`                                          | Enables vertical scrolling                                                                                 |
 | `vertical_alignment` | string         | `"stack"`                                        | `stack` or `inline`                                                                                        |
 | `fading`             | boolean        | `true`                                           | Edge fade effect                                                                                           |
@@ -212,6 +216,20 @@ visible_if: "{{ states('sun.sun') == 'above_horizon' }}"
 ```
 
 If the expression is false, the entity is omitted.
+
+### Hide the entire card when empty
+
+When all entities are filtered out, the card shows an empty message by default. To hide the card entirely instead:
+
+```yaml
+type: custom:strip-card
+hide_when_empty: true
+entities:
+  - entity: sensor.alerts
+    visible_if: "{{ float(states('sensor.alerts')) > 0 }}"
+```
+
+The card disappears from the dashboard when no entities pass their `visible_if` conditions and reappears automatically when they do.
 
 ---
 
