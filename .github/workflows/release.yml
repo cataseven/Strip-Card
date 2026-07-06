@@ -11,5 +11,5 @@ jobs:
       - uses: actions/checkout@v4
       - uses: softprops/action-gh-release@v2
         with:
-          files: statistics-graph-chart-card.js
+          files: strip-card.js
           fail_on_unmatched_files: true
