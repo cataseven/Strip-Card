@@ -166,6 +166,8 @@ If `badge_style: true`:
 
 ## 📈 Trend Indicators (Stock‑Ticker Mode)
 
+<img width="1510" height="72" alt="animate" src="https://github.com/user-attachments/assets/59c049a7-e5ef-4e5a-888d-ceadb9565bac" />
+
 Color values red/green, add an up/down arrow and show the change — perfect for stock tickers, crypto, energy prices or sports scores.
 
 ```yaml
