@@ -13,7 +13,7 @@
 [![GitHub Stars](https://img.shields.io/github/stars/cataseven/Strip-Card?style=social)](https://github.com/cataseven/Strip-Card)
 [![GitHub Issues](https://img.shields.io/github/issues/cataseven/Strip-Card?style=flat-square)](https://github.com/cataseven/Strip-Card/issues)
 
-A highly flexible scrolling ticker card for Home Assistant dashboards supporting templates, bidirectional scrolling, badge mode, rich per‑entity styling, entity visibility rules, action handling (tap/hold/double‑tap), and responsive full‑width layouts.
+A highly flexible scrolling ticker card for Home Assistant dashboards supporting templates, trend indicators (stock‑ticker mode), bidirectional scrolling, badge mode, rich per‑entity styling, entity visibility rules, action handling (tap/hold/double‑tap), and responsive full‑width layouts.
 
 ![image1](images/a.gif)
 
@@ -26,6 +26,13 @@ A highly flexible scrolling ticker card for Home Assistant dashboards supporting
 * **Redesigned tabbed UI Editor** — Settings organized into Layout, Toggles, Sizing, and Colors tabs. Entity settings split into General, Display, Colors, and Actions tabs.
   ![image3](images/ui2.png)
 * **HA 2026.4 compatible** — Works with the Web Awesome frontend migration
+* 📈 **Trend indicators (stock‑ticker mode)** — red/green coloring, up/down arrows and change/percent display via `trend`
+* 🧠 **`value` template variable** — no more repeating the entity id inside `value_template` / `visible_if`
+* ⚡ **Jinja conditionals run locally** — `A if C else B`, `and`/`or`/`not`, `is none`, `is defined` evaluate instantly in the browser
+* 🔌 **Instant server templates** — complex Jinja is pushed over a WebSocket subscription (no more 30 s polling)
+* 🌍 **Locale‑aware number formatting** via `format_number`
+* 🔋 **Battery friendly** — scrolling pauses while the card is off‑screen or the tab is hidden
+* ♿ Honors the OS **reduce‑motion** accessibility setting
 * Horizontal and vertical scrolling layouts
 * Continuous or single‑cycle scrolling
 * Direction control (`left` / `right`)
@@ -104,6 +111,10 @@ lovelace:
 | `transparent`        | boolean        | `false`                                          | Removes card background & border                                                                           |
 | `full_width`         | boolean        | `false`                                          | Expands card across viewport minus sidebar/scrollbar                                                       |
 | `badge_style`        | boolean        | `false`                                          | Switch to chip/badge layout                                                                                |
+| `format_number`      | boolean        | `false`                                          | Format numeric values with the HA user locale (e.g. `1.234,5`)                                            |
+| `pause_when_hidden`  | boolean        | `true`                                           | Pause the animation while the card is off‑screen or the browser tab is hidden                              |
+| `respect_reduced_motion` | boolean    | `true`                                           | Stop auto‑scroll for users with the OS “reduce motion” accessibility setting                                |
+| `trend`              | boolean/object | `false`                                          | Default 📈 trend‑indicator settings applied to all entities (see **Trend Indicators**)                      |
 
 ---
 
@@ -148,6 +159,53 @@ If `badge_style: true`:
 | `value_color`    | template                | Override color                                       |
 | `unit_color`     | template                | Override color                                       |
 | `icon_color`     | template                | Override color                                       |
+| `trend`          | boolean/object          | 📈 Trend indicator for this entity (see **Trend Indicators**) |
+| `format_number`  | boolean                 | Override the global `format_number` for this entity  |
+
+---
+
+## 📈 Trend Indicators (Stock‑Ticker Mode)
+
+Color values red/green, add an up/down arrow and show the change — perfect for stock tickers, crypto, energy prices or sports scores.
+
+```yaml
+type: custom:strip-card
+entities:
+  - entity: sensor.aapl
+    name: AAPL
+    trend:
+      source: baseline
+      baseline: previous_close
+      show_delta: percent      # → AAPL: 213.40 ▲ +1.6%
+  - entity: sensor.btc
+    name: BTC
+    trend: true                # simplest form: direction of the last change
+```
+
+Use `trend: true` (or an options object) per entity, or set it once at card level to apply to every entity.
+
+### Trend options
+
+| Option            | Default                          | Description                                                                                                     |
+| ----------------- | -------------------------------- | --------------------------------------------------------------------------------------------------------------- |
+| `source`          | `memory`                         | `memory` = direction of the last observed change · `attribute` = an attribute already holding a signed change · `baseline` = an attribute holding a reference value (e.g. previous close) |
+| `attribute`       | `change`                         | Attribute name when `source: attribute`                                                                          |
+| `baseline`        | `previous_close`                 | Attribute name when `source: baseline`                                                                           |
+| `threshold`       | `0`                              | Minimum absolute change before marking up/down                                                                   |
+| `show_arrow`      | `true`                           | Show the ▲ / ▼ arrow                                                                                             |
+| `up_icon` / `down_icon` | `mdi:menu-up` / `mdi:menu-down` | Custom arrow icons                                                                                        |
+| `show_delta`      | —                                | `absolute` or `percent` — display the change next to the value                                                   |
+| `delta_precision` | `2` (abs) / `1` (pct)            | Decimals of the displayed delta                                                                                  |
+| `up_color` / `down_color` / `flat_color` | green / red / — | Colors; also themeable via `--strip-card-trend-up` / `--strip-card-trend-down`                  |
+| `apply_to`        | `[value, arrow]`                 | Which parts get the trend color: `value`, `name`, `unit`, `icon`, `arrow`                                        |
+
+> 💡 `memory` compares tick‑to‑tick and resets on page reload. For stocks prefer `baseline` / `attribute` — most finance integrations (e.g. Yahoo Finance) expose `previous_close` / `change` attributes.
+
+Templates can also use the trend variables directly:
+
+```yaml
+value_color: "{{ 'limegreen' if trend == 'up' else 'red' if trend == 'down' else 'gray' }}"
+```
 
 ---
 
@@ -163,6 +221,7 @@ When repeating, these variables are injected into templates:
 * 🔢 `index` — 0‑based index of the element
 * 🏷️ `entity` — source entity id (string)
 * 📦 `stateObj` — full HA state object of the source entity
+* 💡 `value` — current state (or attribute value) of the source entity
 
 These can be used in `visible_if`, `value_template`, `name`, `unit`, colors, and `icon`.
 
@@ -250,6 +309,50 @@ Works with:
 * multi‑expression interpolation
 * numeric comparison
 * conditional icon rendering
+
+### 💡 Template variables
+
+These variables are automatically available in `value_template`, `visible_if`, `name`, `unit`, `icon` and all color templates:
+
+* `value` — current state of the entity, or the attribute value when `attribute` is set
+* `trend` — `'up'`, `'down'` or `'flat'` (see **Trend Indicators**)
+* `delta` — numeric change behind `trend`
+* `prev_value` — previous value observed by the card
+* `entity` / `stateObj` — entity id and full HA state object
+* `item` / `index` — only when `repeat_on` is used
+
+**Before:**
+```yaml
+- entity: sensor.newgaragesensor_garage_temperature
+  value_template: "{{ states('sensor.newgaragesensor_garage_temperature') | round(1) }}"
+  name: Garage
+```
+
+**After:**
+```yaml
+- entity: sensor.newgaragesensor_garage_temperature
+  value_template: "{{ value | round(1) }}"
+  name: Garage
+```
+
+`value` also works inside `visible_if`:
+
+```yaml
+- entity: sensor.garage_temperature
+  visible_if: "{{ value | float > 30 }}"
+  value_template: "{{ '%.1f °C' | format(value | float) }}"
+```
+
+> ⚠️ These variables exist only in the card's local template engine — the HA server doesn't know them — so keep such expressions to the locally supported syntax below.
+
+### ⚡ Locally supported syntax
+
+Templates are evaluated **locally first** (instant, no server round‑trip) and automatically fall back to the HA server for anything the local engine can't compile:
+
+* `states()`, `state_attr()`, `is_state()`, `now()` …
+* Filters: `round`, `float`, `int`, `upper`, `lower`, `replace`, `default`, `format`, `timestamp_custom` (real `strftime`, incl. `%-H`‑style and a UTC flag), and more — chained and nested (`format(value | float)`)
+* Inline conditionals `A if C else B` (chainable), `and` / `or` / `not`, `is none`, `is not none`, `is defined`, `True` / `False` / `None`
+* JavaScript style also works: `cond ? a : b`, `&&`, `||`
 
 ---
 
@@ -629,8 +732,10 @@ entities:
 
 * Uses `ha-card` for native appearance
 * CSS‑based animation (no JS timers)
-* Templates evaluated via controlled execution context
+* Local Jinja→JS transpiler with automatic HA server fallback; complex templates subscribe to server rendering over WebSocket (`render_template`) — no polling
+* Animation pauses while off‑screen / tab hidden; honors `prefers-reduced-motion`; duplicate marquee copies are `aria-hidden`
 * Sidebar & scrollbar observation for responsive mode
+* Unit tests under `tests/` (90+ assertions) with GitHub Actions CI
 
 ---
 
