@@ -177,14 +177,18 @@ entities:
     name: AAPL
     trend:
       source: baseline
-      baseline: previous_close
-      show_delta: percent      # → AAPL: 213.40 ▲ +1.6%
+      baseline: previous_close   # ⚠️ must match YOUR integration's attribute name
+      show_delta: percent        # → AAPL: 213.40 ▲ +1.6%
   - entity: sensor.btc
     name: BTC
-    trend: true                # simplest form: direction of the last change
+    trend: true                  # direction of the last change seen while the page is open
 ```
 
 Use `trend: true` (or an options object) per entity, or set it once at card level to apply to every entity.
+
+> ⚠️ **Two things account for almost every “trend colouring doesn’t work” report:**
+> 1. **The attribute name.** `baseline: previous_close` and `attribute: change` are only *defaults*; they are not what every integration calls those fields. Yahoo Finance, for example, uses `regularMarketPreviousClose` and `regularMarketChange`. If the attribute doesn’t exist the card can’t compute a direction, so it stays flat. Check the real names in **Developer Tools → States**.
+> 2. **`trend: true` uses `memory`,** which only knows a direction *after it has seen the value change while the page is open* — and it resets on every reload. For a stock that updates once a minute the strip is flat most of the time. For anything with a change/previous‑close attribute, use `source: attribute` or `source: baseline` instead.
 
 ### Trend options
 
@@ -196,18 +200,107 @@ Use `trend: true` (or an options object) per entity, or set it once at card leve
 | `threshold`       | `0`                              | Minimum absolute change before marking up/down                                                                   |
 | `show_arrow`      | `true`                           | Show the ▲ / ▼ arrow                                                                                             |
 | `up_icon` / `down_icon` | `mdi:menu-up` / `mdi:menu-down` | Custom arrow icons                                                                                        |
-| `show_delta`      | —                                | `absolute` or `percent` — display the change next to the value                                                   |
-| `delta_precision` | `2` (abs) / `1` (pct)            | Decimals of the displayed delta                                                                                  |
-| `up_color` / `down_color` / `flat_color` | green / red / — | Colors; also themeable via `--strip-card-trend-up` / `--strip-card-trend-down`                  |
+| `show_delta`      | —                                | `absolute` or `percent` — display the change next to the value. `percent` needs a reference value; when there isn't one, **no delta is shown** (see note below) |
+| `delta_precision` | `2` (abs) / `1` (pct)            | Decimals of the displayed delta. Percent defaults to **1**, so set `delta_precision: 2` if you want `-4.03%` rather than `-4.0%` |
+| `up_color` / `down_color` | green / red           | Colors; also themeable via `--strip-card-trend-up` / `--strip-card-trend-down`                                   |
+| `flat_color`      | neutral text color               | Color when the direction is flat; themeable via `--strip-card-trend-flat`. Set `flat_color: ""` to leave the value's own color untouched |
 | `apply_to`        | `[value, arrow]`                 | Which parts get the trend color: `value`, `name`, `unit`, `icon`, `arrow`                                        |
 
-> 💡 `memory` compares tick‑to‑tick and resets on page reload. For stocks prefer `baseline` / `attribute` — most finance integrations (e.g. Yahoo Finance) expose `previous_close` / `change` attributes.
+> 💡 `memory` compares tick‑to‑tick and resets on page reload. For stocks prefer `baseline` / `attribute` — but check the attribute names your integration actually uses.
+
+> 💡 **When is `show_delta: percent` blank?** A percentage needs something to divide by. There is no reference value when the reference works out to zero — for example when `source: attribute` points at the same attribute the entity already displays via `attribute:`, when a `baseline` attribute is `0`, or with `source: memory` when the previously seen value was `0`. Use `show_delta: absolute` in those cases. *(Before v2.12 the card silently printed the absolute change instead, which made the value appear twice.)*
+
+> 💡 **`flat_color` and the “everything is blue” trap.** The value's default color is `var(--primary-color)` — blue in most themes. Before v2.12, a configured trend that resolved to *flat* applied no color at all, so the value stayed blue and the card looked broken. Since v2.12 flat gets a neutral text color by default, and that default is skipped for any part where you set your own color, so a deliberate `value_color` is never overwritten. `flat_color: ""` restores the old behaviour. **Note:** `flat_color` is YAML‑only — the visual editor has no field for it.
+
+### Card‑level vs entity‑level `trend`
+
+Set `trend` once at card level and it applies to every entity. An entity‑level `trend` is layered **on top of** it:
+
+| Entity‑level value | Result                                                                 |
+| ------------------ | ---------------------------------------------------------------------- |
+| *(omitted)*        | inherits the card‑level settings                                       |
+| `true`             | inherits the card‑level settings                                       |
+| `{ … }`            | inherits the card‑level settings, with the keys you list overriding them |
+| `false`            | trend disabled for that entity only                                    |
+
+```yaml
+type: custom:strip-card
+trend:
+  source: attribute
+  attribute: regularMarketChange
+  show_delta: percent
+  delta_precision: 2
+entities:
+  - entity: sensor.yahoofinance_googl
+    name: GOOGL
+  - entity: sensor.yahoofinance_aapl
+    name: AAPL
+    trend:
+      show_arrow: false        # everything else is still inherited
+  - entity: sensor.clock
+    trend: false               # no trend for this one
+```
+
+> ⚠️ *(v2.12 and later.)* Earlier versions **replaced** the card‑level settings instead of merging, so writing a single option per entity silently reverted that entity to `source: memory` with no colouring at all. If you are on v2.11 or older, repeat every option in each entity block.
+>
+> Note that `source`, `attribute` and `baseline` all decide *where the direction comes from*: if an entity names `attribute:` or `baseline:` without naming `source:`, that choice wins over the card‑level `source`. `apply_to` is a list and is replaced wholesale, not merged.
+>
+> In the visual editor, blank per‑entity trend fields mean “inherited”, and the per‑entity Trend toggle cannot switch trend *off* while a card‑level `trend` object exists — use `trend: false` in YAML for that.
 
 Templates can also use the trend variables directly:
 
 ```yaml
 value_color: "{{ 'limegreen' if trend == 'up' else 'red' if trend == 'down' else 'gray' }}"
 ```
+
+> 💡 `trend` reflects whatever the resolved `trend` configuration produced. With no `trend:` configured it falls back to the memory direction, which is `'flat'` until the card has seen the value change — so on a fresh page load this template renders `gray`. If you want a colour that depends only on the current value, template on `value` instead (see the next example).
+
+### ✅ Example: Yahoo Finance stock ticker
+
+The Yahoo Finance integration exposes the day's change as `regularMarketChange` and the reference price as `regularMarketPreviousClose`. Show the price, coloured by the day's move:
+
+```yaml
+type: custom:strip-card
+continuous_scroll: true
+duration: 30
+trend:
+  source: attribute
+  attribute: regularMarketChange
+  show_delta: percent
+  delta_precision: 2
+entities:
+  - entity: sensor.yahoofinance_googl
+    name: GOOGL
+  - entity: sensor.yahoofinance_gspc
+    name: S&P 500
+```
+
+→ `GOOGL: 362.43 ▼ -4.03%` in red, `▲ +2.47%` in green.
+
+To display the **change itself** instead of the price, add `attribute:` to the entity — and drop `show_delta`, since the value already *is* the change:
+
+```yaml
+type: custom:strip-card
+trend:
+  source: attribute
+  attribute: regularMarketChange
+entities:
+  - entity: sensor.yahoofinance_googl
+    name: GOOGL
+    attribute: regularMarketChange
+```
+
+No trend indicator wanted — just the colour? Template on `value` directly:
+
+```yaml
+entities:
+  - entity: sensor.yahoofinance_googl
+    name: GOOGL
+    attribute: regularMarketChange
+    value_color: "{{ 'limegreen' if value | float > 0 else 'red' if value | float < 0 else 'gray' }}"
+```
+
+> 💡 `source: attribute` reads the **sign** of the attribute — the stock is up or down *today*. If instead you want “did this value improve since the last update” (so `-25` → `-3` counts as green even though both are negative), use `attribute:` on the entity together with `trend: { source: memory }`.
 
 ---
 
@@ -322,6 +415,8 @@ These variables are automatically available in `value_template`, `visible_if`, `
 * `prev_value` — previous value observed by the card
 * `entity` / `stateObj` — entity id and full HA state object
 * `item` / `index` — only when `repeat_on` is used
+
+> ⚠️ `trend`, `delta` and `prev_value` come from the resolved `trend` configuration, so they change when that configuration changes — including through card‑level inheritance. This matters most in `visible_if`: a condition such as `{{ trend == 'down' }}` can add or remove the entity from the strip. With no `trend:` configured at all, `trend` is `'flat'` and `delta` / `prev_value` are empty until the card observes a change.
 
 **Before:**
 ```yaml
